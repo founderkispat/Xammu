@@ -3,7 +3,7 @@
 **Perfilado de comportamiento defensivo a través de un único egress autorizado.**
 
 XAMMU mide cómo una defensa perimetral trata solicitudes concretas y publica hallazgos que un
-ingeniero puede usar el lunes. Envía sólo sondas inertes con forma de marcador, por un único
+ingeniero puede usar. Envía sólo sondas inertes con forma de marcador, por un único
 canal autorizado, y no afirma nada que la medición no sostenga: cada hallazgo declara qué se
 observó, qué se infiere, qué falta y qué no puede saberse.
 
