@@ -1,0 +1,76 @@
+{
+  "authorization_id": "6ab79862-fd1e-497d-8f48-99f7e96b9a26",
+  "ref": "AUTH-SMOKE-ORIGIN-001",
+  "issued_at": "2026-10-28T20:33:17.128380Z",
+  "expires_at": "2026-10-29T20:33:17.128380Z",
+  "issuer": "security-owner@example.internal",
+  "approved_by": "CISO delegate",
+  "environment": "laboratory",
+  "origins": [
+    {
+      "scheme": "http",
+      "host": "127.0.0.1",
+      "port": 8081,
+      "path_prefixes": [
+        "/api/",
+        "/search"
+      ],
+      "allowed_ips": [
+        "127.0.0.1",
+        "::1"
+      ]
+    }
+  ],
+  "methods": [
+    "GET",
+    "POST",
+    "PUT"
+  ],
+  "limits": {
+    "max_requests": 48,
+    "rate_per_second": 20,
+    "max_redirects": 5,
+    "timeout_ms": 5000,
+    "max_concurrent": 2,
+    "max_body_retain_bytes": 4096,
+    "round_cooldown_ms": 1000
+  },
+  "retention_policy": "digest_only",
+  "allowed_attack_classes": [
+    "sqli",
+    "xss",
+    "path_traversal",
+    "command_injection",
+    "ssrf",
+    "crlf_injection",
+    "ldap_injection",
+    "xxe"
+  ],
+  "allowed_vectors": [
+    "query",
+    "body_json",
+    "body_form",
+    "path",
+    "header",
+    "cookie"
+  ],
+  "allowed_encodings": [
+    "canonical",
+    "url_single",
+    "url_double",
+    "case_variant"
+  ],
+  "corpus_partitions": [
+    "development",
+    "calibration"
+  ],
+  "statement_of_scope": "Un-defended baseline of the laboratory: the same probe families against the origin, over every attack class the laboratory corpus carries.",
+  "rules_of_engagement": [
+    "no exploitation attempts",
+    "stop on any 429 and report",
+    "no requests outside the listed path prefixes",
+    "this authorization covers the origin only; it is not permission to profile any other host"
+  ],
+  "contact_for_halt": "oncall@example.internal",
+  "issuer_key_fingerprint": "ed25519:7f3a...c1"
+}

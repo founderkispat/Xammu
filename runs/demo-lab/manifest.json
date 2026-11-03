@@ -1,0 +1,141 @@
+{
+  "manifest_id": "3d248031-d41f-4c64-992f-ea5051277aa4",
+  "run_id": "demo-lab",
+  "generated_at": "2026-10-28T22:21:56.6572316Z",
+  "tool_version": "xammu-1.0.0",
+  "authorization_ref": "AUTH-SMOKE-LOCAL-001",
+  "algorithm": "ed25519",
+  "signer_key_id": "dbbad598a2f83c1c",
+  "public_key_base64": "mduJe6iz4WCJDeQRPSliSQqnFoytpudPoQ33cb8roSw=",
+  "signature_base64": "B1mQwbcxOhI0bmnC1NRYyQc5Nrwnuoo6YeIRf924v/qmzwWIN6zyDQafHzuvhI0fkh3PAePt/wt71gXJE29WDA==",
+  "payload_digest": "sha256:6eb01b41eb85e3be8f50f6e95c38e1e56fb392e59281765a1fad9c5f5d37b85b",
+  "observation_chain_head": "sha256:e9d01fffe8c238af9ef9a206d58c028f1c1e2915d56fb6bbcc244defdb511232",
+  "merkle_root": "sha256:84afe06b0edb55434449e2f6a470fd9c0cd7e08f71440a20407c9d227471f9cd",
+  "file_count": 13,
+  "observation_count": 23,
+  "contract_versions": {
+    "attribution": "1.0.0",
+    "attribution_status": "1.0.0",
+    "behavioral_classification": "1.0.0",
+    "corpus_item": "1.0.0",
+    "corpus_partition": "1.0.0",
+    "discovery_finding": "1.0.0",
+    "evidence_profile": "1.0.0",
+    "hypothesis": "1.0.0",
+    "integrity_manifest": "1.0.0",
+    "profiling_authorization": "1.0.0",
+    "raw_observation": "1.0.0",
+    "report": "1.0.0",
+    "run_profile": "1.0.0",
+    "signature_analysis": "1.0.0",
+    "transient_capture": "1.0.0",
+    "validation_authorization": "1.0.0"
+  },
+  "files": [
+    {
+      "path": "analyses.jsonl",
+      "digest": "sha256:dbcc9bb34588f9cc2120ea5f3b01cc6982ffeda105250bcaa01c9280b8227f00",
+      "bytes": 31222,
+      "lines": 23,
+      "contract_type": "signature_analysis",
+      "append_only": true
+    },
+    {
+      "path": "attributions.jsonl",
+      "digest": "sha256:433b98167f94ed242a98cdb4f76f08486a5b526a3ecb4a343b67eea08ff1ffdc",
+      "bytes": 45603,
+      "lines": 7,
+      "contract_type": "attribution",
+      "append_only": true
+    },
+    {
+      "path": "captures.jsonl",
+      "digest": "sha256:98ed68d2700e5d80189905a99321d495e986fd5398b753a074455a8ef174d7b4",
+      "bytes": 15535,
+      "lines": 23,
+      "contract_type": "transient_capture",
+      "append_only": true
+    },
+    {
+      "path": "classifications.jsonl",
+      "digest": "sha256:5544e7443a8b162c3fd80c326c271b419016ffc574385e73d8b112d23286a1d7",
+      "bytes": 25280,
+      "lines": 23,
+      "contract_type": "behavioral_classification",
+      "append_only": true
+    },
+    {
+      "path": "evidence_profiles.jsonl",
+      "digest": "sha256:5bd26782728619e75c7b9b061f5b5779b52d2c51c17a97c17dec9c54023f7cef",
+      "bytes": 13474,
+      "lines": 7,
+      "contract_type": "evidence_profile",
+      "append_only": true
+    },
+    {
+      "path": "findings.jsonl",
+      "digest": "sha256:5ede76bb292be7762321a40c3c611b4119d02d028367b0c7dd7826b5b7a621af",
+      "bytes": 63413,
+      "lines": 14,
+      "contract_type": "discovery_finding",
+      "append_only": true
+    },
+    {
+      "path": "hypotheses.jsonl",
+      "digest": "sha256:a058d1c4a03343c3cce60c40f2618494e82c94b1b0732551ee7660cf48caa1c8",
+      "bytes": 17974,
+      "lines": 7,
+      "contract_type": "hypothesis",
+      "append_only": true
+    },
+    {
+      "path": "notes.jsonl",
+      "digest": "sha256:64f1aae3cf86e328e346905eb5bd598927e84f85b972189fe020419e8d78e447",
+      "bytes": 522,
+      "lines": 1,
+      "contract_type": "journal:notes",
+      "append_only": true
+    },
+    {
+      "path": "observations.jsonl",
+      "digest": "sha256:6731f7d6cd0ee41b9b2dcb79d6f8886f8066cf70198a60d87e7ec8e4cc30b349",
+      "bytes": 52458,
+      "lines": 23,
+      "contract_type": "raw_observation",
+      "append_only": true
+    },
+    {
+      "path": "plan.jsonl",
+      "digest": "sha256:5a1fd17a1e33cdc2010de14b17a5e709376f484acc8bf7520d545cb6be5d0078",
+      "bytes": 19139,
+      "lines": 23,
+      "contract_type": "journal:plan",
+      "append_only": true
+    },
+    {
+      "path": "run.json",
+      "digest": "sha256:a5be3e88fce046e1301d945ff29ea0c920304d54742bcf880b126b6977263065",
+      "bytes": 2710,
+      "lines": 88,
+      "contract_type": "run_profile",
+      "append_only": false
+    },
+    {
+      "path": "run_profiles.jsonl",
+      "digest": "sha256:d8323732a9bba84e758e943f81704d2027a59e6071ae3659f4a516a2242a987a",
+      "bytes": 13992,
+      "lines": 8,
+      "contract_type": "run_profile",
+      "append_only": true
+    },
+    {
+      "path": "status_records.jsonl",
+      "digest": "sha256:2a906327ed2c5bb19d768de0ce9059f709f7a3027c62ff952c32f358b8747379",
+      "bytes": 19494,
+      "lines": 7,
+      "contract_type": "attribution_status",
+      "append_only": true
+    }
+  ],
+  "signing_rule": "ed25519 over sha256(canonical-json(manifest minus signature and payload_digest)); payload_digest commits to the merkle root of per-file sha256 digests, ordered by path"
+}

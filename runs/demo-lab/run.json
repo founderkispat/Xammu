@@ -1,0 +1,88 @@
+{
+  "run_id": "demo-lab",
+  "state": "completed",
+  "authorization_ref": "AUTH-SMOKE-LOCAL-001",
+  "target_origin": "http://127.0.0.1:8099",
+  "corpus_partition": "development",
+  "config_hash": "sha256:9a63db45a57ed302ef6d7f26a28034e017830aedfa0f48fb1a4f1fce23adfb3c",
+  "started_at": "2026-10-28T22:21:54.9635513Z",
+  "updated_at": "2026-10-28T22:21:56.640166Z",
+  "finished_at": "2026-10-28T22:21:56.640166Z",
+  "request_budget": 48,
+  "requests_used": 23,
+  "stop_trigger": "none",
+  "terminal_reason": "all 23 planned probes executed with 25 of 48 authorized requests left",
+  "terminal_reason_code": "not_yet_attempted",
+  "transitions": [
+    {
+      "from": "initialized",
+      "to": "authorization_pending",
+      "at": "2026-10-28T22:21:54.966263Z",
+      "cause": "authorization AUTH-SMOKE-LOCAL-001 loaded, validity not yet checked",
+      "request_seq": 0
+    },
+    {
+      "from": "authorization_pending",
+      "to": "authorized",
+      "at": "2026-10-28T22:21:54.9683819Z",
+      "cause": "window valid: issued 2026-10-28T17:43:14Z, expires 2026-10-29T18:43:14Z",
+      "request_seq": 0
+    },
+    {
+      "from": "authorized",
+      "to": "planning",
+      "at": "2026-10-28T22:21:54.971012Z",
+      "cause": "validating 23 probes against authorization AUTH-SMOKE-LOCAL-001",
+      "request_seq": 0
+    },
+    {
+      "from": "planning",
+      "to": "planned",
+      "at": "2026-10-28T22:21:54.9964926Z",
+      "cause": "23 probes planned within a budget of 48 requests",
+      "request_seq": 0
+    },
+    {
+      "from": "planned",
+      "to": "executing",
+      "at": "2026-10-28T22:21:54.9984917Z",
+      "cause": "plan accepted, execution began",
+      "request_seq": 0
+    },
+    {
+      "from": "executing",
+      "to": "finalizing",
+      "at": "2026-10-28T22:21:56.6367804Z",
+      "cause": "the run stopped in state read from the ledger after 23 request(s): the report is issued from the sealed evidence, not from this process's memory",
+      "request_seq": 23
+    },
+    {
+      "from": "finalizing",
+      "to": "completed",
+      "at": "2026-10-28T22:21:56.640166Z",
+      "cause": "all 23 planned probes executed with 25 of 48 authorized requests left",
+      "request_seq": 23
+    }
+  ],
+  "counters": {
+    "observations": 23,
+    "classified": 23,
+    "block_signals": 10,
+    "pass_signals": 13,
+    "indeterminate_signals": 0,
+    "rate_limited_responses": 0,
+    "transport_errors": 0,
+    "valid_trials": 23,
+    "invalid_trials": 0,
+    "planned_probes": 23,
+    "executed_probes": 23,
+    "hypotheses": 7,
+    "supported": 0,
+    "refuted": 7,
+    "inconclusive": 0,
+    "findings": 14
+  },
+  "resume_token": "",
+  "round_id": "round-1",
+  "schema_version": "1.0.0"
+}

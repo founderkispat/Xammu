@@ -1,0 +1,12 @@
+# Compiled binaries
+/xammu
+/xammu.exe
+
+# Private signing material never enters the tree
+*.ed25519
+*.key
+
+# Ephemeral run bundles; the two demonstrations are kept
+/runs/*
+!/runs/demo-lab/
+!/runs/demo-origin/

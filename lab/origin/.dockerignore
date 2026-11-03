@@ -1,0 +1,6 @@
+# The image build needs only the Go module in this directory.
+/bin
+*.exe
+*.test
+Dockerfile
+.dockerignore

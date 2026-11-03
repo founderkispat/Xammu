@@ -1,0 +1,146 @@
+# XAMMU v1.0.0 laboratory.
+#
+# A test fixture with deliberately known-bypassable behaviour, used to prove that
+# XAMMU's detectors actually detect. It is explicitly NOT a benchmark of
+# commercial WAFs and must not be described as one.
+#
+# Four services on one isolated internal network:
+#
+#   origin         the simulated application            origin:8081
+#   waf            the lab WAF in front of origin       waf:8080
+#   waf-stripped   the SAME waf image with
+#                  LAB_STRIP_WAF_MARKER_HEADERS=1       waf-stripped:8080
+#   netrunner      busybox+curl, where verify.sh runs its probes
+#
+# WHY NOTHING PUBLISHES A PORT
+# ----------------------------
+# The requirement is "no published ports on 0.0.0.0". This file satisfies it in
+# the strongest way: zero published ports. That is not decoration -- with
+# `internal: true` Docker attaches no default gateway, so a published port is not
+# reachable anyway. That was verified on this machine, not assumed: an alpine
+# container on an internal network with 127.0.0.1:28642 published gave
+# "connection refused" (curl exit 7) from the host. So the self-test runs from
+# netrunner, a container that is inside the network. Anything that is not already
+# on xammu-lab-net cannot talk to the lab at all.
+#
+# REPRODUCIBILITY
+# ---------------
+# Image digests are NOT written in this file. They are produced by ./build.sh,
+# recorded in lab/DIGESTS.txt, and asserted by ./verify.sh against the containers
+# that are actually running. A compose file alone is never accepted as proof of
+# reproducibility, so the digests plus the executable self-test are the proof.
+# The immutable base digests are pinned inside origin/Dockerfile and
+# waf/Dockerfile, which is where a rebuild can actually honour them.
+
+name: xammu-lab
+
+x-lab-defaults: &lab-defaults
+  restart: "no"
+  init: true
+  read_only: true
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  pids_limit: 128
+  tmpfs:
+    # The root filesystem is read-only, so the only writable location is a
+    # tmpfs that dies with the container. No host path is mounted anywhere in
+    # this file and no secret is reachable from any container here.
+    - /tmp:size=16m,mode=1777
+  logging:
+    driver: json-file
+    options:
+      max-size: "1m"
+      max-file: "2"
+
+networks:
+  labnet:
+    name: xammu-lab-net
+    internal: true
+
+services:
+  origin:
+    <<: *lab-defaults
+    image: xammu-lab-origin:1.0.0
+    build:
+      context: ./origin
+      dockerfile: Dockerfile
+    container_name: xammu-lab-origin
+    hostname: origin
+    environment:
+      ORIGIN_LISTEN_ADDR: ":8081"
+    networks:
+      - labnet
+
+  waf:
+    <<: *lab-defaults
+    image: xammu-lab-waf:1.0.0
+    build:
+      context: ./waf
+      dockerfile: Dockerfile
+    container_name: xammu-lab-waf
+    hostname: waf
+    environment:
+      WAF_LISTEN_ADDR: ":8080"
+      WAF_ORIGIN_URL: "http://origin:8081"
+      LAB_STRIP_WAF_MARKER_HEADERS: "0"
+      LAB_STRIP_WAF_TRACE_HEADERS: "0"
+    networks:
+      - labnet
+    depends_on:
+      origin:
+        condition: service_healthy
+
+  # The same image, the same rule table, one different environment variable.
+  # Its existence is how verify.sh proves the rejection signal lives in the
+  # response body rather than in a giveaway header.
+  waf-stripped:
+    <<: *lab-defaults
+    image: xammu-lab-waf:1.0.0
+    container_name: xammu-lab-waf-stripped
+    hostname: waf-stripped
+    environment:
+      WAF_LISTEN_ADDR: ":8080"
+      WAF_ORIGIN_URL: "http://origin:8081"
+      LAB_STRIP_WAF_MARKER_HEADERS: "1"
+      LAB_STRIP_WAF_TRACE_HEADERS: "1"
+    networks:
+      - labnet
+    depends_on:
+      origin:
+        condition: service_healthy
+
+  # Verify-only helper. It is the only thing in the lab that needs an outbound
+  # connection, and only to the other lab containers. Its digest is pinned here
+  # because build.sh does not build it.
+  #
+  # It carries a healthcheck so `compose up --wait` gates on it too, and so
+  # verify.sh can assert the same "healthy" string for all four containers.
+  # The check is a real round trip: netrunner is only considered ready once it
+  # can actually resolve and reach both WAF service names, which is the property
+  # every probe below depends on.
+  netrunner:
+    <<: *lab-defaults
+    image: docker.io/curlimages/curl@sha256:d9b4541e214bcd85196d6e92e2753ac6d0ea699f0af5741f8c6cccbfcf00ef4b
+    container_name: xammu-lab-netrunner
+    hostname: netrunner
+    entrypoint: ["sleep", "infinity"]
+    user: "1000:1000"
+    networks:
+      - labnet
+    depends_on:
+      waf:
+        condition: service_healthy
+      waf-stripped:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -fsS --max-time 5 http://waf:8080/__lab/info -o /dev/null
+          && curl -fsS --max-time 5 http://waf-stripped:8080/__lab/info -o /dev/null
+          && curl -fsS --max-time 5 http://origin:8081/healthz -o /dev/null
+      interval: 5s
+      timeout: 16s
+      retries: 6
+      start_period: 3s

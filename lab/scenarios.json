@@ -1,0 +1,254 @@
+{
+  "version": "1.0.0",
+  "compose_file": "compose.yaml",
+  "run_mode": "host",
+  "notes": [
+    "The Run commands were measured with the two fixture binaries listening on 127.0.0.1, which is why the smoke authorizations name 127.0.0.1 and not waf or origin. The laboratory publishes no ports and its network is internal, so a profiler on the host cannot reach the compose services at all, and an authorization matches a destination by host name: a command carrying http://waf:8080 would be refused before it sent anything.",
+    "The checks are the other way round. They use the compose service names and run inside netrunner, which is where those names resolve; that is what `xammu lab test --scenario NAME --apply` executes.",
+    "Every check here was executed against the same fixture build before it was written down. A check that did not pass is not in this file."
+  ],
+  "vocabulary": {
+    "query_string": "query",
+    "json_body": "body_json",
+    "form_body": "body_form",
+    "multipart_body": "multipart_form",
+    "header_value_uninspected": "header",
+    "cookie_name_unscanned": "cookie",
+    "cookie_value_uninspected": "cookie",
+    "body_not_parsed": "body_json",
+    "plain": "canonical",
+    "single_encoded": "url_single",
+    "double_encoded": "url_double",
+    "mixed_case": "case_variant"
+  },
+  "scenarios": [
+    {
+      "name": "vector-asymmetry-g-dev-gen-sentinel",
+      "summary": "the same sentinel bytes refused in query and forwarded in the JSON body: one comparison, measured rather than asserted",
+      "finding_type": "vector_asymmetry",
+      "probe_refs": [
+        "DEV-GEN-Q-01",
+        "DEV-GEN-J-01"
+      ],
+      "expected_observation": "the sentinel in the query string is refused with the interstitial shape, the identical sentinel in a JSON body of the same route reaches the origin, and the origin answers it 200 when asked directly",
+      "checks": [
+        "test \"$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' 'http://waf:8080/api/search?q=xammu-probe-token')\" = 403",
+        "test \"$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data-binary '{\"q\":\"xammu-probe-token\"}' 'http://waf:8080/api/search')\" = 200",
+        "test \"$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data-binary '{\"q\":\"xammu-probe-token\"}' 'http://origin:8081/api/search')\" = 200",
+        "! curl -s --max-time 15 -X POST -H 'Content-Type: application/json' --data-binary '{\"q\":\"xammu-probe-token\"}' 'http://waf:8080/api/search' | grep -q -- 'XAMMU-LAB-WAF-BLOCK'",
+        "curl -s --max-time 15 -X POST -H 'Content-Type: application/json' --data-binary '{\"q\":\"xammu-probe-token\"}' 'http://waf:8080/api/search' | grep -q -- '\"source\": \"origin\"'",
+        "test \"$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data-binary '{\"q\":\"xammu-probe-token\"}' 'http://waf-stripped:8080/api/search')\" = 200"
+      ],
+      "run": "xammu run --authorization AUTH-SMOKE-LOCAL-001 --authorize AUTH-SMOKE-LOCAL-001 --authorizations authorizations --corpus corpus --class sqli --vector query,body_json",
+      "fixture_vector": "json_body",
+      "fixture_encoding": "canonical",
+      "service": "netrunner",
+      "requires_docker": true,
+      "detector_ref": "internal/discover.vectorAsymmetries",
+      "lab_spec_behavior": 1
+    },
+    {
+      "name": "encoding-bypass-g-dev-sqli-q-tauto",
+      "summary": "one percent-decode pass: the tautology is refused canonical and single-encoded, and forwarded double-encoded",
+      "finding_type": "encoding_bypass_pattern",
+      "probe_refs": [
+        "DEV-SQLI-Q-01",
+        "DEV-SQLI-Q-02",
+        "DEV-SQLI-Q-03"
+      ],
+      "expected_observation": "the canonical and single-encoded forms of one probe family are refused, the double-encoded form of the same family is forwarded, and the origin states that a second decode would collapse it while performing only one",
+      "checks": [
+        "test \"$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' 'http://waf:8080/api/search?q=%27%20or%201=1%20xammu-probe')\" = 403",
+        "test \"$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' 'http://waf:8080/api/search?q=%27%20or%201%3d1%20xammu-probe')\" = 403",
+        "test \"$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' 'http://waf:8080/api/search?q=%2527%2520or%25201%253d1%2520xammu-probe')\" = 200",
+        "curl -s --max-time 15 'http://origin:8081/api/search?q=%2527%2520or%25201%253d1%2520xammu-probe' | grep -q -- '%27%20or%201%3d1%20xammu-probe'",
+        "! curl -s --max-time 15 'http://waf:8080/api/search?q=%2527%2520or%25201%253d1%2520xammu-probe' | grep -q -- 'XAMMU-LAB-WAF-BLOCK'"
+      ],
+      "run": "xammu run --authorization AUTH-SMOKE-LOCAL-001 --authorize AUTH-SMOKE-LOCAL-001 --authorizations authorizations --corpus corpus --class sqli --vector query",
+      "fixture_vector": "query_string",
+      "fixture_encoding": "double_encoded",
+      "service": "netrunner",
+      "requires_docker": true,
+      "detector_ref": "internal/discover.encodingBypasses",
+      "lab_spec_behavior": 2
+    },
+    {
+      "name": "over-blocking-informative-either",
+      "summary": "legitimate apostrophe traffic refused while the allowlisted contractions pass, so the false-positive rate has a denominator",
+      "finding_type": "over_blocking",
+      "probe_refs": [
+        "CAL-OVB-Q-01",
+        "CAL-OVB-Q-02",
+        "CAL-NEG-Q-01",
+        "CAL-NEG-Q-02"
+      ],
+      "expected_observation": "a possessive apostrophe outside the ten allowlisted contractions is refused on the query string while an allowlisted contraction in the same position passes, and the origin answers both 200, which is what makes the refusal the front end's decision rather than the application's",
+      "checks": [
+        "test \"$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' 'http://waf:8080/api/search?q=O%27Brien')\" = 403",
+        "test \"$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' 'http://waf:8080/api/search?q=don%27t%20remove%20it%27s%20row')\" = 200",
+        "test \"$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' 'http://waf:8080/api/search?q=%22widget%20sets%22')\" = 403",
+        "test \"$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' 'http://origin:8081/api/search?q=O%27Brien')\" = 200",
+        "test \"$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' 'http://origin:8081/api/search?q=%22widget%20sets%22')\" = 200"
+      ],
+      "run": "xammu run --authorization AUTH-SMOKE-LOCAL-001 --authorize AUTH-SMOKE-LOCAL-001 --authorizations authorizations --corpus corpus --class sqli --vector query",
+      "fixture_vector": "query_string",
+      "fixture_encoding": "canonical",
+      "service": "netrunner",
+      "requires_docker": true,
+      "detector_ref": "internal/discover.overBlocking",
+      "lab_spec_behavior": 4
+    },
+    {
+      "name": "configuration-concern-x-lab-probe-transfer-encoding",
+      "summary": "a refusal keyed on a header NAME whose value never reaches a signature, so no rule-table review would predict it",
+      "finding_type": "configuration_concern",
+      "probe_refs": [
+        "DEV-HDR-POL-01",
+        "CAL-POS-CR-01",
+        "CAL-BEN-CR-01"
+      ],
+      "expected_observation": "the denylisted header name is refused whatever its value carries, a near-miss name is forwarded, and the same marker-shaped value under an ordinary header name is judged by the rule table instead",
+      "checks": [
+        "test \"$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' -H 'X-Lab-Probe-Transfer-Encoding: chunked' 'http://waf:8080/api/search')\" = 403",
+        "test \"$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' -H 'X-Lab-Probe-Transfer-Encoded: chunked' 'http://waf:8080/api/search')\" = 200",
+        "test \"$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' -H 'x-lab-probe-transfer-encoding: chunked' 'http://waf:8080/api/search')\" = 403",
+        "test \"$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' -H 'X-Trace-Site: xammu-probe-framing-name' 'http://waf:8080/api/search')\" = 200",
+        "test \"$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' -H 'X-Trace-Site: xammu-probe-token' 'http://waf:8080/api/search')\" = 403",
+        "test \"$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' -H 'X-Lab-Probe-Payload: xammu-probe-token' 'http://waf:8080/api/search')\" = 200"
+      ],
+      "run": "xammu run --authorization AUTH-SMOKE-LOCAL-001 --authorize AUTH-SMOKE-LOCAL-001 --authorizations authorizations --corpus corpus --class crlf_injection --vector header",
+      "fixture_vector": "header",
+      "fixture_encoding": "canonical",
+      "service": "netrunner",
+      "requires_docker": true,
+      "detector_ref": "internal/discover.configurationConcerns",
+      "lab_spec_behavior": 3
+    },
+    {
+      "name": "undetermined-sqli-body-json-canonical-api-admin",
+      "summary": "the admin zone answers 502 for probe and control alike, so nothing observed there is attributable to a defensive decision",
+      "finding_type": "undetermined_area",
+      "probe_refs": [
+        "DEV-SQLI-J-01",
+        "DEV-GEN-J-01"
+      ],
+      "expected_observation": "a probe and a benign control placed in the admin zone return the same 502 from the origin, with no interstitial shape and no rule attribution, so the cell has no valid reading and the zone is declared unassessed",
+      "checks": [
+        "p=$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data-binary \"{\\\"q\\\":\\\"' or 1=1 xammu-probe\\\"}\" 'http://waf:8080/api/admin'); c=$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data-binary '{\"q\":\"widget list page 2\"}' 'http://waf:8080/api/admin'); test \"$p\" = 502 && test \"$c\" = 502 && test \"$p\" = \"$c\"",
+        "curl -s --max-time 15 -X POST -H 'Content-Type: application/json' --data-binary \"{\\\"q\\\":\\\"' or 1=1 xammu-probe\\\"}\" 'http://waf:8080/api/admin' | grep -q -- '\"source\": \"origin\"'",
+        "! curl -s --max-time 15 -X POST -H 'Content-Type: application/json' --data-binary \"{\\\"q\\\":\\\"' or 1=1 xammu-probe\\\"}\" 'http://waf:8080/api/admin' | grep -q -- 'XAMMU-LAB-WAF-BLOCK'",
+        "test \"$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' 'http://waf:8080/api/search?q=xammu-probe-token')\" = 403"
+      ],
+      "run": "xammu run --authorization AUTH-SMOKE-LOCAL-001 --authorize AUTH-SMOKE-LOCAL-001 --authorizations authorizations --corpus corpus --class sqli --vector query,body_json --path /api/admin",
+      "fixture_vector": "json_body",
+      "fixture_encoding": "canonical",
+      "service": "netrunner",
+      "requires_docker": true,
+      "detector_ref": "internal/discover.unreadCells",
+      "lab_spec_behavior": 5
+    },
+    {
+      "name": "undetermined-sqli-body-json-case-variant-api-admin",
+      "summary": "the same unassessable admin zone reached with a second body shape, so the verdict is a property of the zone rather than of one probe",
+      "finding_type": "undetermined_area",
+      "probe_refs": [
+        "DEV-SQLI-J-02"
+      ],
+      "expected_observation": "the case variant of the body probe returns the identical 502 the canonical probe and the benign control return, so a second shape does not rescue the zone either",
+      "checks": [
+        "p=$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data-binary \"{\\\"q\\\":\\\"' OR 1=1 xammu-probe\\\"}\" 'http://waf:8080/api/admin'); c=$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data-binary '{\"q\":\"widget list page 2\"}' 'http://waf:8080/api/admin'); test \"$p\" = 502 && test \"$c\" = 502 && test \"$p\" = \"$c\"",
+        "curl -s --max-time 15 -X POST -H 'Content-Type: application/json' --data-binary \"{\\\"q\\\":\\\"' OR 1=1 xammu-probe\\\"}\" 'http://waf:8080/api/admin' | grep -q -- '\"upstream_unavailable\"'"
+      ],
+      "run": "xammu run --authorization AUTH-SMOKE-LOCAL-001 --authorize AUTH-SMOKE-LOCAL-001 --authorizations authorizations --corpus corpus --class sqli --vector query,body_json --path /api/admin",
+      "fixture_vector": "json_body",
+      "fixture_encoding": "case_variant",
+      "service": "netrunner",
+      "requires_docker": true,
+      "detector_ref": "internal/discover.unreadCells",
+      "lab_spec_behavior": 5
+    },
+    {
+      "name": "undetermined-sqli-query-url-double-api-admin",
+      "summary": "a probe the query rules would refuse elsewhere, placed in the admin zone, answered by the same 502 as everything else there",
+      "finding_type": "undetermined_area",
+      "probe_refs": [
+        "DEV-SQLI-Q-03"
+      ],
+      "expected_observation": "the double-encoded form is forwarded by the front end as it is on the search route, and the admin origin answers it and a clean control with one indistinguishable 502",
+      "checks": [
+        "p=$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' 'http://waf:8080/api/admin?q=%2527%2520or%25201%253d1%2520xammu-probe'); c=$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' -G --data-urlencode \"q=widget list page 2\" 'http://waf:8080/api/admin?q=%2527%2520or%25201%253d1%2520xammu-probe'); test \"$p\" = 502 && test \"$c\" = 502 && test \"$p\" = \"$c\"",
+        "test \"$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' 'http://waf:8080/api/search?q=%2527%2520or%25201%253d1%2520xammu-probe')\" = 200"
+      ],
+      "run": "xammu run --authorization AUTH-SMOKE-LOCAL-001 --authorize AUTH-SMOKE-LOCAL-001 --authorizations authorizations --corpus corpus --class sqli --vector query,body_json --path /api/admin",
+      "fixture_vector": "query_string",
+      "fixture_encoding": "double_encoded",
+      "service": "netrunner",
+      "requires_docker": true,
+      "detector_ref": "internal/discover.unreadCells",
+      "lab_spec_behavior": 5
+    },
+    {
+      "name": "coverage-gap-sqli-query-canonical-api-search",
+      "summary": "the un-defended baseline: the probes the corpus expects refused are forwarded by the origin, which is exactly what the front end in front of it changes",
+      "finding_type": "coverage_gap",
+      "probe_refs": [
+        "DEV-SQLI-Q-01",
+        "CAL-POS-Q-01"
+      ],
+      "expected_observation": "the origin behind the front end returns its ordinary JSON shape for the canonical tautology the fixture's rule table refuses, so a run placed against the origin measures a cell whose declared expectation does not hold",
+      "checks": [
+        "test \"$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' 'http://origin:8081/api/search?q=%27%20or%201=1%20xammu-probe')\" = 200",
+        "test \"$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' 'http://waf:8080/api/search?q=%27%20or%201=1%20xammu-probe')\" = 403",
+        "curl -s --max-time 15 'http://origin:8081/api/search?q=%27%20or%201=1%20xammu-probe' | grep -q -- '\"source\": \"origin\"'"
+      ],
+      "run": "xammu run --authorization AUTH-SMOKE-ORIGIN-001 --authorize AUTH-SMOKE-ORIGIN-001 --authorizations authorizations --corpus corpus --class sqli --vector query --target http://origin:8081",
+      "fixture_vector": "query_string",
+      "fixture_encoding": "canonical",
+      "service": "netrunner",
+      "requires_docker": true,
+      "detector_ref": "internal/discover.coverageGaps",
+      "lab_spec_behavior": 1
+    },
+    {
+      "name": "coverage-gap-sqli-query-case-variant-api-search",
+      "summary": "the baseline reading of the case variant, so the gap describes a transport rather than one authored spelling",
+      "finding_type": "coverage_gap",
+      "probe_refs": [
+        "DEV-SQLI-Q-06"
+      ],
+      "expected_observation": "the upper-case tautology is refused by the front end and forwarded by the origin, the same contradiction measured over a second shape of the same cell family",
+      "checks": [
+        "test \"$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' 'http://origin:8081/api/search?q=%27%20OR%201=1%20xammu-probe')\" = 200",
+        "test \"$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' 'http://waf:8080/api/search?q=%27%20OR%201=1%20xammu-probe')\" = 403"
+      ],
+      "run": "xammu run --authorization AUTH-SMOKE-ORIGIN-001 --authorize AUTH-SMOKE-ORIGIN-001 --authorizations authorizations --corpus corpus --class sqli --vector query --target http://origin:8081",
+      "fixture_vector": "query_string",
+      "fixture_encoding": "case_variant",
+      "service": "netrunner",
+      "requires_docker": true,
+      "detector_ref": "internal/discover.coverageGaps",
+      "lab_spec_behavior": 1
+    },
+    {
+      "name": "coverage-gap-sqli-query-url-single-api-search",
+      "summary": "the baseline reading of the single-encoded form, the one the front end does catch after its single decode",
+      "finding_type": "coverage_gap",
+      "probe_refs": [
+        "DEV-SQLI-Q-02"
+      ],
+      "expected_observation": "the percent-encoded tautology is refused by the front end after one decode and forwarded untouched by the origin, so the comparison isolates the front end's decoding pass rather than the payload",
+      "checks": [
+        "test \"$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' 'http://origin:8081/api/search?q=%27%20or%201%3d1%20xammu-probe')\" = 200",
+        "test \"$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' 'http://waf:8080/api/search?q=%27%20or%201%3d1%20xammu-probe')\" = 403",
+        "curl -s --max-time 15 'http://origin:8081/api/search?q=%27%20or%201%3d1%20xammu-probe' | grep -q -- 'or 1=1 xammu-probe'"
+      ],
+      "run": "xammu run --authorization AUTH-SMOKE-ORIGIN-001 --authorize AUTH-SMOKE-ORIGIN-001 --authorizations authorizations --corpus corpus --class sqli --vector query --target http://origin:8081",
+      "fixture_vector": "query_string",
+      "fixture_encoding": "single_encoded",
+      "service": "netrunner",
+      "requires_docker": true,
+      "detector_ref": "internal/discover.coverageGaps",
+      "lab_spec_behavior": 2
+    }
+  ]
+}

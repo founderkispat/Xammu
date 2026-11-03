@@ -1,0 +1,1831 @@
+{
+  "report_id": "9b61bef4-c101-4948-a6d3-d78bb4255acf",
+  "run_id": "demo-origin",
+  "generated_at": "2026-10-28T22:27:38.42501Z",
+  "schema_version": "1.0.0",
+  "authorization_ref": "AUTH-SMOKE-ORIGIN-001",
+  "authorization_valid_until": "2026-10-29T20:33:17.12838Z",
+  "run_state": "completed",
+  "state_reason": "all 14 planned probes executed with 34 of 48 authorized requests left",
+  "target_origin": "http://127.0.0.1:8081",
+  "corpus_partition": "development",
+  "duration_seconds": 1,
+  "requests_used": 14,
+  "request_budget": 48,
+  "limits_summary": [
+    "request budget: 14 of 48 authorized requests spent (34 left); the client refuses a request beyond the budget rather than overshooting",
+    "pacing: at most 20 request(s) per second, at most 2 concurrent, 5000 ms timeout",
+    "redirects: at most 5, and only to a location the authorization lists; an unlisted redirect target ends the request as a refusal, not a follow",
+    "response retention: policy \"digest_only\", at most 4096 byte(s) of a body kept in the journal; the full body is out of the process before classification",
+    "scope: 1 origin(s), 3 method(s), 8 attack class(es), 6 transport(s), 4 encoding(s); anything outside that list was refused before the socket",
+    "authorization AUTH-SMOKE-ORIGIN-001 is valid until 2026-10-29T20:33:17Z; every reproduction command in this report is bound to that reference, and a run may not place a request after that instant",
+    "the inertness gate re-runs when the corpus loads: a probe that can execute never reaches the transport, so no limit here is what keeps the run non-exploitative",
+    "transport: 0 exchange(s) produced no response to classify; a run that hits this repeatedly in a row pauses rather than reporting a clean pass, because silence from a target is not a refusal",
+    "the run stopped as \"completed\" (none), so coverage in this report is bounded by what it reached before that, not by the plan it was given"
+  ],
+  "executive_summary": [
+    "One run behind one authorized egress: demo-origin sent 14 of 48 authorized requests to http://127.0.0.1:8081 from corpus partition development in 1 second(s), and stopped in state \"completed\".",
+    "Of 6 classified probe exchange(s) in the graded cells, 0 valid trial(s) carried the interstitial shape of a refusal and 6 the shape of ordinary handling; 0 indeterminate and 0 invalid trial(s) are outside every rate in this report rather than inside a denominator.",
+    "The pass published 16 finding(s): coverage_gap 3, undetermined_area 13.",
+    "The strongest claim any finding makes is \"descriptive\", at evidence level \"replicated_within_run\". C-08 derives that ceiling from the counts; nothing in this report rises above it, and a claim of a specific rule firing would need a source outside the HTTP response.",
+    "Coverage of the authorized grid: 1 of 48 class x transport cell(s) hold at least one valid reading; 25 entry(ies) are listed as unmeasured, each with the reason it has.",
+    "Reproduce it: xammu verify --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query re-derives the evidence trail; every finding carries a command bound to authorization AUTH-SMOKE-ORIGIN-001 or to run demo-origin.",
+    "This report does not say the defence is secure, does not evaluate application vulnerabilities, and does not replace a penetration test. Those limits are declared in code (the out-of-scope section is required by C-15), not written by whoever assembled this document."
+  ],
+  "dimensions": [
+    {
+      "kind": "coverage",
+      "title": "Coverage: what this run measured, and the cells it left open",
+      "answers_questions": [
+        1,
+        3
+      ],
+      "statements": [
+        "The authorized grid is 8 attack class(es) x 6 transport(s) = 48 cell(s). This run placed a probe in 1 of them and 1 hold at least one valid reading; 25 cell(s) are listed in the matrix as unmeasured, each with the reason the pass recorded.",
+        "Over the cells that produced readings: 6 valid trial(s) of probe traffic, 0 refused and 6 handled ordinarily by the classifier's agreement. 0 inconclusive and 0 invalid exchange(s) are named in this sentence and are in no denominator anywhere in the report.",
+        "Coverage was measured across 1 path(s) and 4 encoding(s), rendered as 1 class x transport row(s) with 4 encoding row(s) beneath them. A cell that mixed encodings is marked partial rather than averaged, because an average of a refusal and a pass is a number that describes neither.",
+        "At the transport level: no valid reading in transport(s) body_form, body_json, cookie, header, path.",
+        "At the attack class level: no valid reading of class(es) command_injection, crlf_injection, ldap_injection, path_traversal, ssrf, xss, xxe inside this authorization."
+      ],
+      "data_refs": [
+        "coverage_matrix:1 cell(s) rendered, 25 unmeasured entry(ies) listed",
+        "grid:sqli|query"
+      ]
+    },
+    {
+      "kind": "behavior",
+      "title": "Behaviour: what the front end did with the exchanges it received",
+      "answers_questions": [
+        2
+      ],
+      "statements": [
+        "Of the 6 classified probe exchange(s) in this pass, 0 carried the interstitial shape the detector set associates with rejection, 6 the shape of ordinary handling, 0 were indeterminate, 0 were rate-limited and 0 produced no response at all; 0 valid trial(s) landed on neither side of the agreement (a redirect, typically) and are bucketed as not measured.",
+        "Against the valid trials only, 0 of 6 (0%) were refused. The denominator is the run's own arithmetic; the distribution over behavioral_signal states the same exchanges counted by signal so a reader can see which buckets were empty rather than inferring it.",
+        "The comparison every \"handled ordinarily\" reading rests on is a reference cluster of 7 ordinary exchange(s) collected by the pass itself. Without it, a 200 response would be a status code rather than a reading, and no behaviour in this report could be stated at all.",
+        "0 exchange(s) were rate-limited. Pacing is a limit placed on this run, not a protection result: behavioral_signal counts them in their own bucket and they are never part of a refusal rate."
+      ],
+      "data_refs": [
+        "run:demo-origin/round:round-1/classifications",
+        "distribution:behavioral_signal"
+      ]
+    },
+    {
+      "kind": "attribution",
+      "title": "Attribution: how far the evidence places the cause on the defence",
+      "answers_questions": [
+        5
+      ],
+      "statements": [
+        "Of 4 graded cell(s), 0 carry an attribution record at all; 4 sit at \"undetermined\", which is the bucket this distribution keeps out of its denominator. An absent attribution is a statement about the evidence, not about the defence.",
+        "The strongest grade reached anywhere in the run is undetermined. The ladder above it requires a source outside the HTTP response -- filter logs or a configuration export -- and none was supplied to this run. Everything above it in the ladder is therefore out of reach for this evidence, whatever the readings say.",
+        "Evidence basis of the graded cells: http_only 4. \"http_only\" means a response and nothing else, which is why a finding that rests on it may describe a difference but may not name the component that caused it.",
+        "0 cell(s) have no evidence basis of any kind (evidence_basis bucket \"none\"). Those cells appear in the matrix as readings without attribution and in the findings as descriptive claims only."
+      ],
+      "data_refs": [
+        "run:demo-origin/attributions",
+        "distribution:attribution_status",
+        "distribution:evidence_basis"
+      ]
+    },
+    {
+      "kind": "discovery",
+      "title": "Discovery: the differences this run found and what to do about them",
+      "answers_questions": [
+        4,
+        6
+      ],
+      "statements": [
+        "The pass published 16 finding(s): coverage_gap 3, over_blocking 0, vector_asymmetry 0, encoding_bypass_pattern 0, configuration_concern 0, undetermined_area 13. 3 of them rest on a measurement; the rest state where the run produced none, and they carry no risk claim by construction.",
+        "Priority distribution: high 0, medium 0, low 16. Priority is computed from the size of the difference and the number of valid trials behind it, never from how alarming a finding type sounds.",
+        "No finding reached high priority in this pass: every measured difference either rests on too few valid trials or is contradicted by the run's own controls. That is a statement about this run's evidence, not a clean result for the target.",
+        "Every finding cites xammu as its reproduction surface, bound to authorization AUTH-SMOKE-ORIGIN-001 or to run demo-origin, so a reader who wants the measurement again cannot wander outside the scope that allowed it."
+      ],
+      "data_refs": [
+        "GAP-sqli-query-canonical-api-search",
+        "GAP-sqli-query-case_variant-api-search",
+        "GAP-sqli-query-url_single-api-search",
+        "UND-class-command_injection",
+        "UND-class-crlf_injection",
+        "UND-class-ldap_injection",
+        "UND-class-path_traversal",
+        "UND-class-ssrf",
+        "UND-class-xss",
+        "UND-class-xxe",
+        "UND-unplanned-authorization_gap",
+        "UND-vector-body_form",
+        "and 4 further finding ref(s)"
+      ]
+    },
+    {
+      "kind": "uncertainty",
+      "title": "Uncertainty: what was not determined, and why it could not be",
+      "answers_questions": [
+        7
+      ],
+      "statements": [
+        "The run stopped in state \"completed\" and 14 of 48 authorized requests were spent, so 34 request(s) and 0 planned probe(s) remain. The report states the arithmetic rather than leaving a reader to divide two numbers: all 14 planned probes executed with 34 of 48 authorized requests left.",
+        "Undetermined areas: 13, typed as authorization_gap 1, not_yet_attempted 12. Every one names what is absent and the command that would produce a reading; 29 planned request(s) were never spent on them.",
+        "Evidence-trail health: 0 re-derivation disagreement(s) with the journal and 0 exchange(s) that were sent but never classified. A divergence is a defect in the trail rather than a reading, so it is reported before any rate is quoted from a cell it touches.",
+        "The residual-risk block states three things separately: a conditional exposure the run measured, a condition the evidence does not yet demonstrate, and a question this kind of measurement cannot answer. They are not merged into one risk figure because merging them would hide which of the three a reader is being told about."
+      ],
+      "data_refs": [
+        "runs/demo-origin/manifest.json",
+        "distribution:hypothesis_outcome",
+        "attack class command_injection: unmeasured in this run",
+        "attack class crlf_injection: unmeasured in this run",
+        "attack class ldap_injection: unmeasured in this run",
+        "attack class path_traversal: unmeasured in this run",
+        "attack class ssrf: unmeasured in this run",
+        "attack class xss: unmeasured in this run",
+        "attack class xxe: unmeasured in this run",
+        "probes not run in partition development: 29 item(s)",
+        "transport body_form: unmeasured in this run",
+        "transport body_json: unmeasured in this run",
+        "transport cookie: unmeasured in this run",
+        "transport header: unmeasured in this run",
+        "and 1 further zone(s)"
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "finding_id": "a39bfa12-1228-4ca2-93c4-b1fef618664d",
+      "ref": "GAP-sqli-query-canonical-api-search",
+      "run_id": "demo-origin",
+      "detected_at": "2026-10-28T22:27:38.42501Z",
+      "finding_type": "coverage_gap",
+      "claim_type": "descriptive",
+      "what_was_observed": "of 3 valid trials in the sqli|query|canonical|/api/search cell, 0 produced the block shape the corpus expects and 3 were handled ordinarily; majority reading signal_pass. Expectation declared by lab-rule-table:GENERIC-001, lab-rule-table:SQLI-001, lab-rule-table:SQLI-002, lab-rule-table:SQLI-003. Corpus refs: DEV-GEN-Q-01, DEV-SQLI-Q-01, DEV-SQLI-QD-01.",
+      "what_is_inferred": "handling in this cell contradicts the expectation the corpus declares, which is compatible with the GENERIC-001 or SQLI-001 or SQLI-002 or SQLI-003 signature not being evaluated for query traffic at /api/search",
+      "what_evidence_is_missing": "This run supplies the response side only. What is missing is a valid control pair inside the profile, so the reading is anchored against ordinary handling rather than against expectation. Recorded by the evidence profile: to raise the evidence level: a valid positive control (a payload this run recorded as rejected) and a valid negative control (a benign reference this run recorded as ordinarily handled).",
+      "limitations": [
+        "does not show the origin is vulnerable to sqli",
+        "does not show no rule inspects this transport: it shows these probes were not refused",
+        "0 inconclusive and 0 invalid trial(s) are outside this count",
+        "a partial contradiction inside the cell is not reported here; only the majority reading is"
+      ],
+      "attribution_status": "undetermined",
+      "evidence_basis": "http_only",
+      "alternatives_evaluated": [
+        {
+          "kind": "waf",
+          "state": "supported",
+          "justification": "the difference is only ever seen on one side, so the engine is the candidate that fits but is not separated from the alternatives",
+          "test_that_would_resolve": "authorized exchange that reaches the origin without the front end, or the engine's own rule configuration",
+          "evidence_refs": [
+            "07195cce-9b09-4578-9581-d0f46c3b7e98",
+            "dc176822-a3a2-4fcf-b2e6-15cff4c0872a",
+            "f6ee1103-5316-4a28-b77f-42c44e4f4a3c"
+          ]
+        },
+        {
+          "kind": "origin_application",
+          "state": "not_ruled_out",
+          "justification": "no authorized exchange isolates the origin's own handling of this path, so the origin's input validation cannot be excluded as the source of the difference",
+          "test_that_would_resolve": "authorized request to the origin directly, bypassing the front end",
+          "evidence_refs": [
+            "07195cce-9b09-4578-9581-d0f46c3b7e98",
+            "dc176822-a3a2-4fcf-b2e6-15cff4c0872a",
+            "f6ee1103-5316-4a28-b77f-42c44e4f4a3c"
+          ]
+        },
+        {
+          "kind": "reverse_proxy_or_cdn",
+          "state": "not_ruled_out",
+          "justification": "the authorization covers one destination; nothing in the run distinguishes a proxy or CDN layer from the engine it forwards to, so a refusal at an earlier hop would look identical here",
+          "test_that_would_resolve": "response header comparison across an authorized direct-origin exchange, or the operator's topology",
+          "evidence_refs": []
+        },
+        {
+          "kind": "rate_limiting_or_throttling",
+          "state": "ruled_out",
+          "justification": "at least one exchange in scope returned 429, so pacing and rejection are not separable in this run",
+          "test_that_would_resolve": "status and Retry-After inspection already performed on every exchange",
+          "evidence_refs": [
+            "07195cce-9b09-4578-9581-d0f46c3b7e98",
+            "dc176822-a3a2-4fcf-b2e6-15cff4c0872a",
+            "f6ee1103-5316-4a28-b77f-42c44e4f4a3c"
+          ]
+        },
+        {
+          "kind": "test_harness_artifact",
+          "state": "ruled_out",
+          "justification": "the readings differ only where the payload differs; a harness artefact would have moved the calibration exchanges too, and they did not move",
+          "test_that_would_resolve": "replay of one refused and one passed exchange from the journal with the same client",
+          "evidence_refs": [
+            "07195cce-9b09-4578-9581-d0f46c3b7e98",
+            "dc176822-a3a2-4fcf-b2e6-15cff4c0872a",
+            "f6ee1103-5316-4a28-b77f-42c44e4f4a3c"
+          ]
+        },
+        {
+          "kind": "framework_input_normalization",
+          "state": "not_ruled_out",
+          "justification": "a framework that decodes or rejects the payload before the engine sees it can produce the same reading difference; this run cannot tell the two apart because only the response is authorized evidence",
+          "test_that_would_resolve": "the origin's own error shape for the same payload, or its request pipeline configuration",
+          "evidence_refs": []
+        },
+        {
+          "kind": "application_authorization",
+          "state": "unevaluable",
+          "justification": "no authorized exchange carries an authenticated session, so an authorization layer in front of the handler cannot be evaluated at all",
+          "test_that_would_resolve": "an authorized authenticated request reproducing both readings",
+          "evidence_refs": []
+        }
+      ],
+      "evidence_level": "replicated_within_run",
+      "evidence_profile_ref": "e2bd4232-cb68-42b7-a9e7-79c61a3d52ab",
+      "hypothesis_ref": "hyp.cell:sqli|query|canonical|/api/search",
+      "observation_refs": [
+        "07195cce-9b09-4578-9581-d0f46c3b7e98",
+        "dc176822-a3a2-4fcf-b2e6-15cff4c0872a",
+        "f6ee1103-5316-4a28-b77f-42c44e4f4a3c"
+      ],
+      "reproduction_command": "xammu validate --finding GAP-sqli-query-canonical-api-search --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "recommendation": "check whether the rule set that produced lab-rule-table:GENERIC-001, lab-rule-table:SQLI-001, lab-rule-table:SQLI-002, lab-rule-table:SQLI-003 is enabled for the query transport; if it is enabled, the probes reached it and were not matched, so review the match stage for query",
+      "regression_test_to_run": "xammu lab test --scenario coverage-gap-sqli-query-canonical-api-search",
+      "priority": "low",
+      "priority_basis": "100 percentage points measured over 3 valid trials: too small a difference, too few trials, or both, to rank above low",
+      "measured_impact": {
+        "numerator": 0,
+        "denominator": 3,
+        "basis": "valid probes in sqli|query|canonical|/api/search expected to be refused by the corpus, over the development cell's valid trials",
+        "excluded_inconclusive": 0,
+        "excluded_invalid": 0,
+        "population_ref": "cell:sqli|query|canonical|/api/search"
+      },
+      "affected_scope": "sqli x query x canonical on GET /api/search",
+      "attack_class": "sqli",
+      "vector": "query",
+      "encoding": "canonical",
+      "security_engineer_note": "probes built on the GENERIC-001, SQLI-001, SQLI-002, SQLI-003 signature are reaching this transport unrefused; take the query cell to the rule-set review for sqli and check whether it is enabled for that transport"
+    },
+    {
+      "finding_id": "096db2c2-5fa3-4060-8b0e-2269ddd4d61b",
+      "ref": "GAP-sqli-query-case_variant-api-search",
+      "run_id": "demo-origin",
+      "detected_at": "2026-10-28T22:27:38.42501Z",
+      "finding_type": "coverage_gap",
+      "claim_type": "descriptive",
+      "what_was_observed": "of 1 valid trials in the sqli|query|case_variant|/api/search cell, 0 produced the block shape the corpus expects and 1 were handled ordinarily; majority reading signal_pass. Expectation declared by lab-rule-table:SQLI-001, lab-rule-table:SQLI-003. Corpus refs: DEV-SQLI-Q-06.",
+      "what_is_inferred": "handling in this cell contradicts the expectation the corpus declares, which is compatible with the SQLI-001 or SQLI-003 signature not being evaluated for query traffic at /api/search",
+      "what_evidence_is_missing": "This run supplies the response side only. What is missing is repetition: a second authorized round of the same cell, so the difference is shown to survive rather than to be one exchange. Recorded by the evidence profile: to raise the evidence level: the same reading reproduced by two or more valid trials inside this run.",
+      "limitations": [
+        "does not show the origin is vulnerable to sqli",
+        "does not show no rule inspects this transport: it shows these probes were not refused",
+        "0 inconclusive and 0 invalid trial(s) are outside this count",
+        "a partial contradiction inside the cell is not reported here; only the majority reading is"
+      ],
+      "attribution_status": "undetermined",
+      "evidence_basis": "http_only",
+      "alternatives_evaluated": [
+        {
+          "kind": "waf",
+          "state": "supported",
+          "justification": "the difference is only ever seen on one side, so the engine is the candidate that fits but is not separated from the alternatives",
+          "test_that_would_resolve": "authorized exchange that reaches the origin without the front end, or the engine's own rule configuration",
+          "evidence_refs": [
+            "f56409df-65b3-4124-953f-d8e47d12722a"
+          ]
+        },
+        {
+          "kind": "origin_application",
+          "state": "not_ruled_out",
+          "justification": "no authorized exchange isolates the origin's own handling of this path, so the origin's input validation cannot be excluded as the source of the difference",
+          "test_that_would_resolve": "authorized request to the origin directly, bypassing the front end",
+          "evidence_refs": [
+            "f56409df-65b3-4124-953f-d8e47d12722a"
+          ]
+        },
+        {
+          "kind": "reverse_proxy_or_cdn",
+          "state": "not_ruled_out",
+          "justification": "the authorization covers one destination; nothing in the run distinguishes a proxy or CDN layer from the engine it forwards to, so a refusal at an earlier hop would look identical here",
+          "test_that_would_resolve": "response header comparison across an authorized direct-origin exchange, or the operator's topology",
+          "evidence_refs": []
+        },
+        {
+          "kind": "rate_limiting_or_throttling",
+          "state": "ruled_out",
+          "justification": "at least one exchange in scope returned 429, so pacing and rejection are not separable in this run",
+          "test_that_would_resolve": "status and Retry-After inspection already performed on every exchange",
+          "evidence_refs": [
+            "f56409df-65b3-4124-953f-d8e47d12722a"
+          ]
+        },
+        {
+          "kind": "test_harness_artifact",
+          "state": "ruled_out",
+          "justification": "the readings differ only where the payload differs; a harness artefact would have moved the calibration exchanges too, and they did not move",
+          "test_that_would_resolve": "replay of one refused and one passed exchange from the journal with the same client",
+          "evidence_refs": [
+            "f56409df-65b3-4124-953f-d8e47d12722a"
+          ]
+        },
+        {
+          "kind": "framework_input_normalization",
+          "state": "not_ruled_out",
+          "justification": "a framework that decodes or rejects the payload before the engine sees it can produce the same reading difference; this run cannot tell the two apart because only the response is authorized evidence",
+          "test_that_would_resolve": "the origin's own error shape for the same payload, or its request pipeline configuration",
+          "evidence_refs": []
+        },
+        {
+          "kind": "application_authorization",
+          "state": "unevaluable",
+          "justification": "no authorized exchange carries an authenticated session, so an authorization layer in front of the handler cannot be evaluated at all",
+          "test_that_would_resolve": "an authorized authenticated request reproducing both readings",
+          "evidence_refs": []
+        }
+      ],
+      "evidence_level": "single_observation",
+      "evidence_profile_ref": "a295626b-49be-4aa6-b80e-a80a88ba9335",
+      "hypothesis_ref": "hyp.cell:sqli|query|case_variant|/api/search",
+      "observation_refs": [
+        "f56409df-65b3-4124-953f-d8e47d12722a"
+      ],
+      "reproduction_command": "xammu validate --finding GAP-sqli-query-case_variant-api-search --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "recommendation": "check whether the rule set that produced lab-rule-table:SQLI-001, lab-rule-table:SQLI-003 is enabled for the query transport; if it is enabled, the probes reached it and were not matched, so review the match stage for query",
+      "regression_test_to_run": "xammu lab test --scenario coverage-gap-sqli-query-case-variant-api-search",
+      "priority": "low",
+      "priority_basis": "100 percentage points measured over 1 valid trials: too small a difference, too few trials, or both, to rank above low",
+      "measured_impact": {
+        "numerator": 0,
+        "denominator": 1,
+        "basis": "valid probes in sqli|query|case_variant|/api/search expected to be refused by the corpus, over the development cell's valid trials",
+        "excluded_inconclusive": 0,
+        "excluded_invalid": 0,
+        "population_ref": "cell:sqli|query|case_variant|/api/search"
+      },
+      "affected_scope": "sqli x query x case_variant on GET /api/search",
+      "attack_class": "sqli",
+      "vector": "query",
+      "encoding": "case_variant",
+      "security_engineer_note": "probes built on the SQLI-001, SQLI-003 signature are reaching this transport unrefused; take the query cell to the rule-set review for sqli and check whether it is enabled for that transport"
+    },
+    {
+      "finding_id": "4100e0a4-db5f-4243-9a44-270ad819cdcb",
+      "ref": "GAP-sqli-query-url_single-api-search",
+      "run_id": "demo-origin",
+      "detected_at": "2026-10-28T22:27:38.42501Z",
+      "finding_type": "coverage_gap",
+      "claim_type": "descriptive",
+      "what_was_observed": "of 1 valid trials in the sqli|query|url_single|/api/search cell, 0 produced the block shape the corpus expects and 1 were handled ordinarily; majority reading signal_pass. Expectation declared by lab-rule-table:SQLI-001, lab-rule-table:SQLI-003. Corpus refs: DEV-SQLI-Q-02.",
+      "what_is_inferred": "handling in this cell contradicts the expectation the corpus declares, which is compatible with the SQLI-001 or SQLI-003 signature not being evaluated for query traffic at /api/search",
+      "what_evidence_is_missing": "This run supplies the response side only. What is missing is repetition: a second authorized round of the same cell, so the difference is shown to survive rather than to be one exchange. Recorded by the evidence profile: to raise the evidence level: the same reading reproduced by two or more valid trials inside this run.",
+      "limitations": [
+        "does not show the origin is vulnerable to sqli",
+        "does not show no rule inspects this transport: it shows these probes were not refused",
+        "0 inconclusive and 0 invalid trial(s) are outside this count",
+        "a partial contradiction inside the cell is not reported here; only the majority reading is"
+      ],
+      "attribution_status": "undetermined",
+      "evidence_basis": "http_only",
+      "alternatives_evaluated": [
+        {
+          "kind": "waf",
+          "state": "supported",
+          "justification": "the difference is only ever seen on one side, so the engine is the candidate that fits but is not separated from the alternatives",
+          "test_that_would_resolve": "authorized exchange that reaches the origin without the front end, or the engine's own rule configuration",
+          "evidence_refs": [
+            "195bee6a-73c3-49e0-8bb9-c29c5a570774"
+          ]
+        },
+        {
+          "kind": "origin_application",
+          "state": "not_ruled_out",
+          "justification": "no authorized exchange isolates the origin's own handling of this path, so the origin's input validation cannot be excluded as the source of the difference",
+          "test_that_would_resolve": "authorized request to the origin directly, bypassing the front end",
+          "evidence_refs": [
+            "195bee6a-73c3-49e0-8bb9-c29c5a570774"
+          ]
+        },
+        {
+          "kind": "reverse_proxy_or_cdn",
+          "state": "not_ruled_out",
+          "justification": "the authorization covers one destination; nothing in the run distinguishes a proxy or CDN layer from the engine it forwards to, so a refusal at an earlier hop would look identical here",
+          "test_that_would_resolve": "response header comparison across an authorized direct-origin exchange, or the operator's topology",
+          "evidence_refs": []
+        },
+        {
+          "kind": "rate_limiting_or_throttling",
+          "state": "ruled_out",
+          "justification": "at least one exchange in scope returned 429, so pacing and rejection are not separable in this run",
+          "test_that_would_resolve": "status and Retry-After inspection already performed on every exchange",
+          "evidence_refs": [
+            "195bee6a-73c3-49e0-8bb9-c29c5a570774"
+          ]
+        },
+        {
+          "kind": "test_harness_artifact",
+          "state": "ruled_out",
+          "justification": "the readings differ only where the payload differs; a harness artefact would have moved the calibration exchanges too, and they did not move",
+          "test_that_would_resolve": "replay of one refused and one passed exchange from the journal with the same client",
+          "evidence_refs": [
+            "195bee6a-73c3-49e0-8bb9-c29c5a570774"
+          ]
+        },
+        {
+          "kind": "framework_input_normalization",
+          "state": "not_ruled_out",
+          "justification": "a framework that decodes or rejects the payload before the engine sees it can produce the same reading difference; this run cannot tell the two apart because only the response is authorized evidence",
+          "test_that_would_resolve": "the origin's own error shape for the same payload, or its request pipeline configuration",
+          "evidence_refs": []
+        },
+        {
+          "kind": "application_authorization",
+          "state": "unevaluable",
+          "justification": "no authorized exchange carries an authenticated session, so an authorization layer in front of the handler cannot be evaluated at all",
+          "test_that_would_resolve": "an authorized authenticated request reproducing both readings",
+          "evidence_refs": []
+        }
+      ],
+      "evidence_level": "single_observation",
+      "evidence_profile_ref": "4d3f03b0-3021-4407-aba3-2956bd5ec433",
+      "hypothesis_ref": "hyp.cell:sqli|query|url_single|/api/search",
+      "observation_refs": [
+        "195bee6a-73c3-49e0-8bb9-c29c5a570774"
+      ],
+      "reproduction_command": "xammu validate --finding GAP-sqli-query-url_single-api-search --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "recommendation": "check whether the rule set that produced lab-rule-table:SQLI-001, lab-rule-table:SQLI-003 is enabled for the query transport; if it is enabled, the probes reached it and were not matched, so review the match stage for query",
+      "regression_test_to_run": "xammu lab test --scenario coverage-gap-sqli-query-url-single-api-search",
+      "priority": "low",
+      "priority_basis": "100 percentage points measured over 1 valid trials: too small a difference, too few trials, or both, to rank above low",
+      "measured_impact": {
+        "numerator": 0,
+        "denominator": 1,
+        "basis": "valid probes in sqli|query|url_single|/api/search expected to be refused by the corpus, over the development cell's valid trials",
+        "excluded_inconclusive": 0,
+        "excluded_invalid": 0,
+        "population_ref": "cell:sqli|query|url_single|/api/search"
+      },
+      "affected_scope": "sqli x query x url_single on GET /api/search",
+      "attack_class": "sqli",
+      "vector": "query",
+      "encoding": "url_single",
+      "security_engineer_note": "probes built on the SQLI-001, SQLI-003 signature are reaching this transport unrefused; take the query cell to the rule-set review for sqli and check whether it is enabled for that transport"
+    },
+    {
+      "finding_id": "55bdfd81-962e-4d2c-8ef2-f28942372484",
+      "ref": "UND-class-command_injection",
+      "run_id": "demo-origin",
+      "detected_at": "2026-10-28T22:27:38.42501Z",
+      "finding_type": "undetermined_area",
+      "claim_type": "descriptive",
+      "what_was_observed": "the authorization covers attack class \"command_injection\". No exchange in this run carried that class. the probe partition carries 3 item(s) of class \"command_injection\" and this run planned or sent none of them. The pass measured 1 class(es).",
+      "what_is_inferred": "nothing is inferred about how \"command_injection\" is handled. The absence is in this run's coverage, not in the engine's behaviour: no exchange was measured, so the class is unmeasured rather than examined",
+      "what_evidence_is_missing": "corpus items of class \"command_injection\" that pass the inertness gate, plus a plan that sends them under this authorization",
+      "limitations": [
+        "an unmeasured class is not an unguarded class",
+        "the reason code distinguishes a corpus that has nothing sendable from a run that sent nothing; it does not explain why the corpus has nothing"
+      ],
+      "attribution_status": "undetermined",
+      "evidence_basis": "none",
+      "alternatives_evaluated": [
+        {
+          "kind": "waf",
+          "state": "unevaluable",
+          "justification": "no valid reading exists for this zone, so no behaviour of the engine is in evidence: the authorization covers attack class \"command_injection\". No exchange in this run carried that class. the probe partition carries 3 item(s) of class \"command_injection\" and this run planned or sent none of them. The pass measured 1 class(es).",
+          "test_that_would_resolve": "an authorized exchange that produces one valid reading",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        },
+        {
+          "kind": "origin_application",
+          "state": "unevaluable",
+          "justification": "the origin's own handling is equally unobserved: the absence of a reading says nothing about either side of the path",
+          "test_that_would_resolve": "a valid reading, or an authorized direct-origin exchange",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        },
+        {
+          "kind": "test_harness_artifact",
+          "state": "not_ruled_out",
+          "justification": "the reason this zone has no reading has not been separated from a failure of the run itself; the typed reason code states what was recorded, not what caused it",
+          "test_that_would_resolve": "re-run of the planned exchange under the same authorization",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        }
+      ],
+      "evidence_level": "none",
+      "evidence_profile_ref": "",
+      "observation_refs": [
+        "absence:demo-origin/round-1/class-command_injection"
+      ],
+      "reproduction_command": "xammu validate --finding UND-class-command_injection --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "recommendation": "either add gated items of class \"command_injection\" to the probe partition and re-authorize, or carry the class as explicitly out of coverage in the report instead of leaving the reader to notice its absence",
+      "regression_test_to_run": "xammu playbook --partition development --class command_injection --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus",
+      "priority": "low",
+      "priority_basis": "no measurement exists for this zone, so nothing was ranked: an undetermined area is always low because the finding reports the absence of a quantity rather than its size",
+      "measured_impact": {
+        "numerator": 0,
+        "denominator": 0,
+        "basis": "",
+        "excluded_inconclusive": 0,
+        "excluded_invalid": 0
+      },
+      "affected_scope": "attack class command_injection: unmeasured in this run",
+      "attack_class": "command_injection",
+      "security_engineer_note": "the matrix row for \"command_injection\" is empty by construction: this build's inertness gate refuses the shapes that would demonstrate it, which is a coverage decision and not a result",
+      "unevaluated_reason": "not_yet_attempted"
+    },
+    {
+      "finding_id": "006159c7-6849-458f-9303-ffa9d60b3a5e",
+      "ref": "UND-class-crlf_injection",
+      "run_id": "demo-origin",
+      "detected_at": "2026-10-28T22:27:38.42501Z",
+      "finding_type": "undetermined_area",
+      "claim_type": "descriptive",
+      "what_was_observed": "the authorization covers attack class \"crlf_injection\". No exchange in this run carried that class. the probe partition carries 3 item(s) of class \"crlf_injection\" and this run planned or sent none of them. The pass measured 1 class(es).",
+      "what_is_inferred": "nothing is inferred about how \"crlf_injection\" is handled. The absence is in this run's coverage, not in the engine's behaviour: no exchange was measured, so the class is unmeasured rather than examined",
+      "what_evidence_is_missing": "corpus items of class \"crlf_injection\" that pass the inertness gate, plus a plan that sends them under this authorization",
+      "limitations": [
+        "an unmeasured class is not an unguarded class",
+        "the reason code distinguishes a corpus that has nothing sendable from a run that sent nothing; it does not explain why the corpus has nothing"
+      ],
+      "attribution_status": "undetermined",
+      "evidence_basis": "none",
+      "alternatives_evaluated": [
+        {
+          "kind": "waf",
+          "state": "unevaluable",
+          "justification": "no valid reading exists for this zone, so no behaviour of the engine is in evidence: the authorization covers attack class \"crlf_injection\". No exchange in this run carried that class. the probe partition carries 3 item(s) of class \"crlf_injection\" and this run planned or sent none of them. The pass measured 1 class(es).",
+          "test_that_would_resolve": "an authorized exchange that produces one valid reading",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        },
+        {
+          "kind": "origin_application",
+          "state": "unevaluable",
+          "justification": "the origin's own handling is equally unobserved: the absence of a reading says nothing about either side of the path",
+          "test_that_would_resolve": "a valid reading, or an authorized direct-origin exchange",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        },
+        {
+          "kind": "test_harness_artifact",
+          "state": "not_ruled_out",
+          "justification": "the reason this zone has no reading has not been separated from a failure of the run itself; the typed reason code states what was recorded, not what caused it",
+          "test_that_would_resolve": "re-run of the planned exchange under the same authorization",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        }
+      ],
+      "evidence_level": "none",
+      "evidence_profile_ref": "",
+      "observation_refs": [
+        "absence:demo-origin/round-1/class-crlf_injection"
+      ],
+      "reproduction_command": "xammu validate --finding UND-class-crlf_injection --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "recommendation": "either add gated items of class \"crlf_injection\" to the probe partition and re-authorize, or carry the class as explicitly out of coverage in the report instead of leaving the reader to notice its absence",
+      "regression_test_to_run": "xammu playbook --partition development --class crlf_injection --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus",
+      "priority": "low",
+      "priority_basis": "no measurement exists for this zone, so nothing was ranked: an undetermined area is always low because the finding reports the absence of a quantity rather than its size",
+      "measured_impact": {
+        "numerator": 0,
+        "denominator": 0,
+        "basis": "",
+        "excluded_inconclusive": 0,
+        "excluded_invalid": 0
+      },
+      "affected_scope": "attack class crlf_injection: unmeasured in this run",
+      "attack_class": "crlf_injection",
+      "security_engineer_note": "the matrix row for \"crlf_injection\" is empty by construction: this build's inertness gate refuses the shapes that would demonstrate it, which is a coverage decision and not a result",
+      "unevaluated_reason": "not_yet_attempted"
+    },
+    {
+      "finding_id": "833196e0-2d8e-4239-a735-92c736847dc9",
+      "ref": "UND-class-ldap_injection",
+      "run_id": "demo-origin",
+      "detected_at": "2026-10-28T22:27:38.42501Z",
+      "finding_type": "undetermined_area",
+      "claim_type": "descriptive",
+      "what_was_observed": "the authorization covers attack class \"ldap_injection\". No exchange in this run carried that class. the probe partition carries 1 item(s) of class \"ldap_injection\" and this run planned or sent none of them. The pass measured 1 class(es).",
+      "what_is_inferred": "nothing is inferred about how \"ldap_injection\" is handled. The absence is in this run's coverage, not in the engine's behaviour: no exchange was measured, so the class is unmeasured rather than examined",
+      "what_evidence_is_missing": "corpus items of class \"ldap_injection\" that pass the inertness gate, plus a plan that sends them under this authorization",
+      "limitations": [
+        "an unmeasured class is not an unguarded class",
+        "the reason code distinguishes a corpus that has nothing sendable from a run that sent nothing; it does not explain why the corpus has nothing"
+      ],
+      "attribution_status": "undetermined",
+      "evidence_basis": "none",
+      "alternatives_evaluated": [
+        {
+          "kind": "waf",
+          "state": "unevaluable",
+          "justification": "no valid reading exists for this zone, so no behaviour of the engine is in evidence: the authorization covers attack class \"ldap_injection\". No exchange in this run carried that class. the probe partition carries 1 item(s) of class \"ldap_injection\" and this run planned or sent none of them. The pass measured 1 class(es).",
+          "test_that_would_resolve": "an authorized exchange that produces one valid reading",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        },
+        {
+          "kind": "origin_application",
+          "state": "unevaluable",
+          "justification": "the origin's own handling is equally unobserved: the absence of a reading says nothing about either side of the path",
+          "test_that_would_resolve": "a valid reading, or an authorized direct-origin exchange",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        },
+        {
+          "kind": "test_harness_artifact",
+          "state": "not_ruled_out",
+          "justification": "the reason this zone has no reading has not been separated from a failure of the run itself; the typed reason code states what was recorded, not what caused it",
+          "test_that_would_resolve": "re-run of the planned exchange under the same authorization",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        }
+      ],
+      "evidence_level": "none",
+      "evidence_profile_ref": "",
+      "observation_refs": [
+        "absence:demo-origin/round-1/class-ldap_injection"
+      ],
+      "reproduction_command": "xammu validate --finding UND-class-ldap_injection --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "recommendation": "either add gated items of class \"ldap_injection\" to the probe partition and re-authorize, or carry the class as explicitly out of coverage in the report instead of leaving the reader to notice its absence",
+      "regression_test_to_run": "xammu playbook --partition development --class ldap_injection --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus",
+      "priority": "low",
+      "priority_basis": "no measurement exists for this zone, so nothing was ranked: an undetermined area is always low because the finding reports the absence of a quantity rather than its size",
+      "measured_impact": {
+        "numerator": 0,
+        "denominator": 0,
+        "basis": "",
+        "excluded_inconclusive": 0,
+        "excluded_invalid": 0
+      },
+      "affected_scope": "attack class ldap_injection: unmeasured in this run",
+      "attack_class": "ldap_injection",
+      "security_engineer_note": "the matrix row for \"ldap_injection\" is empty by construction: this build's inertness gate refuses the shapes that would demonstrate it, which is a coverage decision and not a result",
+      "unevaluated_reason": "not_yet_attempted"
+    },
+    {
+      "finding_id": "606a1ee1-f222-4bf2-9f8a-69dda5ae58a8",
+      "ref": "UND-class-path_traversal",
+      "run_id": "demo-origin",
+      "detected_at": "2026-10-28T22:27:38.42501Z",
+      "finding_type": "undetermined_area",
+      "claim_type": "descriptive",
+      "what_was_observed": "the authorization covers attack class \"path_traversal\". No exchange in this run carried that class. the probe partition carries 3 item(s) of class \"path_traversal\" and this run planned or sent none of them. The pass measured 1 class(es).",
+      "what_is_inferred": "nothing is inferred about how \"path_traversal\" is handled. The absence is in this run's coverage, not in the engine's behaviour: no exchange was measured, so the class is unmeasured rather than examined",
+      "what_evidence_is_missing": "corpus items of class \"path_traversal\" that pass the inertness gate, plus a plan that sends them under this authorization",
+      "limitations": [
+        "an unmeasured class is not an unguarded class",
+        "the reason code distinguishes a corpus that has nothing sendable from a run that sent nothing; it does not explain why the corpus has nothing"
+      ],
+      "attribution_status": "undetermined",
+      "evidence_basis": "none",
+      "alternatives_evaluated": [
+        {
+          "kind": "waf",
+          "state": "unevaluable",
+          "justification": "no valid reading exists for this zone, so no behaviour of the engine is in evidence: the authorization covers attack class \"path_traversal\". No exchange in this run carried that class. the probe partition carries 3 item(s) of class \"path_traversal\" and this run planned or sent none of them. The pass measured 1 class(es).",
+          "test_that_would_resolve": "an authorized exchange that produces one valid reading",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        },
+        {
+          "kind": "origin_application",
+          "state": "unevaluable",
+          "justification": "the origin's own handling is equally unobserved: the absence of a reading says nothing about either side of the path",
+          "test_that_would_resolve": "a valid reading, or an authorized direct-origin exchange",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        },
+        {
+          "kind": "test_harness_artifact",
+          "state": "not_ruled_out",
+          "justification": "the reason this zone has no reading has not been separated from a failure of the run itself; the typed reason code states what was recorded, not what caused it",
+          "test_that_would_resolve": "re-run of the planned exchange under the same authorization",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        }
+      ],
+      "evidence_level": "none",
+      "evidence_profile_ref": "",
+      "observation_refs": [
+        "absence:demo-origin/round-1/class-path_traversal"
+      ],
+      "reproduction_command": "xammu validate --finding UND-class-path_traversal --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "recommendation": "either add gated items of class \"path_traversal\" to the probe partition and re-authorize, or carry the class as explicitly out of coverage in the report instead of leaving the reader to notice its absence",
+      "regression_test_to_run": "xammu playbook --partition development --class path_traversal --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus",
+      "priority": "low",
+      "priority_basis": "no measurement exists for this zone, so nothing was ranked: an undetermined area is always low because the finding reports the absence of a quantity rather than its size",
+      "measured_impact": {
+        "numerator": 0,
+        "denominator": 0,
+        "basis": "",
+        "excluded_inconclusive": 0,
+        "excluded_invalid": 0
+      },
+      "affected_scope": "attack class path_traversal: unmeasured in this run",
+      "attack_class": "path_traversal",
+      "security_engineer_note": "the matrix row for \"path_traversal\" is empty by construction: this build's inertness gate refuses the shapes that would demonstrate it, which is a coverage decision and not a result",
+      "unevaluated_reason": "not_yet_attempted"
+    },
+    {
+      "finding_id": "e2250294-4bf7-4b40-926a-244550f22d4c",
+      "ref": "UND-class-ssrf",
+      "run_id": "demo-origin",
+      "detected_at": "2026-10-28T22:27:38.42501Z",
+      "finding_type": "undetermined_area",
+      "claim_type": "descriptive",
+      "what_was_observed": "the authorization covers attack class \"ssrf\". No exchange in this run carried that class. the probe partition carries 1 item(s) of class \"ssrf\" and this run planned or sent none of them. The pass measured 1 class(es).",
+      "what_is_inferred": "nothing is inferred about how \"ssrf\" is handled. The absence is in this run's coverage, not in the engine's behaviour: no exchange was measured, so the class is unmeasured rather than examined",
+      "what_evidence_is_missing": "corpus items of class \"ssrf\" that pass the inertness gate, plus a plan that sends them under this authorization",
+      "limitations": [
+        "an unmeasured class is not an unguarded class",
+        "the reason code distinguishes a corpus that has nothing sendable from a run that sent nothing; it does not explain why the corpus has nothing"
+      ],
+      "attribution_status": "undetermined",
+      "evidence_basis": "none",
+      "alternatives_evaluated": [
+        {
+          "kind": "waf",
+          "state": "unevaluable",
+          "justification": "no valid reading exists for this zone, so no behaviour of the engine is in evidence: the authorization covers attack class \"ssrf\". No exchange in this run carried that class. the probe partition carries 1 item(s) of class \"ssrf\" and this run planned or sent none of them. The pass measured 1 class(es).",
+          "test_that_would_resolve": "an authorized exchange that produces one valid reading",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        },
+        {
+          "kind": "origin_application",
+          "state": "unevaluable",
+          "justification": "the origin's own handling is equally unobserved: the absence of a reading says nothing about either side of the path",
+          "test_that_would_resolve": "a valid reading, or an authorized direct-origin exchange",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        },
+        {
+          "kind": "test_harness_artifact",
+          "state": "not_ruled_out",
+          "justification": "the reason this zone has no reading has not been separated from a failure of the run itself; the typed reason code states what was recorded, not what caused it",
+          "test_that_would_resolve": "re-run of the planned exchange under the same authorization",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        }
+      ],
+      "evidence_level": "none",
+      "evidence_profile_ref": "",
+      "observation_refs": [
+        "absence:demo-origin/round-1/class-ssrf"
+      ],
+      "reproduction_command": "xammu validate --finding UND-class-ssrf --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "recommendation": "either add gated items of class \"ssrf\" to the probe partition and re-authorize, or carry the class as explicitly out of coverage in the report instead of leaving the reader to notice its absence",
+      "regression_test_to_run": "xammu playbook --partition development --class ssrf --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus",
+      "priority": "low",
+      "priority_basis": "no measurement exists for this zone, so nothing was ranked: an undetermined area is always low because the finding reports the absence of a quantity rather than its size",
+      "measured_impact": {
+        "numerator": 0,
+        "denominator": 0,
+        "basis": "",
+        "excluded_inconclusive": 0,
+        "excluded_invalid": 0
+      },
+      "affected_scope": "attack class ssrf: unmeasured in this run",
+      "attack_class": "ssrf",
+      "security_engineer_note": "the matrix row for \"ssrf\" is empty by construction: this build's inertness gate refuses the shapes that would demonstrate it, which is a coverage decision and not a result",
+      "unevaluated_reason": "not_yet_attempted"
+    },
+    {
+      "finding_id": "500d7e2e-881c-4489-a072-56e8fb2d6079",
+      "ref": "UND-class-xss",
+      "run_id": "demo-origin",
+      "detected_at": "2026-10-28T22:27:38.42501Z",
+      "finding_type": "undetermined_area",
+      "claim_type": "descriptive",
+      "what_was_observed": "the authorization covers attack class \"xss\". No exchange in this run carried that class. the probe partition carries 7 item(s) of class \"xss\" and this run planned or sent none of them. The pass measured 1 class(es).",
+      "what_is_inferred": "nothing is inferred about how \"xss\" is handled. The absence is in this run's coverage, not in the engine's behaviour: no exchange was measured, so the class is unmeasured rather than examined",
+      "what_evidence_is_missing": "corpus items of class \"xss\" that pass the inertness gate, plus a plan that sends them under this authorization",
+      "limitations": [
+        "an unmeasured class is not an unguarded class",
+        "the reason code distinguishes a corpus that has nothing sendable from a run that sent nothing; it does not explain why the corpus has nothing"
+      ],
+      "attribution_status": "undetermined",
+      "evidence_basis": "none",
+      "alternatives_evaluated": [
+        {
+          "kind": "waf",
+          "state": "unevaluable",
+          "justification": "no valid reading exists for this zone, so no behaviour of the engine is in evidence: the authorization covers attack class \"xss\". No exchange in this run carried that class. the probe partition carries 7 item(s) of class \"xss\" and this run planned or sent none of them. The pass measured 1 class(es).",
+          "test_that_would_resolve": "an authorized exchange that produces one valid reading",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        },
+        {
+          "kind": "origin_application",
+          "state": "unevaluable",
+          "justification": "the origin's own handling is equally unobserved: the absence of a reading says nothing about either side of the path",
+          "test_that_would_resolve": "a valid reading, or an authorized direct-origin exchange",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        },
+        {
+          "kind": "test_harness_artifact",
+          "state": "not_ruled_out",
+          "justification": "the reason this zone has no reading has not been separated from a failure of the run itself; the typed reason code states what was recorded, not what caused it",
+          "test_that_would_resolve": "re-run of the planned exchange under the same authorization",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        }
+      ],
+      "evidence_level": "none",
+      "evidence_profile_ref": "",
+      "observation_refs": [
+        "absence:demo-origin/round-1/class-xss"
+      ],
+      "reproduction_command": "xammu validate --finding UND-class-xss --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "recommendation": "either add gated items of class \"xss\" to the probe partition and re-authorize, or carry the class as explicitly out of coverage in the report instead of leaving the reader to notice its absence",
+      "regression_test_to_run": "xammu playbook --partition development --class xss --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus",
+      "priority": "low",
+      "priority_basis": "no measurement exists for this zone, so nothing was ranked: an undetermined area is always low because the finding reports the absence of a quantity rather than its size",
+      "measured_impact": {
+        "numerator": 0,
+        "denominator": 0,
+        "basis": "",
+        "excluded_inconclusive": 0,
+        "excluded_invalid": 0
+      },
+      "affected_scope": "attack class xss: unmeasured in this run",
+      "attack_class": "xss",
+      "security_engineer_note": "the matrix row for \"xss\" is empty by construction: this build's inertness gate refuses the shapes that would demonstrate it, which is a coverage decision and not a result",
+      "unevaluated_reason": "not_yet_attempted"
+    },
+    {
+      "finding_id": "fba8c5ea-a82e-4373-8eb7-be1926809110",
+      "ref": "UND-class-xxe",
+      "run_id": "demo-origin",
+      "detected_at": "2026-10-28T22:27:38.42501Z",
+      "finding_type": "undetermined_area",
+      "claim_type": "descriptive",
+      "what_was_observed": "the authorization covers attack class \"xxe\". No exchange in this run carried that class. the probe partition carries 1 item(s) of class \"xxe\" and this run planned or sent none of them. The pass measured 1 class(es).",
+      "what_is_inferred": "nothing is inferred about how \"xxe\" is handled. The absence is in this run's coverage, not in the engine's behaviour: no exchange was measured, so the class is unmeasured rather than examined",
+      "what_evidence_is_missing": "corpus items of class \"xxe\" that pass the inertness gate, plus a plan that sends them under this authorization",
+      "limitations": [
+        "an unmeasured class is not an unguarded class",
+        "the reason code distinguishes a corpus that has nothing sendable from a run that sent nothing; it does not explain why the corpus has nothing"
+      ],
+      "attribution_status": "undetermined",
+      "evidence_basis": "none",
+      "alternatives_evaluated": [
+        {
+          "kind": "waf",
+          "state": "unevaluable",
+          "justification": "no valid reading exists for this zone, so no behaviour of the engine is in evidence: the authorization covers attack class \"xxe\". No exchange in this run carried that class. the probe partition carries 1 item(s) of class \"xxe\" and this run planned or sent none of them. The pass measured 1 class(es).",
+          "test_that_would_resolve": "an authorized exchange that produces one valid reading",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        },
+        {
+          "kind": "origin_application",
+          "state": "unevaluable",
+          "justification": "the origin's own handling is equally unobserved: the absence of a reading says nothing about either side of the path",
+          "test_that_would_resolve": "a valid reading, or an authorized direct-origin exchange",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        },
+        {
+          "kind": "test_harness_artifact",
+          "state": "not_ruled_out",
+          "justification": "the reason this zone has no reading has not been separated from a failure of the run itself; the typed reason code states what was recorded, not what caused it",
+          "test_that_would_resolve": "re-run of the planned exchange under the same authorization",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        }
+      ],
+      "evidence_level": "none",
+      "evidence_profile_ref": "",
+      "observation_refs": [
+        "absence:demo-origin/round-1/class-xxe"
+      ],
+      "reproduction_command": "xammu validate --finding UND-class-xxe --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "recommendation": "either add gated items of class \"xxe\" to the probe partition and re-authorize, or carry the class as explicitly out of coverage in the report instead of leaving the reader to notice its absence",
+      "regression_test_to_run": "xammu playbook --partition development --class xxe --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus",
+      "priority": "low",
+      "priority_basis": "no measurement exists for this zone, so nothing was ranked: an undetermined area is always low because the finding reports the absence of a quantity rather than its size",
+      "measured_impact": {
+        "numerator": 0,
+        "denominator": 0,
+        "basis": "",
+        "excluded_inconclusive": 0,
+        "excluded_invalid": 0
+      },
+      "affected_scope": "attack class xxe: unmeasured in this run",
+      "attack_class": "xxe",
+      "security_engineer_note": "the matrix row for \"xxe\" is empty by construction: this build's inertness gate refuses the shapes that would demonstrate it, which is a coverage decision and not a result",
+      "unevaluated_reason": "not_yet_attempted"
+    },
+    {
+      "finding_id": "0ad19c9d-ee8f-47ac-a8a1-169bcb8de8ed",
+      "ref": "UND-unplanned-authorization_gap",
+      "run_id": "demo-origin",
+      "detected_at": "2026-10-28T22:27:38.42501Z",
+      "finding_type": "undetermined_area",
+      "claim_type": "descriptive",
+      "what_was_observed": "29 corpus item(s) in partition development were not planned by this run under reason code \"authorization_gap\": DEV-CMD-P-01, DEV-CMD-Q-01, DEV-CMD-Q-02, DEV-COOKIE-01, DEV-COOKIE-02, DEV-CRLF-H-01, DEV-CRLF-H-02, DEV-GEN-J-01, DEV-HDR-POL-01, DEV-LDAP-Q-01, DEV-SQLI-F-01, DEV-SQLI-J-01, DEV-SQLI-J-02, DEV-SQLI-M-01, DEV-SQLI-Q-04, DEV-SQLI-Q-05, DEV-SQLI-QD-02, DEV-SSRF-Q-01, DEV-TRAV-P-01, DEV-TRAV-Q-01, DEV-TRAV-Q-02, DEV-XSS-JS-01, DEV-XSS-JS-02, DEV-XSS-JS-03, DEV-XSS-Q-01, DEV-XSS-Q-02, DEV-XSS-Q-03, DEV-XSS-Q-04, DEV-XXE-Q-01. The selection recorded: attack class command_injection is not in the authorization; vector cookie is not in the authorization; attack class crlf_injection is not in the authorization; vector body_json is not in the authorization; attack class ldap_injection is not in the authorization; vector body_form is not in the authorization; vector multipart_form is not in the authorization; encoding whitespace_variant is not in the authorization; encoding comment_insertion is not in the authorization; encoding html_entity_numeric is not in the authorization; attack class ssrf is not in the authorization; attack class path_traversal is not in the authorization; attack class xss is not in the authorization; attack class xxe is not in the authorization",
+      "what_is_inferred": "nothing is inferred from these items: they were never sent, so they contribute no trial to any rate in this report, and no cell of the coverage matrix is closed by them",
+      "what_evidence_is_missing": "the exchanges themselves: a larger authorized budget, a wider authorization, or a later run that plans the remaining cells",
+      "limitations": [
+        "the exclusion list is the selection's own record; this finding adds no measurement to it",
+        "a cell left unmeasured cannot be compared in the matrix, which is why those rows stay empty rather than inferred"
+      ],
+      "attribution_status": "undetermined",
+      "evidence_basis": "none",
+      "alternatives_evaluated": [
+        {
+          "kind": "waf",
+          "state": "unevaluable",
+          "justification": "no valid reading exists for this zone, so no behaviour of the engine is in evidence: 29 corpus item(s) in partition development were not planned by this run under reason code \"authorization_gap\": DEV-CMD-P-01, DEV-CMD-Q-01, DEV-CMD-Q-02, DEV-COOKIE-01, DEV-COOKIE-02, DEV-CRLF-H-01, DEV-CRLF-H-02, DEV-GEN-J-01, DEV-HDR-POL-01, DEV-LDAP-Q-01, DEV-SQLI-F-01, DEV-SQLI-J-01, DEV-SQLI-J-02, DEV-SQLI-M-01, DEV-SQLI-Q-04, DEV-SQLI-Q-05, DEV-SQLI-QD-02, DEV-SSRF-Q-01, DEV-TRAV-P-01, DEV-TRAV-Q-01, DEV-TRAV-Q-02, DEV-XSS-JS-01, DEV-XSS-JS-02, DEV-XSS-JS-03, DEV-XSS-Q-01, DEV-XSS-Q-02, DEV-XSS-Q-03, DEV-XSS-Q-04, DEV-XXE-Q-01. The selection recorded: attack class command_injection is not in the authorization; vector cookie is not in the authorization; attack class crlf_injection is not in the authorization; vector body_json is not in the authorization; attack class ldap_injection is not in the authorization; vector body_form is not in the authorization; vector multipart_form is not in the authorization; encoding whitespace_variant is not in the authorization; encoding comment_insertion is not in the authorization; encoding html_entity_numeric is not in the authorization; attack class ssrf is not in the authorization; attack class path_traversal is not in the authorization; attack class xss is not in the authorization; attack class xxe is not in the authorization",
+          "test_that_would_resolve": "an authorized exchange that produces one valid reading",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        },
+        {
+          "kind": "origin_application",
+          "state": "unevaluable",
+          "justification": "the origin's own handling is equally unobserved: the absence of a reading says nothing about either side of the path",
+          "test_that_would_resolve": "a valid reading, or an authorized direct-origin exchange",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        },
+        {
+          "kind": "test_harness_artifact",
+          "state": "not_ruled_out",
+          "justification": "the reason this zone has no reading has not been separated from a failure of the run itself; the typed reason code states what was recorded, not what caused it",
+          "test_that_would_resolve": "re-run of the planned exchange under the same authorization",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        }
+      ],
+      "evidence_level": "none",
+      "evidence_profile_ref": "",
+      "observation_refs": [
+        "absence:demo-origin/round-1/unplanned-authorization_gap"
+      ],
+      "reproduction_command": "xammu validate --finding UND-unplanned-authorization_gap --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "recommendation": "raise the request budget or accept a narrower matrix and say so; either way the report carries the unrun list rather than dropping it",
+      "regression_test_to_run": "xammu playbook --partition development --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus",
+      "priority": "low",
+      "priority_basis": "no measurement exists for this zone, so nothing was ranked: an undetermined area is always low because the finding reports the absence of a quantity rather than its size",
+      "measured_impact": {
+        "numerator": 0,
+        "denominator": 0,
+        "basis": "",
+        "excluded_inconclusive": 0,
+        "excluded_invalid": 0
+      },
+      "affected_scope": "probes not run in partition development: 29 item(s)",
+      "security_engineer_note": "this is where the budget went. A reader who compares two runs with different budgets has to see this number to compare them honestly",
+      "unevaluated_reason": "authorization_gap"
+    },
+    {
+      "finding_id": "d6a56753-2044-48e0-96e9-cf9374e1468c",
+      "ref": "UND-vector-body_form",
+      "run_id": "demo-origin",
+      "detected_at": "2026-10-28T22:27:38.42501Z",
+      "finding_type": "undetermined_area",
+      "claim_type": "descriptive",
+      "what_was_observed": "the authorization covers the \"body_form\" transport. No exchange in this run placed a probe there. the probe partition carries 1 item(s) for the \"body_form\" transport and this run sent none of them: DEV-SQLI-F-01",
+      "what_is_inferred": "nothing is inferred about inspection of the \"body_form\" transport. Every asymmetry this run measured excludes it, so a comparison involving it is outside this report",
+      "what_evidence_is_missing": "at least one valid exchange placing a probe in the \"body_form\" transport, with the same controls the measured transports used",
+      "limitations": [
+        "an unmeasured transport is not an uninspected transport",
+        "the coverage matrix in this report shows this transport as unmeasured rather than inferring a reading for it"
+      ],
+      "attribution_status": "undetermined",
+      "evidence_basis": "none",
+      "alternatives_evaluated": [
+        {
+          "kind": "waf",
+          "state": "unevaluable",
+          "justification": "no valid reading exists for this zone, so no behaviour of the engine is in evidence: the authorization covers the \"body_form\" transport. No exchange in this run placed a probe there. the probe partition carries 1 item(s) for the \"body_form\" transport and this run sent none of them: DEV-SQLI-F-01",
+          "test_that_would_resolve": "an authorized exchange that produces one valid reading",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        },
+        {
+          "kind": "origin_application",
+          "state": "unevaluable",
+          "justification": "the origin's own handling is equally unobserved: the absence of a reading says nothing about either side of the path",
+          "test_that_would_resolve": "a valid reading, or an authorized direct-origin exchange",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        },
+        {
+          "kind": "test_harness_artifact",
+          "state": "not_ruled_out",
+          "justification": "the reason this zone has no reading has not been separated from a failure of the run itself; the typed reason code states what was recorded, not what caused it",
+          "test_that_would_resolve": "re-run of the planned exchange under the same authorization",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        }
+      ],
+      "evidence_level": "none",
+      "evidence_profile_ref": "",
+      "observation_refs": [
+        "absence:demo-origin/round-1/vector-body_form"
+      ],
+      "reproduction_command": "xammu validate --finding UND-vector-body_form --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "recommendation": "plan the \"body_form\" items that exist in the partition, or state in the report that the transport was never placed",
+      "regression_test_to_run": "xammu playbook --partition development --vector body_form --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus",
+      "priority": "low",
+      "priority_basis": "no measurement exists for this zone, so nothing was ranked: an undetermined area is always low because the finding reports the absence of a quantity rather than its size",
+      "measured_impact": {
+        "numerator": 0,
+        "denominator": 0,
+        "basis": "",
+        "excluded_inconclusive": 0,
+        "excluded_invalid": 0
+      },
+      "affected_scope": "transport body_form: unmeasured in this run",
+      "vector": "body_form",
+      "security_engineer_note": "the reader who needs the \"body_form\" rows of the matrix is the one who will ask why they are empty; this finding is that answer, in advance",
+      "unevaluated_reason": "not_yet_attempted"
+    },
+    {
+      "finding_id": "0052af98-bfee-4303-8014-c65f40d95e7f",
+      "ref": "UND-vector-body_json",
+      "run_id": "demo-origin",
+      "detected_at": "2026-10-28T22:27:38.42501Z",
+      "finding_type": "undetermined_area",
+      "claim_type": "descriptive",
+      "what_was_observed": "the authorization covers the \"body_json\" transport. No exchange in this run placed a probe there. the probe partition carries 3 item(s) for the \"body_json\" transport and this run sent none of them: DEV-GEN-J-01, DEV-SQLI-J-01, DEV-SQLI-J-02",
+      "what_is_inferred": "nothing is inferred about inspection of the \"body_json\" transport. Every asymmetry this run measured excludes it, so a comparison involving it is outside this report",
+      "what_evidence_is_missing": "at least one valid exchange placing a probe in the \"body_json\" transport, with the same controls the measured transports used",
+      "limitations": [
+        "an unmeasured transport is not an uninspected transport",
+        "the coverage matrix in this report shows this transport as unmeasured rather than inferring a reading for it"
+      ],
+      "attribution_status": "undetermined",
+      "evidence_basis": "none",
+      "alternatives_evaluated": [
+        {
+          "kind": "waf",
+          "state": "unevaluable",
+          "justification": "no valid reading exists for this zone, so no behaviour of the engine is in evidence: the authorization covers the \"body_json\" transport. No exchange in this run placed a probe there. the probe partition carries 3 item(s) for the \"body_json\" transport and this run sent none of them: DEV-GEN-J-01, DEV-SQLI-J-01, DEV-SQLI-J-02",
+          "test_that_would_resolve": "an authorized exchange that produces one valid reading",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        },
+        {
+          "kind": "origin_application",
+          "state": "unevaluable",
+          "justification": "the origin's own handling is equally unobserved: the absence of a reading says nothing about either side of the path",
+          "test_that_would_resolve": "a valid reading, or an authorized direct-origin exchange",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        },
+        {
+          "kind": "test_harness_artifact",
+          "state": "not_ruled_out",
+          "justification": "the reason this zone has no reading has not been separated from a failure of the run itself; the typed reason code states what was recorded, not what caused it",
+          "test_that_would_resolve": "re-run of the planned exchange under the same authorization",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        }
+      ],
+      "evidence_level": "none",
+      "evidence_profile_ref": "",
+      "observation_refs": [
+        "absence:demo-origin/round-1/vector-body_json"
+      ],
+      "reproduction_command": "xammu validate --finding UND-vector-body_json --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "recommendation": "plan the \"body_json\" items that exist in the partition, or state in the report that the transport was never placed",
+      "regression_test_to_run": "xammu playbook --partition development --vector body_json --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus",
+      "priority": "low",
+      "priority_basis": "no measurement exists for this zone, so nothing was ranked: an undetermined area is always low because the finding reports the absence of a quantity rather than its size",
+      "measured_impact": {
+        "numerator": 0,
+        "denominator": 0,
+        "basis": "",
+        "excluded_inconclusive": 0,
+        "excluded_invalid": 0
+      },
+      "affected_scope": "transport body_json: unmeasured in this run",
+      "vector": "body_json",
+      "security_engineer_note": "the reader who needs the \"body_json\" rows of the matrix is the one who will ask why they are empty; this finding is that answer, in advance",
+      "unevaluated_reason": "not_yet_attempted"
+    },
+    {
+      "finding_id": "523c435f-0a89-4e57-9195-fa0f888fb023",
+      "ref": "UND-vector-cookie",
+      "run_id": "demo-origin",
+      "detected_at": "2026-10-28T22:27:38.42501Z",
+      "finding_type": "undetermined_area",
+      "claim_type": "descriptive",
+      "what_was_observed": "the authorization covers the \"cookie\" transport. No exchange in this run placed a probe there. the probe partition carries 2 item(s) for the \"cookie\" transport and this run sent none of them: DEV-COOKIE-01, DEV-COOKIE-02",
+      "what_is_inferred": "nothing is inferred about inspection of the \"cookie\" transport. Every asymmetry this run measured excludes it, so a comparison involving it is outside this report",
+      "what_evidence_is_missing": "at least one valid exchange placing a probe in the \"cookie\" transport, with the same controls the measured transports used",
+      "limitations": [
+        "an unmeasured transport is not an uninspected transport",
+        "the coverage matrix in this report shows this transport as unmeasured rather than inferring a reading for it"
+      ],
+      "attribution_status": "undetermined",
+      "evidence_basis": "none",
+      "alternatives_evaluated": [
+        {
+          "kind": "waf",
+          "state": "unevaluable",
+          "justification": "no valid reading exists for this zone, so no behaviour of the engine is in evidence: the authorization covers the \"cookie\" transport. No exchange in this run placed a probe there. the probe partition carries 2 item(s) for the \"cookie\" transport and this run sent none of them: DEV-COOKIE-01, DEV-COOKIE-02",
+          "test_that_would_resolve": "an authorized exchange that produces one valid reading",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        },
+        {
+          "kind": "origin_application",
+          "state": "unevaluable",
+          "justification": "the origin's own handling is equally unobserved: the absence of a reading says nothing about either side of the path",
+          "test_that_would_resolve": "a valid reading, or an authorized direct-origin exchange",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        },
+        {
+          "kind": "test_harness_artifact",
+          "state": "not_ruled_out",
+          "justification": "the reason this zone has no reading has not been separated from a failure of the run itself; the typed reason code states what was recorded, not what caused it",
+          "test_that_would_resolve": "re-run of the planned exchange under the same authorization",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        }
+      ],
+      "evidence_level": "none",
+      "evidence_profile_ref": "",
+      "observation_refs": [
+        "absence:demo-origin/round-1/vector-cookie"
+      ],
+      "reproduction_command": "xammu validate --finding UND-vector-cookie --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "recommendation": "plan the \"cookie\" items that exist in the partition, or state in the report that the transport was never placed",
+      "regression_test_to_run": "xammu playbook --partition development --vector cookie --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus",
+      "priority": "low",
+      "priority_basis": "no measurement exists for this zone, so nothing was ranked: an undetermined area is always low because the finding reports the absence of a quantity rather than its size",
+      "measured_impact": {
+        "numerator": 0,
+        "denominator": 0,
+        "basis": "",
+        "excluded_inconclusive": 0,
+        "excluded_invalid": 0
+      },
+      "affected_scope": "transport cookie: unmeasured in this run",
+      "vector": "cookie",
+      "security_engineer_note": "the reader who needs the \"cookie\" rows of the matrix is the one who will ask why they are empty; this finding is that answer, in advance",
+      "unevaluated_reason": "not_yet_attempted"
+    },
+    {
+      "finding_id": "12c1c045-ae98-4524-b2d8-e2c9f2314a5f",
+      "ref": "UND-vector-header",
+      "run_id": "demo-origin",
+      "detected_at": "2026-10-28T22:27:38.42501Z",
+      "finding_type": "undetermined_area",
+      "claim_type": "descriptive",
+      "what_was_observed": "the authorization covers the \"header\" transport. No exchange in this run placed a probe there. the probe partition carries 3 item(s) for the \"header\" transport and this run sent none of them: DEV-CRLF-H-01, DEV-CRLF-H-02, DEV-HDR-POL-01",
+      "what_is_inferred": "nothing is inferred about inspection of the \"header\" transport. Every asymmetry this run measured excludes it, so a comparison involving it is outside this report",
+      "what_evidence_is_missing": "at least one valid exchange placing a probe in the \"header\" transport, with the same controls the measured transports used",
+      "limitations": [
+        "an unmeasured transport is not an uninspected transport",
+        "the coverage matrix in this report shows this transport as unmeasured rather than inferring a reading for it"
+      ],
+      "attribution_status": "undetermined",
+      "evidence_basis": "none",
+      "alternatives_evaluated": [
+        {
+          "kind": "waf",
+          "state": "unevaluable",
+          "justification": "no valid reading exists for this zone, so no behaviour of the engine is in evidence: the authorization covers the \"header\" transport. No exchange in this run placed a probe there. the probe partition carries 3 item(s) for the \"header\" transport and this run sent none of them: DEV-CRLF-H-01, DEV-CRLF-H-02, DEV-HDR-POL-01",
+          "test_that_would_resolve": "an authorized exchange that produces one valid reading",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        },
+        {
+          "kind": "origin_application",
+          "state": "unevaluable",
+          "justification": "the origin's own handling is equally unobserved: the absence of a reading says nothing about either side of the path",
+          "test_that_would_resolve": "a valid reading, or an authorized direct-origin exchange",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        },
+        {
+          "kind": "test_harness_artifact",
+          "state": "not_ruled_out",
+          "justification": "the reason this zone has no reading has not been separated from a failure of the run itself; the typed reason code states what was recorded, not what caused it",
+          "test_that_would_resolve": "re-run of the planned exchange under the same authorization",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        }
+      ],
+      "evidence_level": "none",
+      "evidence_profile_ref": "",
+      "observation_refs": [
+        "absence:demo-origin/round-1/vector-header"
+      ],
+      "reproduction_command": "xammu validate --finding UND-vector-header --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "recommendation": "plan the \"header\" items that exist in the partition, or state in the report that the transport was never placed",
+      "regression_test_to_run": "xammu playbook --partition development --vector header --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus",
+      "priority": "low",
+      "priority_basis": "no measurement exists for this zone, so nothing was ranked: an undetermined area is always low because the finding reports the absence of a quantity rather than its size",
+      "measured_impact": {
+        "numerator": 0,
+        "denominator": 0,
+        "basis": "",
+        "excluded_inconclusive": 0,
+        "excluded_invalid": 0
+      },
+      "affected_scope": "transport header: unmeasured in this run",
+      "vector": "header",
+      "security_engineer_note": "the reader who needs the \"header\" rows of the matrix is the one who will ask why they are empty; this finding is that answer, in advance",
+      "unevaluated_reason": "not_yet_attempted"
+    },
+    {
+      "finding_id": "5632ee49-b208-48fc-8666-fb48d7045991",
+      "ref": "UND-vector-path",
+      "run_id": "demo-origin",
+      "detected_at": "2026-10-28T22:27:38.42501Z",
+      "finding_type": "undetermined_area",
+      "claim_type": "descriptive",
+      "what_was_observed": "the authorization covers the \"path\" transport. No exchange in this run placed a probe there. the probe partition carries 2 item(s) for the \"path\" transport and this run sent none of them: DEV-CMD-P-01, DEV-TRAV-P-01",
+      "what_is_inferred": "nothing is inferred about inspection of the \"path\" transport. Every asymmetry this run measured excludes it, so a comparison involving it is outside this report",
+      "what_evidence_is_missing": "at least one valid exchange placing a probe in the \"path\" transport, with the same controls the measured transports used",
+      "limitations": [
+        "an unmeasured transport is not an uninspected transport",
+        "the coverage matrix in this report shows this transport as unmeasured rather than inferring a reading for it"
+      ],
+      "attribution_status": "undetermined",
+      "evidence_basis": "none",
+      "alternatives_evaluated": [
+        {
+          "kind": "waf",
+          "state": "unevaluable",
+          "justification": "no valid reading exists for this zone, so no behaviour of the engine is in evidence: the authorization covers the \"path\" transport. No exchange in this run placed a probe there. the probe partition carries 2 item(s) for the \"path\" transport and this run sent none of them: DEV-CMD-P-01, DEV-TRAV-P-01",
+          "test_that_would_resolve": "an authorized exchange that produces one valid reading",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        },
+        {
+          "kind": "origin_application",
+          "state": "unevaluable",
+          "justification": "the origin's own handling is equally unobserved: the absence of a reading says nothing about either side of the path",
+          "test_that_would_resolve": "a valid reading, or an authorized direct-origin exchange",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        },
+        {
+          "kind": "test_harness_artifact",
+          "state": "not_ruled_out",
+          "justification": "the reason this zone has no reading has not been separated from a failure of the run itself; the typed reason code states what was recorded, not what caused it",
+          "test_that_would_resolve": "re-run of the planned exchange under the same authorization",
+          "evidence_refs": [
+            "absence:demo-origin/round-1/no-reading"
+          ]
+        }
+      ],
+      "evidence_level": "none",
+      "evidence_profile_ref": "",
+      "observation_refs": [
+        "absence:demo-origin/round-1/vector-path"
+      ],
+      "reproduction_command": "xammu validate --finding UND-vector-path --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "recommendation": "plan the \"path\" items that exist in the partition, or state in the report that the transport was never placed",
+      "regression_test_to_run": "xammu playbook --partition development --vector path --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus",
+      "priority": "low",
+      "priority_basis": "no measurement exists for this zone, so nothing was ranked: an undetermined area is always low because the finding reports the absence of a quantity rather than its size",
+      "measured_impact": {
+        "numerator": 0,
+        "denominator": 0,
+        "basis": "",
+        "excluded_inconclusive": 0,
+        "excluded_invalid": 0
+      },
+      "affected_scope": "transport path: unmeasured in this run",
+      "vector": "path",
+      "security_engineer_note": "the reader who needs the \"path\" rows of the matrix is the one who will ask why they are empty; this finding is that answer, in advance",
+      "unevaluated_reason": "not_yet_attempted"
+    }
+  ],
+  "coverage_matrix": {
+    "classes": [
+      "command_injection",
+      "crlf_injection",
+      "ldap_injection",
+      "path_traversal",
+      "sqli",
+      "ssrf",
+      "xss",
+      "xxe"
+    ],
+    "vectors": [
+      "body_form",
+      "body_json",
+      "cookie",
+      "header",
+      "path",
+      "query"
+    ],
+    "cells": [
+      {
+        "attack_class": "sqli",
+        "vector": "query",
+        "encodings": [
+          {
+            "encoding": "canonical",
+            "blocked": 0,
+            "passed": 3,
+            "valid_trials": 3,
+            "inconclusive": 0,
+            "control_valid": false,
+            "verdict": "passed",
+            "evidence_level": "replicated_within_run"
+          },
+          {
+            "encoding": "case_variant",
+            "blocked": 0,
+            "passed": 1,
+            "valid_trials": 1,
+            "inconclusive": 0,
+            "control_valid": false,
+            "verdict": "passed",
+            "evidence_level": "single_observation"
+          },
+          {
+            "encoding": "url_double",
+            "blocked": 0,
+            "passed": 1,
+            "valid_trials": 1,
+            "inconclusive": 0,
+            "control_valid": false,
+            "verdict": "passed",
+            "evidence_level": "single_observation"
+          },
+          {
+            "encoding": "url_single",
+            "blocked": 0,
+            "passed": 1,
+            "valid_trials": 1,
+            "inconclusive": 0,
+            "control_valid": false,
+            "verdict": "passed",
+            "evidence_level": "single_observation"
+          }
+        ],
+        "status": "measured",
+        "aggregate": {
+          "numerator": 0,
+          "denominator": 6,
+          "basis": "valid probe trials of class \"sqli\" placed in the \"query\" transport, over every path and encoding this run used there; the numerator is the trials the classifier read as a refusal",
+          "excluded_inconclusive": 0,
+          "excluded_invalid": 0,
+          "population_ref": "grid:sqli|query"
+        },
+        "claim_type": "descriptive",
+        "evidence_level": "single_observation",
+        "observation_refs": [
+          "07195cce-9b09-4578-9581-d0f46c3b7e98",
+          "dc176822-a3a2-4fcf-b2e6-15cff4c0872a",
+          "f6ee1103-5316-4a28-b77f-42c44e4f4a3c",
+          "f56409df-65b3-4124-953f-d8e47d12722a",
+          "6a17a7d0-8ebc-44d7-86be-92542c70e651",
+          "195bee6a-73c3-49e0-8bb9-c29c5a570774"
+        ]
+      }
+    ],
+    "basis": "the grid is the authorization's own scope: 8 attack class(es) x 6 transport(s) = 48 cell(s), authorized by AUTH-SMOKE-ORIGIN-001. Rows inside a cell are the encodings the run placed there, and a cell aggregates every path. A rate over valid trials only: 0 inconclusive and 0 invalid exchange(s) are named outside the denominator rather than folded into it.",
+    "not_measured_cells": [
+      "command_injection|body_form: the plan placed no probe of class command_injection in the body_form transport, so the cell has no reading to report",
+      "command_injection|body_json: the plan placed no probe of class command_injection in the body_json transport, so the cell has no reading to report",
+      "command_injection|cookie: the plan placed no probe of class command_injection in the cookie transport, so the cell has no reading to report",
+      "command_injection|header: the plan placed no probe of class command_injection in the header transport, so the cell has no reading to report",
+      "command_injection|path: the plan placed no probe of class command_injection in the path transport, so the cell has no reading to report",
+      "command_injection|query: the plan placed no probe of class command_injection in the query transport, so the cell has no reading to report",
+      "crlf_injection|body_form: the plan placed no probe of class crlf_injection in the body_form transport, so the cell has no reading to report",
+      "crlf_injection|body_json: the plan placed no probe of class crlf_injection in the body_json transport, so the cell has no reading to report",
+      "crlf_injection|cookie: the plan placed no probe of class crlf_injection in the cookie transport, so the cell has no reading to report",
+      "crlf_injection|header: the plan placed no probe of class crlf_injection in the header transport, so the cell has no reading to report",
+      "crlf_injection|path: the plan placed no probe of class crlf_injection in the path transport, so the cell has no reading to report",
+      "crlf_injection|query: the plan placed no probe of class crlf_injection in the query transport, so the cell has no reading to report",
+      "ldap_injection|body_form: the plan placed no probe of class ldap_injection in the body_form transport, so the cell has no reading to report",
+      "ldap_injection|body_json: the plan placed no probe of class ldap_injection in the body_json transport, so the cell has no reading to report",
+      "ldap_injection|cookie: the plan placed no probe of class ldap_injection in the cookie transport, so the cell has no reading to report",
+      "ldap_injection|header: the plan placed no probe of class ldap_injection in the header transport, so the cell has no reading to report",
+      "ldap_injection|path: the plan placed no probe of class ldap_injection in the path transport, so the cell has no reading to report",
+      "ldap_injection|query: the plan placed no probe of class ldap_injection in the query transport, so the cell has no reading to report",
+      "path_traversal|body_form: the plan placed no probe of class path_traversal in the body_form transport, so the cell has no reading to report",
+      "path_traversal|body_json: the plan placed no probe of class path_traversal in the body_json transport, so the cell has no reading to report",
+      "path_traversal|cookie: the plan placed no probe of class path_traversal in the cookie transport, so the cell has no reading to report",
+      "path_traversal|header: the plan placed no probe of class path_traversal in the header transport, so the cell has no reading to report",
+      "path_traversal|path: the plan placed no probe of class path_traversal in the path transport, so the cell has no reading to report",
+      "path_traversal|query: the plan placed no probe of class path_traversal in the query transport, so the cell has no reading to report",
+      "and 23 further unmeasured cell(s) of the authorized grid (the matrix denominator excludes all of them)"
+    ]
+  },
+  "residual_risk": {
+    "conditional_risk": {
+      "statement": "Conditional exposure from finding GAP-sqli-query-canonical-api-search (coverage_gap): handling in this cell contradicts the expectation the corpus declares, which is compatible with the GENERIC-001 or SQLI-001 or SQLI-002 or SQLI-003 signature not being evaluated for query traffic at /api/search. The rate behind it is 0 of 3 valid trial(s), so the exposure is bounded by that measurement: it does not extend to encodings, transports or paths this run did not place a probe in, and it is not a claim that any payload reaches an application.",
+      "scope": "sqli x query x canonical on GET /api/search",
+      "evidence_refs": [
+        "e2bd4232-cb68-42b7-a9e7-79c61a3d52ab",
+        "07195cce-9b09-4578-9581-d0f46c3b7e98",
+        "dc176822-a3a2-4fcf-b2e6-15cff4c0872a",
+        "f6ee1103-5316-4a28-b77f-42c44e4f4a3c"
+      ],
+      "verification_command": "xammu validate --finding GAP-sqli-query-canonical-api-search --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "what_was_not_tested": [
+        "does not show the origin is vulnerable to sqli",
+        "does not show no rule inspects this transport: it shows these probes were not refused",
+        "0 inconclusive and 0 invalid trial(s) are outside this count",
+        "a partial contradiction inside the cell is not reported here; only the majority reading is",
+        "25 cell(s) of the authorized grid have no valid reading, so the difference GAP-sqli-query-canonical-api-search states is not known to hold or fail outside the cells listed here"
+      ]
+    },
+    "condition_not_demonstrated": {
+      "statement": "Not demonstrated: that the handling measured here is the work of a perimeter rule rather than of the origin application, a cache, a rate limiter or this harness. The strongest evidence grade in this report is \"replicated_within_run\" across 4 cell(s), 0 of which cite a source outside the response, and 1 round(s) contributed readings. The rung above needs independent rounds and corroboration; what is missing, in the words of the finding that got closest (GAP-sqli-query-canonical-api-search): This run supplies the response side only. What is missing is a valid control pair inside the profile, so the reading is anchored against ordinary handling rather than against expectation. Recorded by the evidence profile: to raise the evidence level: a valid positive control (a payload this run recorded as rejected) and a valid negative control (a benign reference this run recorded as ordinarily handled).",
+      "scope": "attribution of every behavioural claim in run demo-origin against authorization AUTH-SMOKE-ORIGIN-001",
+      "evidence_refs": [
+        "runs/demo-origin/manifest.json",
+        "distribution:attribution_status",
+        "distribution:evidence_basis",
+        "GAP-sqli-query-canonical-api-search",
+        "GAP-sqli-query-case_variant-api-search",
+        "GAP-sqli-query-url_single-api-search",
+        "UND-class-command_injection",
+        "UND-class-crlf_injection",
+        "UND-class-ldap_injection",
+        "UND-class-path_traversal",
+        "UND-class-ssrf",
+        "UND-class-xss",
+        "UND-class-xxe",
+        "UND-unplanned-authorization_gap",
+        "UND-vector-body_form",
+        "and 4 further finding ref(s)"
+      ],
+      "verification_command": "xammu playbook --partition development --authorization AUTH-SMOKE-ORIGIN-001 --round round-2 --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "what_was_not_tested": [
+        "a second round under its own authorization, which is the only way an in-run repetition becomes independent reproduction",
+        "the filter logs or rule configuration of the engine, which nothing in this run reads",
+        "the origin's own behaviour when the same exchange arrives without the perimeter in front of it",
+        "25 cell(s) the plan never placed, where the question cannot even be asked"
+      ]
+    },
+    "undeterminable": {
+      "statement": "Undeterminable from this evidence, in the run's own words (UND-class-command_injection): nothing is inferred about how \"command_injection\" is handled. The absence is in this run's coverage, not in the engine's behaviour: no exchange was measured, so the class is unmeasured rather than examined. What would settle it: corpus items of class \"command_injection\" that pass the inertness gate, plus a plan that sends them under this authorization. The run cannot supply that from a response, which is why the zone stays open in the report instead of being closed by an inference.",
+      "scope": "attack class command_injection: unmeasured in this run",
+      "evidence_refs": [
+        "absence:demo-origin/round-1/class-command_injection"
+      ],
+      "verification_command": "xammu validate --finding UND-class-command_injection --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "what_was_not_tested": [
+        "an unmeasured class is not an unguarded class",
+        "the reason code distinguishes a corpus that has nothing sendable from a run that sent nothing; it does not explain why the corpus has nothing",
+        "25 cell(s) of the authorized grid have no valid reading, so the difference UND-class-command_injection states is not known to hold or fail outside the cells listed here"
+      ]
+    }
+  },
+  "unevaluated_zones": [
+    {
+      "scope": "attack class command_injection: unmeasured in this run",
+      "reason_code": "not_yet_attempted",
+      "detail": "the authorization covers attack class \"command_injection\". No exchange in this run carried that class. the probe partition carries 3 item(s) of class \"command_injection\" and this run planned or sent none of them. The pass measured 1 class(es).",
+      "remediation": "either add gated items of class \"command_injection\" to the probe partition and re-authorize, or carry the class as explicitly out of coverage in the report instead of leaving the reader to notice its absence",
+      "reproduction_command": "xammu validate --finding UND-class-command_injection --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "planned_requests_not_spent": 0
+    },
+    {
+      "scope": "attack class crlf_injection: unmeasured in this run",
+      "reason_code": "not_yet_attempted",
+      "detail": "the authorization covers attack class \"crlf_injection\". No exchange in this run carried that class. the probe partition carries 3 item(s) of class \"crlf_injection\" and this run planned or sent none of them. The pass measured 1 class(es).",
+      "remediation": "either add gated items of class \"crlf_injection\" to the probe partition and re-authorize, or carry the class as explicitly out of coverage in the report instead of leaving the reader to notice its absence",
+      "reproduction_command": "xammu validate --finding UND-class-crlf_injection --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "planned_requests_not_spent": 0
+    },
+    {
+      "scope": "attack class ldap_injection: unmeasured in this run",
+      "reason_code": "not_yet_attempted",
+      "detail": "the authorization covers attack class \"ldap_injection\". No exchange in this run carried that class. the probe partition carries 1 item(s) of class \"ldap_injection\" and this run planned or sent none of them. The pass measured 1 class(es).",
+      "remediation": "either add gated items of class \"ldap_injection\" to the probe partition and re-authorize, or carry the class as explicitly out of coverage in the report instead of leaving the reader to notice its absence",
+      "reproduction_command": "xammu validate --finding UND-class-ldap_injection --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "planned_requests_not_spent": 0
+    },
+    {
+      "scope": "attack class path_traversal: unmeasured in this run",
+      "reason_code": "not_yet_attempted",
+      "detail": "the authorization covers attack class \"path_traversal\". No exchange in this run carried that class. the probe partition carries 3 item(s) of class \"path_traversal\" and this run planned or sent none of them. The pass measured 1 class(es).",
+      "remediation": "either add gated items of class \"path_traversal\" to the probe partition and re-authorize, or carry the class as explicitly out of coverage in the report instead of leaving the reader to notice its absence",
+      "reproduction_command": "xammu validate --finding UND-class-path_traversal --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "planned_requests_not_spent": 0
+    },
+    {
+      "scope": "attack class ssrf: unmeasured in this run",
+      "reason_code": "not_yet_attempted",
+      "detail": "the authorization covers attack class \"ssrf\". No exchange in this run carried that class. the probe partition carries 1 item(s) of class \"ssrf\" and this run planned or sent none of them. The pass measured 1 class(es).",
+      "remediation": "either add gated items of class \"ssrf\" to the probe partition and re-authorize, or carry the class as explicitly out of coverage in the report instead of leaving the reader to notice its absence",
+      "reproduction_command": "xammu validate --finding UND-class-ssrf --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "planned_requests_not_spent": 0
+    },
+    {
+      "scope": "attack class xss: unmeasured in this run",
+      "reason_code": "not_yet_attempted",
+      "detail": "the authorization covers attack class \"xss\". No exchange in this run carried that class. the probe partition carries 7 item(s) of class \"xss\" and this run planned or sent none of them. The pass measured 1 class(es).",
+      "remediation": "either add gated items of class \"xss\" to the probe partition and re-authorize, or carry the class as explicitly out of coverage in the report instead of leaving the reader to notice its absence",
+      "reproduction_command": "xammu validate --finding UND-class-xss --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "planned_requests_not_spent": 0
+    },
+    {
+      "scope": "attack class xxe: unmeasured in this run",
+      "reason_code": "not_yet_attempted",
+      "detail": "the authorization covers attack class \"xxe\". No exchange in this run carried that class. the probe partition carries 1 item(s) of class \"xxe\" and this run planned or sent none of them. The pass measured 1 class(es).",
+      "remediation": "either add gated items of class \"xxe\" to the probe partition and re-authorize, or carry the class as explicitly out of coverage in the report instead of leaving the reader to notice its absence",
+      "reproduction_command": "xammu validate --finding UND-class-xxe --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "planned_requests_not_spent": 0
+    },
+    {
+      "scope": "probes not run in partition development: 29 item(s)",
+      "reason_code": "authorization_gap",
+      "detail": "29 corpus item(s) in partition development were not planned by this run under reason code \"authorization_gap\": DEV-CMD-P-01, DEV-CMD-Q-01, DEV-CMD-Q-02, DEV-COOKIE-01, DEV-COOKIE-02, DEV-CRLF-H-01, DEV-CRLF-H-02, DEV-GEN-J-01, DEV-HDR-POL-01, DEV-LDAP-Q-01, DEV-SQLI-F-01, DEV-SQLI-J-01, DEV-SQLI-J-02, DEV-SQLI-M-01, DEV-SQLI-Q-04, DEV-SQLI-Q-05, DEV-SQLI-QD-02, DEV-SSRF-Q-01, DEV-TRAV-P-01, DEV-TRAV-Q-01, DEV-TRAV-Q-02, DEV-XSS-JS-01, DEV-XSS-JS-02, DEV-XSS-JS-03, DEV-XSS-Q-01, DEV-XSS-Q-02, DEV-XSS-Q-03, DEV-XSS-Q-04, DEV-XXE-Q-01. The selection recorded: attack class command_injection is not in the authorization; vector cookie is not in the authorization; attack class crlf_injection is not in the authorization; vector body_json is not in the authorization; attack class ldap_injection is not in the authorization; vector body_form is not in the authorization; vector multipart_form is not in the authorization; encoding whitespace_variant is not in the authorization; encoding comment_insertion is not in the authorization; encoding html_entity_numeric is not in the authorization; attack class ssrf is not in the authorization; attack class path_traversal is not in the authorization; attack class xss is not in the authorization; attack class xxe is not in the authorization",
+      "remediation": "raise the request budget or accept a narrower matrix and say so; either way the report carries the unrun list rather than dropping it",
+      "reproduction_command": "xammu validate --finding UND-unplanned-authorization_gap --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "planned_requests_not_spent": 29
+    },
+    {
+      "scope": "transport body_form: unmeasured in this run",
+      "reason_code": "not_yet_attempted",
+      "detail": "the authorization covers the \"body_form\" transport. No exchange in this run placed a probe there. the probe partition carries 1 item(s) for the \"body_form\" transport and this run sent none of them: DEV-SQLI-F-01",
+      "remediation": "plan the \"body_form\" items that exist in the partition, or state in the report that the transport was never placed",
+      "reproduction_command": "xammu validate --finding UND-vector-body_form --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "planned_requests_not_spent": 0
+    },
+    {
+      "scope": "transport body_json: unmeasured in this run",
+      "reason_code": "not_yet_attempted",
+      "detail": "the authorization covers the \"body_json\" transport. No exchange in this run placed a probe there. the probe partition carries 3 item(s) for the \"body_json\" transport and this run sent none of them: DEV-GEN-J-01, DEV-SQLI-J-01, DEV-SQLI-J-02",
+      "remediation": "plan the \"body_json\" items that exist in the partition, or state in the report that the transport was never placed",
+      "reproduction_command": "xammu validate --finding UND-vector-body_json --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "planned_requests_not_spent": 0
+    },
+    {
+      "scope": "transport cookie: unmeasured in this run",
+      "reason_code": "not_yet_attempted",
+      "detail": "the authorization covers the \"cookie\" transport. No exchange in this run placed a probe there. the probe partition carries 2 item(s) for the \"cookie\" transport and this run sent none of them: DEV-COOKIE-01, DEV-COOKIE-02",
+      "remediation": "plan the \"cookie\" items that exist in the partition, or state in the report that the transport was never placed",
+      "reproduction_command": "xammu validate --finding UND-vector-cookie --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "planned_requests_not_spent": 0
+    },
+    {
+      "scope": "transport header: unmeasured in this run",
+      "reason_code": "not_yet_attempted",
+      "detail": "the authorization covers the \"header\" transport. No exchange in this run placed a probe there. the probe partition carries 3 item(s) for the \"header\" transport and this run sent none of them: DEV-CRLF-H-01, DEV-CRLF-H-02, DEV-HDR-POL-01",
+      "remediation": "plan the \"header\" items that exist in the partition, or state in the report that the transport was never placed",
+      "reproduction_command": "xammu validate --finding UND-vector-header --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "planned_requests_not_spent": 0
+    },
+    {
+      "scope": "transport path: unmeasured in this run",
+      "reason_code": "not_yet_attempted",
+      "detail": "the authorization covers the \"path\" transport. No exchange in this run placed a probe there. the probe partition carries 2 item(s) for the \"path\" transport and this run sent none of them: DEV-CMD-P-01, DEV-TRAV-P-01",
+      "remediation": "plan the \"path\" items that exist in the partition, or state in the report that the transport was never placed",
+      "reproduction_command": "xammu validate --finding UND-vector-path --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+      "planned_requests_not_spent": 0
+    }
+  ],
+  "unevaluated_declared_none": false,
+  "distributions": [
+    {
+      "name": "Behavioural signal of every exchange the pass classified in run demo-origin",
+      "kind": "behavioral_signal",
+      "buckets": [
+        {
+          "name": "compatible_block",
+          "count": 0
+        },
+        {
+          "name": "compatible_normal",
+          "count": 6
+        },
+        {
+          "name": "indeterminate",
+          "count": 0
+        },
+        {
+          "name": "rate_limited",
+          "count": 0
+        },
+        {
+          "name": "transport_error",
+          "count": 0
+        },
+        {
+          "name": "not_measured",
+          "count": 0
+        }
+      ],
+      "denominator": 6,
+      "basis": "every probe exchange in 4 graded cell(s), valid or not, counted once: 6 exchange(s) in all. The denominator excludes the 0 indeterminate one(s) - exchanges the classifier could not place on either side of the agreement - and nothing else, so the 0 rate-limited and 0 transport-failed exchange(s) stay inside it: the run reached a state worth naming even though the defence never saw a probe. That makes this denominator 6, while every refusal rate elsewhere in this report is over the 6 valid trial(s) alone. The two are different arithmetic on purpose and neither is a correction of the other: this view answers what the exchanges were, a finding answers what the defence did with probe traffic it could read.",
+      "non_scoring_bucket": "indeterminate",
+      "excluded_from_denominator": [
+        "indeterminate"
+      ]
+    },
+    {
+      "name": "Attribution status of each graded cell",
+      "kind": "attribution_status",
+      "buckets": [
+        {
+          "name": "undetermined",
+          "count": 4
+        },
+        {
+          "name": "compatible",
+          "count": 0
+        },
+        {
+          "name": "probable_without_corroboration",
+          "count": 0
+        },
+        {
+          "name": "supported_by_logs",
+          "count": 0
+        },
+        {
+          "name": "confirmed_by_correlated_evidence",
+          "count": 0
+        },
+        {
+          "name": "not_attributable_to_waf",
+          "count": 0
+        }
+      ],
+      "denominator": 0,
+      "basis": "one entry per cell the pass graded (4). A cell with no attribution record is counted as undetermined, which is the bucket excluded from the denominator: absence of attribution cannot be read as evidence that the defence did something.",
+      "non_scoring_bucket": "undetermined",
+      "excluded_from_denominator": [
+        "undetermined"
+      ]
+    },
+    {
+      "name": "Evidence basis behind each attribution",
+      "kind": "evidence_basis",
+      "buckets": [
+        {
+          "name": "none",
+          "count": 0
+        },
+        {
+          "name": "http_only",
+          "count": 4
+        },
+        {
+          "name": "http_plus_valid_control",
+          "count": 0
+        },
+        {
+          "name": "http_plus_independent_rounds",
+          "count": 0
+        },
+        {
+          "name": "http_plus_correlated_logs",
+          "count": 0
+        },
+        {
+          "name": "http_plus_configuration_export",
+          "count": 0
+        },
+        {
+          "name": "not_applicable",
+          "count": 0
+        }
+      ],
+      "denominator": 4,
+      "basis": "one entry per graded cell (4). \"none\" is the bucket kept out of the denominator: an attribution resting on no evidence is not a grade. 0 cell(s) cite a source outside the HTTP response (filter logs or a configuration export), which is the only way a claim in this report can rise above what a response shows.",
+      "non_scoring_bucket": "none",
+      "excluded_from_denominator": [
+        "none"
+      ]
+    },
+    {
+      "name": "Outcome of each hypothesis the pass formed",
+      "kind": "hypothesis_outcome",
+      "buckets": [
+        {
+          "name": "supported",
+          "count": 1
+        },
+        {
+          "name": "refuted",
+          "count": 0
+        },
+        {
+          "name": "inconclusive",
+          "count": 3
+        }
+      ],
+      "denominator": 1,
+      "basis": "the 4 cell(s) that produced a hypothesis; 0 cell(s) produced none and are reported as undetermined areas instead, because an absence of measurement is not an outcome. inconclusive is excluded from the denominator.",
+      "non_scoring_bucket": "inconclusive",
+      "excluded_from_denominator": [
+        "inconclusive"
+      ]
+    },
+    {
+      "name": "Verdict of every encoding row of the coverage matrix",
+      "kind": "coverage_verdict",
+      "buckets": [
+        {
+          "name": "blocked",
+          "count": 0
+        },
+        {
+          "name": "passed",
+          "count": 4
+        },
+        {
+          "name": "mixed",
+          "count": 0
+        },
+        {
+          "name": "indeterminate",
+          "count": 0
+        },
+        {
+          "name": "not_measured",
+          "count": 0
+        }
+      ],
+      "denominator": 4,
+      "basis": "the 4 encoding row(s) of the matrix over 1 cell(s). indeterminate rows are excluded from the denominator: a row whose valid trials produced neither refusals nor ordinary handling measured nothing, and counting it would inflate the coverage claim.",
+      "non_scoring_bucket": "indeterminate",
+      "excluded_from_denominator": [
+        "indeterminate"
+      ]
+    }
+  ],
+  "evidence": {
+    "manifest_path": "runs/demo-origin/manifest.json",
+    "manifest_digest": "sha256:6c4d4cb4e9ceec0d82ef0b6226527911accad619dd42b42418d167cbbb3aa25d",
+    "verify_command": "xammu verify --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query",
+    "observation_count": 14,
+    "round_ids": [
+      "round-1"
+    ],
+    "corpus_commit_ref": "corpus-digest:8c5e19043e07df09e06b471d1880b0ed68af1c2b77dcbd81796289675d814efd",
+    "detector_set_hash": "sha256:9f00fd1a1303e9f05f7c28cd01d5d5929f27aa187d5914d542fb30231f5b093a",
+    "tool_version": "xammu-1.0.0",
+    "generated_by": "luis"
+  },
+  "contract_versions": {
+    "attribution": "1.0.0",
+    "attribution_status": "1.0.0",
+    "behavioral_classification": "1.0.0",
+    "corpus_item": "1.0.0",
+    "corpus_partition": "1.0.0",
+    "discovery_finding": "1.0.0",
+    "evidence_profile": "1.0.0",
+    "hypothesis": "1.0.0",
+    "integrity_manifest": "1.0.0",
+    "profiling_authorization": "1.0.0",
+    "raw_observation": "1.0.0",
+    "report": "1.0.0",
+    "run_profile": "1.0.0",
+    "signature_analysis": "1.0.0",
+    "transient_capture": "1.0.0",
+    "validation_authorization": "1.0.0"
+  },
+  "declared_out_of_scope": [
+    "application_vulnerabilities_not_evaluated",
+    "no_exploitation_performed",
+    "routes_not_proved_are_not_covered",
+    "origin_behaviour_beyond_observed_responses_not_evaluated",
+    "no_attestation_that_the_waf_is_secure",
+    "not_a_replacement_for_a_penetration_test"
+  ]
+}
