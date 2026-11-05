@@ -768,6 +768,8 @@ func classLabel(v contracts.AttackClass, lang Lang) string {
 		return pick(lang, "XXE", "XXE")
 	case contracts.ClassCRLFInjection:
 		return pick(lang, "inyección CRLF", "CRLF injection")
+	case contracts.ClassSSTI:
+		return pick(lang, "inyección de plantillas (SSTI)", "server-side template injection (SSTI)")
 	}
 	return string(v)
 }

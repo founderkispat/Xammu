@@ -11,6 +11,8 @@ cumplimiento y no convierte a XAMMU en un escáner de vulnerabilidades.
   3 ◐ por vocabulario, 1 ○ documental y 2 ⚠ que este repositorio no puede cerrar solo.
 - Evidencia ejecutable: `bash scripts/certify.sh`, que escribe
   `dist/certification-<UTC>.txt` y termina con `RESULT: PASSED`.
+- Fase 1 (medición de eficacia): aceptada en local el 2026-11-05; evidencia en
+  `runs/waf-effectiveness-2026-11-05-r3` y §13.6 de [`docs/audit-handoff.md`](audit-handoff.md).
 
 ---
 
@@ -40,8 +42,9 @@ la clave que verificó, nunca se acepta el texto declarado.
 La unidad certificada es el **árbol fuente más el binario**:
 
 1. El árbol se identifica con un `sha256` calculado sobre `cmd/`, `internal/`, `corpus/`, `lab/`,
-   `docs/`, `scripts/`, `authorizations/` (permisos y sus `.sig`), `trust/`, `go.mod`, `README.md`,
-   `LICENSE` y los dos bundles de demostración. Lo imprime `scripts/certify.sh` como
+   `docs/`, `scripts/`, `tools/`, `authorizations/` (permisos y sus `.sig`), `trust/`, `go.mod`,
+   `README.md`, `LICENSE`, los dos bundles de demostración y el bundle de eficacia. Lo imprime
+   `scripts/certify.sh` como
    `source tree sha256`.
 2. El binario se construye con `scripts/release.sh`: `CGO_ENABLED=0`, `-trimpath`,
    `-buildvcs=false`, `-ldflags "-s -w -buildid="`, dos compilaciones comparadas byte a byte, y
@@ -95,7 +98,7 @@ declara lo que la corrida **no** prueba.
 
 | propiedad | cómo se comprueba | resultado esperado |
 | --- | --- | --- |
-| suite completa | `go test ./... -count=1` | 306 funciones de prueba en 15 paquetes, sin fallos |
+| suite completa | `go test ./... -count=1` | 346 funciones de prueba en 19 paquetes, sin fallos |
 | cabeceras sensibles | `go test ./cmd/xammu/ ./internal/httpclient/ ./internal/contracts/` | el valor literal no aparece en ningún artefacto; digests salados estables dentro del run y distintos entre runs; `Server` y `Content-Type` intactos |
 | firmas de autorización | `go test ./cmd/xammu/ ./internal/integrity/` | sidecar válido aceptado; campo, firma, contrato, clave o emisor alterados rechazados; `run` no abre socket con una C-09 inválida |
 | criterios del handoff | [`acceptance.md`](acceptance.md) §2 | 29 criterios clasificados; ninguno ⚠ contado como cumplido |
@@ -108,7 +111,7 @@ declara lo que la corrida **no** prueba.
 | cadena de CI fijada | revisión de `.github/workflows/ci.yml`; `scripts/ci-local.sh` | acciones de terceros por SHA, herramientas por versión, `go.mod` sin dependencias externas; gitleaks y `govulncheck` se ejecutan si están disponibles |
 | vulnerabilidades de la stdlib | `govulncheck` 1.9.0 con Go 1.27.3 | `No vulnerabilities found`; con 1.27.0 el mismo escaneo encontraba 9 vulnerabilidades que afectaban al cliente HTTP |
 
-El conteo «306 funciones» cuenta funciones `Test*`, no subcasos; los subcasos se ejecutan dentro de
+El conteo «346 funciones» cuenta funciones `Test*`, no subcasos; los subcasos se ejecutan dentro de
 cada función y su fallo tumba la suite igual.
 
 ---

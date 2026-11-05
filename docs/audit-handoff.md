@@ -222,7 +222,7 @@ benchmark. Son restricciones de alcance, no carencias accidentales.
 `docs/acceptance.md` declara 23 criterios verificados por test, 3 con vocabulario equivalente, 1 por revisión
 documental y **2 no reclamados** (CI limpio y prueba con ingeniero externo). 0.3 implementa el workflow de CI
 y el espejo local, pero el CI limpio sigue sin reclamarse hasta que exista una corrida en GitHub. La suite
-local es de 306 funciones en 15 paquetes, sin fallos.
+local es de 346 funciones en 19 paquetes, sin fallos.
 
 ---
 
@@ -827,3 +827,132 @@ la stdlib que afectaban rutas del cliente HTTP (`crypto/x509`, HTTP/2 y `net/htt
 - **Inertitud:** propiedad de una sonda de ser diagnóstica y no explotable, verificada por la puerta.
 - **Bundle:** directorio de evidencia sellado con manifiesto firmado.
 - **Celda:** combinación de clase, vector y codificación medida en una ejecución.
+
+---
+
+## 13. Fase 1 — Medición de eficacia del WAF
+
+**Estado:** Fase 1 cerrada en código y en aceptación local el 2026-11-05. Este apartado se escribió
+antes del código de efectividad; los resultados ejecutados están en §13.6.
+
+### 13.1 Objetivo y límites
+
+Medir, con evidencia sellada y reproducible, en qué grado el WAF autorizado coincide con las etiquetas
+declarativas de un corpus de ataque y de un corpus benigno. La métrica **no** es una afirmación de eficacia
+absoluta: TPR/FPR describen acuerdo con el corpus en el target y la ventana observados. El tool sigue sin
+explotar: cada caso de ataque pasa la misma puerta de inertitud que una sonda diagnóstica, y los benignos
+pasan la puerta salvo la exigencia de marcador, porque su propósito es parecer tráfico real.
+
+Restricciones que se conservan sin excepción: un solo origen por corrida, un solo egress, revalidación DNS y
+de redirecciones, rechazo de travesía en la ruta, puerta de inertitud no omitible, autorización verificada
+antes del primer socket, clave privada fuera del bundle, cuerpo no serializado, cero dependencias Go
+externas. `playbook` sigue sin enviar; sólo `effectiveness run` envía, y sólo bajo una C-09 vigente.
+
+### 13.2 Corpus (1.1 y 1.2)
+
+- **Formato:** YAML en el subconjunto documentado por `internal/yamlish` (documentos `---`, mapas con
+  sangría de dos espacios, listas de escalares, comillas y comentarios; los bloques `|`/`>` se rechazan).
+  No se añade dependencia YAML. Lo que el subconjunto no soporta se rechaza como error de carga, no se
+  aproxima.
+- **Ataque:** 10 clases × 30 casos = **300**. Clases: `sqli`, `xss`, `path_traversal`,
+  `command_injection`, `ssrf`, `ssti`, `ldap_injection`, `nosql_injection`, `xxe`, `crlf_injection`.
+  Se añade `ssti` al vocabulario C-09/C-16; las autorizaciones existentes siguen siendo válidas porque el
+  vocabulario sólo se amplía.
+- **Benigno:** **300** casos: 60 textos de dominio público citados (Project Gutenberg), 60 JSON válidos,
+  50 formularios, 59 búsquedas legítimas, 40 cabeceras normales, 30 cookies y 1 ruta. El origen del
+  laboratorio sirve una sola ruta (`/api/search`), así que un único caso de path es concluyente; el
+  resto de la población compensa con query. Un caso de path que sólo pudiera devolver 404 mediría la
+  ruta ausente, no el WAF, y por eso no se incluye.
+- **Campos de un caso:** `id`, `kind` (`attack`/`benign`), `class`, `payload`, `vector`, `encoding`,
+  `parameter`, `method`, `path`, `expect` (`blocked`/`allowed`), `owasp`, `provenance`, `rationale`.
+  `owasp` es una referencia declarativa (p. ej. `A03:2021-Injection`), **nunca** un CVSS ni una severidad
+  numérica inventada.
+- **Puerta:** cada caso de ataque exige el marcador `xammu-probe` y pasa las 19 reglas; cada benigno pasa
+  las mismas reglas con la excepción de marcador ya existente. El veredicto y la versión de puerta se
+  registran en el bundle.
+- **Escalabilidad:** un archivo por clase/categoría; añadir casos no cambia código. El objetivo operativo es
+  2.800+ casos sin tocar el motor.
+
+### 13.3 Ejecución y observación (1.3)
+
+- Reutiliza `httpclient` (scope, DNS anti-rebinding, redirecciones revalidadas, límite de cuerpo) y
+  `corpus.Place` para colocar el valor en query, `body_json`, `body_form`, path, header o cookie.
+- Presupuesto y ventana de la C-09; se detiene al agotarlos. Un fallo de transporte no se convierte en
+  «bloqueado»: se registra como inconcluso y se excluye de las métricas.
+- Observa: estado HTTP, veredicto `blocked`/`allowed`, latencia total, cabeceras de seguridad presentes,
+  huella del WAF (cabecera `Server`, marcador de bloqueo en cuerpo, cabeceras propias), clase de error.
+- **Veredicto:** `blocked` si 403/406, cierre de conexión o cuerpo con marcador de bloqueo del laboratorio;
+  `allowed` si 2xx/3xx no bloqueante. 429 es *pacing*, nunca bloqueo (criterio 24): se registra como
+  `excluded`, igual que otros 4xx, 5xx, redirecciones y errores de transporte.
+- La corrida escribe `effectiveness_cases`, `effectiveness_outcomes` y `effectiveness_metrics` en el journal
+  encadenado; sella y firma el manifiesto con la misma regla que `run`.
+- La latencia se toma de `Transport.TotalMS`, un campo opcional nuevo de C-01 poblado por el cliente; los
+  bundles anteriores siguen siendo válidos porque el campo ausente se lee como 0.
+
+### 13.4 Métricas (1.4)
+
+- TP: ataque bloqueado; FN: ataque permitido; FP: benigno bloqueado; TN: benigno permitido.
+- TPR = TP/(TP+FN); FPR = FP/(FP+TN); Precision = TP/(TP+FP); F1 = 2·P·TPR/(P+TPR);
+  MCC = (TP·TN−FP·FN)/√((TP+FP)(TP+FN)(TN+FP)(TN+FN)). Si un denominador es cero, el valor es `null`
+  con una nota; no se inventa un número.
+- Latencias p50/p95/p99 por clase y globales, con `n` y `sufficient_sample` (n≥20). Percentil por rango
+  más cercano sobre la muestra ordenada; con n<100, p99 se publica marcado como muestra insuficiente.
+- Salida humana (tabla) y JSON; las cifras salen del bundle sellado, no de la memoria del proceso.
+- `effectiveness report --rederive` relee E-01/E-02, recalcula E-03 y compara con el E-03 journalizado y el
+  informe publicado; una discrepancia es un fallo, no una nota.
+- Exclusión explícita y contada por motivo; el denominador de cada tasa es el de casos concluyentes.
+
+### 13.5 Criterio de aceptación de Fase 1
+
+| punto | evidencia exigida |
+| --- | --- |
+| 1.1 | ≥300 casos de ataque, 10 clases, YAML validado, puerta aplicada, vocabulario SSTI |
+| 1.2 | ≥300 benignos con procedencia/licencia citada |
+| 1.3 | corrida contra el laboratorio con presupuesto, observación de estado/veredicto/latencia/cabeceras/huella |
+| 1.4 | informe con TPR/FPR/Precision/F1/MCC y p50/p95/p99, `verify` en verde y `--rederive` sin discrepancias |
+| regresión | tests unitarios de métricas, carga, ejecución y CLI; `go test ./...` en verde |
+
+### 13.6 Resultados
+
+Corrida de aceptación `runs/waf-effectiveness-2026-11-05-r3`, el 2026-11-05, contra el fixture del
+repositorio (`lab/origin` en `127.0.0.1:8081`, `lab/waf` en `127.0.0.1:8099`) bajo
+`AUTH-EFFECTIVENESS-LOCAL-001` (origen `http://127.0.0.1:8099`, 700 solicitudes autorizadas, 600
+usadas).
+
+```powershell
+go run ./cmd/xammu effectiveness run `
+  --authorization authorizations/effectiveness-local.json `
+  --issuer-keyring trust/issuers --authorize AUTH-EFFECTIVENESS-LOCAL-001 `
+  --target http://127.0.0.1:8099 --run waf-effectiveness-2026-11-05-r3
+go run ./cmd/xammu verify --store runs/waf-effectiveness-2026-11-05-r3 --rederive \
+  --authorization authorizations/effectiveness-local.json --issuer-keyring trust/issuers \
+  --trust-key trust/waf-effectiveness.pub
+go run ./cmd/xammu effectiveness report --store runs/waf-effectiveness-2026-11-05-r3 `
+  --format both --rederive
+```
+
+- **Cobertura:** 600/600 casos ejecutados, 600 solicitudes, **0 rechazos, 0 fallos, 0 excluidos**.
+- **Matriz:** TP 25, FN 275, FP 8, TN 292. Los 300 ataques y los 300 benignos fueron concluyentes;
+  los 8 FP se reparten en `benign_text` (5) y `benign_query` (3).
+- **Tasas:** TPR 8,33 %, FPR 2,67 %, Precision 75,76 %, F1 15,02 %, MCC 0,124.
+- **Latencia global:** p50 0 ms, p95 0 ms, p99 1 ms (n=600, muestra suficiente). En loopback la
+  resolución es de 1 ms; la cifra describe el fixture, no una expectativa de producción.
+- **Por clase de ataque:** sqli 8/30 bloqueados, nosql 7/30, xxe 5/30, xss 2/30, path_traversal,
+  command_injection y ldap 1/30, ssrf/crlf/ssti 0/30. El WAF del laboratorio reconoce firmas
+  concretas y no inspecciona cuerpos JSON; el resultado es exactamente esa cobertura, no una
+  estimación.
+- **Reproducción:** `verify --store ... --rederive` sale 0 con `metrics_rederive` y
+  `metrics_document` en verde; ambos recomputan E-03 desde E-01/E-02 y lo comparan con el documento
+  publicado. La prueba CLI `TestEffectivenessEndToEndRunVerifyReport` edita el JSON publicado y exige
+  salida 1 en `verify --rederive` y en `effectiveness report --rederive`.
+- **Regresión:** `go test ./...` en verde; incluye corpus (300/300, puerta aplicada), las diez
+  codificaciones, construcción de solicitudes, clasificación de veredictos, métricas y los tres
+  comandos CLI.
+
+El informe completo, con la tabla por clase, está en
+`runs/waf-effectiveness-2026-11-05-r3/effectiveness-report.md`; el JSON, en
+`runs/waf-effectiveness-2026-11-05-r3/effectiveness-metrics.json`. Ambos quedan fuera del
+manifiesto firmado, y la firma cubre los journals de casos y resultados más el E-03 journalizado.
+El bundle de aceptación se incluye en el repositorio con la misma excepción de `.gitignore` que los
+dos bundles de demostración, para que un auditor pueda repetir `verify --rederive` sin volver a
+levantar el laboratorio.

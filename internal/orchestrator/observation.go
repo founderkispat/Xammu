@@ -73,6 +73,7 @@ func (r *Run) buildObservation(item PlanItem, resp *httpclient.Response) (contra
 			ErrorClass:    resp.TransportError,
 			ErrorDetail:   resp.TransportDetail,
 			ConnectMS:     resp.ConnectMS,
+			TotalMS:       resp.TotalMS,
 			RedirectCount: resp.RedirectCount,
 		},
 		ObserverConfigHash: r.profile.ConfigHash,

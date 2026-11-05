@@ -373,6 +373,36 @@ because a replica without its canonical reading is uninterpretable.
 overlap record for each, against the real commit reference. `docker-compose.yml` is not
 reproducibility evidence and a sealed partition is not a claim that a run happened.
 
+## The effectiveness corpus (Phase 1)
+
+`corpus/effectiveness/` answers a different question from the profiling tree: not what the WAF
+does, but how closely it agrees with a declarative label on every case. It holds 300 attack cases
+(10 classes × 30) and 300 benign cases, split into one file per class or traffic category. The
+counts and the floor live in `internal/effectiveness/corpus_test.go`; `xammu effectiveness check`
+prints the same numbers from the tree.
+
+- **Format:** the YAML subset implemented by `internal/yamlish` — documents separated by `---`,
+  two-space maps, scalar lists, quotes and comments. Block scalars, flow collections, anchors,
+  aliases, tags, tabs and duplicate keys are refused at load. There is no YAML dependency.
+- **Attack labels** name an OWASP category (`A03:2021-Injection`, …). That is a declarative
+  reference, never a CVSS score or an invented severity.
+- **Inertness:** every attack payload carries `xammu-probe` and passes the same 19-rule gate as a
+  diagnostic probe. A benign case may omit the marker, because it must look like real traffic, but
+  it is still refused if it has an executable shape.
+- **Benign provenance** is mandatory and names the source; the 60 text excerpts come from Project
+  Gutenberg public-domain works and the rest are authored for the laboratory.
+- **Population shape:** the laboratory origin routes one path, so only one benign path case can be
+  conclusive; the rest of the benign population is queries, JSON, forms, headers and cookies. A
+  case that could only return 404 would measure the missing route, not the WAF.
+- **Regeneration:** `go run ./tools/gencorpus` writes the tree deterministically. The generator is
+  part of the repository so a reviewer can see the payload construction; the sealed run still
+  records the corpus digest it actually loaded.
+- **Scale:** add files, not code. The loader, the gate, the executor and E-03 accept any number of
+  cases; 2,800+ is a generation choice, not an engine limit.
+
+The gates here are the same ones `xammu effectiveness run` applies; loading the tree through
+`effectiveness check` is the cheapest way to see that nothing executable entered it.
+
 ## Adding an item
 
 1. Give it a fresh UUID `item_id`, a unique `ref`, and a `group_id` — join an existing

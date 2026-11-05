@@ -7,8 +7,8 @@ cada fila nombra el test o el artefacto que la sostiene, y el comando para repet
 Estado global a 2026-11-05: **23 criterios verificados por test, 3 verificados con vocabulario o
 comando distinto al del handoff, 1 verificado por revisión documental y 2 que este repositorio no
 puede cerrar por sí solo** (CI limpio y prueba con ingeniero externo). Los dos últimos están
-declarados como brechas en §9, no contados como cumplidos. La suite local: 306 funciones de prueba
-en 15 paquetes, sin fallos.
+declarados como brechas en §9, no contados como cumplidos. La suite local: 346 funciones de prueba
+en 19 paquetes, sin fallos.
 
 ---
 
@@ -80,10 +80,30 @@ declaran en cada entrega hasta que se cierren.
 
 ---
 
+## 2.5 Fase 1 — medición de eficacia
+
+La Fase 1 no añade criterios a los 29 del handoff: añade una pregunta nueva y su propia tabla de
+aceptación, definida en `docs/audit-handoff.md` §13.5. Se repite aquí con la evidencia ejecutada.
+
+| punto | criterio | prueba / evidencia | estado |
+| --- | --- | --- | --- |
+| 1.1 | ≥300 casos de ataque en 10 clases, YAML validado y puerta aplicada | `corpus/effectiveness/attacks` (300); `internal/effectiveness/corpus_test.go: TestRepositoryCorpusLoadsAndMeetsTheFloor`; `cmd/xammu/effectiveness_test.go: TestEffectivenessCheckIsGateSurface` | ✅ |
+| 1.2 | ≥300 casos benignos con procedencia citada | `corpus/effectiveness/benign` (300); la procedencia se exige en `case_test.go: TestValidateRefusesAmbiguousCases`; el conjunto se carga en el mismo test de corpus | ✅ |
+| 1.3 | corrida bajo presupuesto con observación de estado, veredicto, latencia, cabeceras y huella | `runs/waf-effectiveness-2026-11-05-r3`: 600/600 conclusivos, 0 exclusiones; `internal/effectiveness/run_test.go`, `outcome_test.go`, `request_test.go` | ✅ |
+| 1.4 | TPR/FPR/Precision/F1/MCC y p50/p95/p99, `verify` en verde y `--rederive` sin discrepancias | `verify --store runs/waf-effectiveness-2026-11-05-r3 --rederive` y `effectiveness report --store ... --rederive`, ambos en verde; `cmd/xammu/effectiveness_test.go: TestEffectivenessEndToEndRunVerifyReport`; `internal/effectiveness/metrics_test.go` | ✅ |
+| regresión | tests de métricas, carga, ejecución y CLI; `go test ./...` en verde | suite completa, incluidos `cmd/xammu/effectiveness_test.go` y los seis tests nuevos de `internal/effectiveness` | ✅ |
+
+Resultado de aceptación (loopback, 2026-11-05): **TP 25 / FN 275 / FP 8 / TN 292 / 0 excluidos**;
+TPR 8,33 %, FPR 2,67 %, Precision 75,76 %, F1 15,02 %, MCC 0,124; latencia global p50/p95/p99 de
+0/0/1 ms. Las tasas describen acuerdo con este corpus en este target y esta ventana, no eficacia
+absoluta; el detalle por clase está en `runs/waf-effectiveness-2026-11-05-r3/effectiveness-report.md`.
+
+---
+
 ## 3. Equivalencia de vocabulario
 
 El handoff nombra cuatro comandos que no existen con esa forma. La equivalencia no es un alias de
-conveniencia: cada diferencia tiene una razón de seguridad, y `README.md` §10 la resume.
+conveniencia: cada diferencia tiene una razón de seguridad, y `README.md` §11 la resume.
 
 | handoff | implementado | por qué no es idéntico |
 | --- | --- | --- |
@@ -124,7 +144,7 @@ cd /d/Xammu
 gofmt -l cmd internal          # debe imprimir nada
 go vet ./...
 go build ./...
-go test ./...                  # 306 funciones de prueba, 15 paquetes
+go test ./...                  # 346 funciones de prueba, 19 paquetes
 
 go run ./cmd/xammu corpus check --corpus corpus
 go run ./cmd/xammu lab scenarios
@@ -284,7 +304,7 @@ cumplida una condición que la redacción original pedía en singular.
 
 ## 9. Brechas declaradas
 
-Estas son las únicas afirmaciones que la entrega **no** hace. Están también en `README.md` §11.
+Estas son las únicas afirmaciones que la entrega **no** hace. Están también en `README.md` §12.
 
 1. **No hay corrida de CI en un runner externo.** `.github/workflows/ci.yml` está versionado y
    `scripts/ci-local.sh` pasa en la máquina de entrega, pero el workflow no se ejecutó en GitHub:

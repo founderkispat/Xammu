@@ -221,12 +221,13 @@ const (
 	ClassNoSQLInjection   AttackClass = "nosql_injection"
 	ClassXXE              AttackClass = "xxe"
 	ClassCRLFInjection    AttackClass = "crlf_injection"
+	ClassSSTI             AttackClass = "ssti"
 )
 
 func AllAttackClasses() []AttackClass {
 	return []AttackClass{
 		ClassSQLi, ClassXSS, ClassPathTraversal, ClassCommandInjection, ClassSSRF,
-		ClassLDAPInjection, ClassNoSQLInjection, ClassXXE, ClassCRLFInjection,
+		ClassLDAPInjection, ClassNoSQLInjection, ClassXXE, ClassCRLFInjection, ClassSSTI,
 	}
 }
 

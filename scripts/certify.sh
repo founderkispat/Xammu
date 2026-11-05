@@ -46,6 +46,7 @@ run go vet ./...
 run go build ./...
 run go test ./... -count=1
 run go run ./cmd/xammu corpus check --corpus corpus
+run go run ./cmd/xammu effectiveness check --corpus corpus/effectiveness
 
 log ""
 log "== 2. sealed demonstrations verify against their own manifests =="
@@ -58,6 +59,10 @@ run go run ./cmd/xammu verify --run demo-origin \
 	--authorization AUTH-SMOKE-ORIGIN-001 --authorizations authorizations \
 	--issuer-keyring trust/issuers \
 	--corpus corpus --trust-key trust/demo-origin.pub
+run go run ./cmd/xammu verify --store runs/waf-effectiveness-2026-11-05-r3 --rederive \
+	--authorization authorizations/effectiveness-local.json \
+	--issuer-keyring trust/issuers \
+	--trust-key trust/waf-effectiveness.pub
 
 log ""
 log "== 3. client annex renders in both languages and formats =="
@@ -100,8 +105,8 @@ log "release: two builds compared byte for byte; hash written under dist/"
 log ""
 log "== 5. source anchor =="
 source_hash=$(
-	find cmd internal corpus lab docs scripts authorizations trust go.mod \
-		README.md LICENSE runs/demo-lab runs/demo-origin \
+	find cmd internal corpus lab docs scripts tools authorizations trust go.mod \
+		README.md LICENSE runs/demo-lab runs/demo-origin runs/waf-effectiveness-2026-11-05-r3 \
 		-type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1
 )
 log "source tree sha256: ${source_hash}"

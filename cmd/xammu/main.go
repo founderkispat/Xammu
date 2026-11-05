@@ -34,6 +34,9 @@ usage:
   xammu corpus  check    --corpus DIR [--partition NAME]
   xammu playbook         --authorization FILE --issuer-keyring DIR --corpus DIR [plan flags]
   xammu run              --authorization FILE --authorize REF --issuer-keyring DIR --run ID [plan flags]
+  xammu effectiveness check  --corpus DIR
+  xammu effectiveness run    --authorization FILE --authorize REF --issuer-keyring DIR --run ID [--corpus DIR]
+  xammu effectiveness report --run ID | --store DIR [--format F] [--rederive]
   xammu report           --run ID | --store DIR --authorization FILE --issuer-keyring DIR --corpus DIR [--format F]
   xammu verify           --run ID | --store DIR [--trust-key FILE] [--authorization FILE --issuer-keyring DIR] [--rederive]
   xammu validate         --finding REF --run ID --authorization FILE --issuer-keyring DIR --corpus DIR
@@ -144,6 +147,10 @@ func dispatch(argv []string, stdout, stderr io.Writer) int {
 		ctx, stop := contextWithStop()
 		defer stop()
 		err = cmdRun(ctx, c, rest)
+	case "effectiveness":
+		ctx, stop := contextWithStop()
+		defer stop()
+		err = cmdEffectiveness(ctx, c, rest)
 	case "report":
 		err = cmdReport(c, rest)
 	case "verify":

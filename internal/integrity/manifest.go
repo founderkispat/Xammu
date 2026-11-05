@@ -361,21 +361,33 @@ func Verify(root string, m contracts.IntegrityManifest, trustedPublicKey []byte)
 	root0 := MerkleRoot(described)
 	add("merkle_root_matches", root0 == m.RootHash, "recomputed "+short(root0))
 
-	// Chain head and observation count.
-	if f, ok := byPath["observations.jsonl"]; ok {
-		add("observation_chain_head", f.Digest != "", "observations.jsonl is inventoried")
-	} else {
-		add("observation_chain_head", false, "observations.jsonl is not covered by the manifest")
+	// Chain head and primary-record count. A profiling run's primary evidence is
+	// observations.jsonl; an effectiveness run's is effectiveness_outcomes.jsonl.
+	// The manifest field is the same because C-12 names it once, so verification
+	// follows whichever primary stream the bundle actually contains and never
+	// demands both.
+	primary := StreamObservations
+	primaryFile := "observations.jsonl"
+	if _, ok := byPath[primaryFile]; !ok {
+		if _, ok := byPath["effectiveness_outcomes.jsonl"]; ok {
+			primary = StreamEffectivenessOutcomes
+			primaryFile = "effectiveness_outcomes.jsonl"
+		}
 	}
-	if records, err := readRecords(root, StreamObservations); err == nil && len(records) > 0 {
+	if f, ok := byPath[primaryFile]; ok {
+		add("observation_chain_head", f.Digest != "", primaryFile+" is inventoried")
+	} else {
+		add("observation_chain_head", false, primaryFile+" is not covered by the manifest")
+	}
+	if records, err := readRecords(root, primary); err == nil && len(records) > 0 {
 		last := records[len(records)-1]
 		add("chain_head_is_last_record", last.Digest == m.ChainHead,
 			"journal head "+short(last.Digest)+", manifest head "+short(m.ChainHead))
 		add("observation_count_matches", len(records) == m.ObservationCount,
 			fmt.Sprintf("journal holds %d, manifest claims %d", len(records), m.ObservationCount))
 	} else {
-		add("chain_head_is_last_record", false, "observations journal unreadable or empty")
-		add("observation_count_matches", false, "observations journal unreadable or empty")
+		add("chain_head_is_last_record", false, string(primary)+" journal unreadable or empty")
+		add("observation_count_matches", false, string(primary)+" journal unreadable or empty")
 	}
 
 	// Chain integrity, independent of the manifest.

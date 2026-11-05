@@ -7,10 +7,10 @@ ingeniero puede usar. Envía sólo sondas inertes con forma de marcador, por un 
 canal autorizado, y no afirma nada que la medición no sostenga: cada hallazgo declara qué se
 observó, qué se infiere, qué falta y qué no puede saberse.
 
-> Estado a 2026-10-28: **entrega funcional en revisión**, no un producto aprobado. La suite
-> local está verde y los dos bundles de demostración verifican; quedan declarados dos criterios
-> que este repositorio no puede cerrar por sí solo (CI y prueba con ingeniero externo) en
-> [`docs/acceptance.md`](docs/acceptance.md).
+> Estado a 2026-11-05: **entrega funcional en revisión**, no un producto aprobado. La suite
+> local está verde, los dos bundles de demostración verifican y la Fase 1 de eficacia (§8) se
+> aceptó en local; quedan declarados dos criterios que este repositorio no puede cerrar por sí
+> solo (CI y prueba con ingeniero externo) en [`docs/acceptance.md`](docs/acceptance.md).
 
 ---
 
@@ -232,7 +232,7 @@ los cuatro**, y la razón es estructural, no una excusa:
    todo lo que el corpus espera bloqueado.
 2. El origen nunca rechaza, así que no puede producir `over_blocking`, `vector_asymmetry` ni
    `encoding_bypass_pattern`.
-3. v1 es **un objetivo por ejecución** (§11). Un run que mezclara WAF y origen mediría dos cosas
+3. v1 es **un objetivo por ejecución** (§12). Un run que mezclara WAF y origen mediría dos cosas
    a la vez y rompería la atribución.
 
 Los cuatro tipos exigidos están demostrados por el laboratorio, en dos ejecuciones autorizadas y
@@ -310,7 +310,57 @@ manifest.json
 
 ---
 
-## 8. Qué garantiza `verify` y qué no
+## 8. Eficacia del WAF (Fase 1)
+
+La Fase 1 añade la pregunta que el perfilado no respondía: **¿en qué grado la defensa coincide con
+las etiquetas del corpus?** No es una puntuación de eficacia absoluta; es acuerdo medido sobre un
+corpus, un target y una ventana, publicado con su incertidumbre y reproducible desde el bundle.
+
+- **Corpus:** 300 casos de ataque (10 clases × 30) y 300 benignos con procedencia citada. Cada
+  ataque pasa la misma puerta de inertitud y lleva el marcador `xammu-probe`; los benignos pasan la
+  puerta salvo la exigencia de marcador, porque deben parecer tráfico real.
+- **Ejecución:** `effectiveness run` usa el mismo `httpclient`, la misma C-09 firmada y el mismo
+  presupuesto que `run`. Cada caso se coloca en query, JSON, form, path, header o cookie con una de
+  las diez codificaciones declaradas; el veredicto observado se clasifica antes de tocar el cuerpo.
+- **Métricas:** TP/FN/FP/TN, TPR, FPR, Precision, F1 y MCC; latencias p50/p95/p99 por clase y
+  globales con `n` y aviso de muestra insuficiente. Un denominador cero produce `null`, nunca un
+  número inventado. 429 se excluye como *pacing* (criterio 24); 5xx, otros 4xx, redirecciones y
+  errores de transporte también se excluyen y se cuentan por motivo.
+- **Reproducción:** `--rederive` recalcula E-03 desde los journals E-01/E-02 y compara con el E-03
+  journalizado y con el documento publicado. Una diferencia es un fallo.
+
+```powershell
+# auditar el corpus sin enviar nada
+go run ./cmd/xammu effectiveness check --corpus corpus/effectiveness
+
+# corrida de aceptación local (requiere el laboratorio y una C-09 firmada)
+go run ./cmd/xammu effectiveness run `
+  --authorization authorizations/effectiveness-local.json `
+  --issuer-keyring trust/issuers `
+  --authorize AUTH-EFFECTIVENESS-LOCAL-001 `
+  --target http://127.0.0.1:8099 `
+  --run waf-effectiveness-2026-11-05-r3
+
+# verificar la evidencia y reproducir las métricas
+go run ./cmd/xammu verify --store runs/waf-effectiveness-2026-11-05-r3 --rederive --trust-key trust/waf-effectiveness.pub
+go run ./cmd/xammu effectiveness report --store runs/waf-effectiveness-2026-11-05-r3 `
+  --format both --rederive
+```
+
+Aceptación local del 2026-11-05, sobre el fixture del repositorio: 600 casos, 600 solicitudes,
+**TP 25 / FN 275 / FP 8 / TN 292, 0 excluidos**; TPR 8,33 %, FPR 2,67 %, Precision 75,76 %,
+F1 15,02 %, MCC 0,124; latencia global p50/p95/p99 de 0/0/1 ms en loopback. Las cifras bajas de
+detección describen este WAF de laboratorio y esta ventana, no una afirmación sobre WAF reales.
+
+El bundle de eficacia cambia la forma: `effectiveness_cases.jsonl`, `effectiveness_outcomes.jsonl`
+y `effectiveness_metrics.jsonl` son la evidencia firmada; `effectiveness-metrics.json` y
+`effectiveness-report.md` se publican después del sellado y `--rederive` los compara. El origen del
+laboratorio sirve una sola ruta, así que la población benigna lleva un único caso de path y
+compensa con búsquedas: un caso que sólo pudiera devolver 404 mediría la ruta ausente, no el WAF.
+
+---
+
+## 9. Qué garantiza `verify` y qué no
 
 Garantiza: el manifiesto satisface C-12, la firma Ed25519 es válida, el payload recomputa, todos
 los artefactos listados existen y ningún archivo no listado aparece, el Merkle root recomputa, la
@@ -322,7 +372,7 @@ también: `TestVerifyStatesWhatTheSignatureDoesNotCover` y `TestVerifyAnchoredne
 
 ---
 
-## 9. Mapa de paquetes
+## 10. Mapa de paquetes
 
 | paquete | responsabilidad |
 | --- | --- |
@@ -339,11 +389,13 @@ también: `TestVerifyStatesWhatTheSignatureDoesNotCover` y `TestVerifyAnchoredne
 | `internal/discover` | C-16: los seis tipos de finding y sus reglas de publicación |
 | `internal/report` | C-15: cinco dimensiones, matriz, riesgo residual, zonas no evaluadas |
 | `internal/labctl` | manifiesto de escenarios y puente de vocabulario del fixture |
-| `cmd/xammu` | CLI: `run`, `playbook`, `report`, `verify`, `validate`, `corpus`, `lab` |
+| `internal/effectiveness` | Fase 1: corpus de eficacia, ejecución, observación y métricas E-01/E-02/E-03 |
+| `internal/yamlish` | parser YAML restringido: documentos, mapas, escalares; rechaza lo que no soporta |
+| `cmd/xammu` | CLI: `run`, `playbook`, `report`, `verify`, `validate`, `corpus`, `lab`, `effectiveness` |
 
 ---
 
-## 10. Vocabulario: handoff → CLI
+## 11. Vocabulario: handoff → CLI
 
 | handoff | implementado | por qué |
 | --- | --- | --- |
@@ -358,7 +410,7 @@ La equivalencia completa y el estado de cada criterio están en
 
 ---
 
-## 11. Límites declarados
+## 12. Límites declarados
 
 - **Un objetivo por ejecución.** No hay perfilado multi-objetivo ni comparación entre hosts en un
   mismo run.
@@ -392,11 +444,12 @@ La equivalencia completa y el estado de cada criterio están en
 
 ---
 
-## 12. Auditar este repositorio en 10 minutos
+## 13. Auditar este repositorio en 10 minutos
 
-1. `bash scripts/certify.sh` — formato, vet, build, suite completa, `corpus check`, `verify` de los
-   dos bundles, anexos ES/EN, build reproducible byte a byte y hash del árbol; escribe la evidencia
-   en `dist/certification-<UTC>.txt`. Solo `go test ./...` son 306 funciones en 15 paquetes.
+1. `bash scripts/certify.sh` — formato, vet, build, suite completa, `corpus check`,
+   `effectiveness check`, `verify` de los dos bundles de demostración y del bundle de eficacia,
+   anexos ES/EN, build reproducible byte a byte y hash del árbol; escribe la evidencia
+   en `dist/certification-<UTC>.txt`. Solo `go test ./...` son 346 funciones en 19 paquetes.
 2. `bash scripts/ci-local.sh` — espejo local de `.github/workflows/ci.yml`: formato, vet, suite,
    `-race` si hay cgo, `govulncheck` y gitleaks si están en `PATH`, build reproducible y SBOM si
    Syft está instalado. Escribe `dist/ci-local-<UTC>.txt` y cada `SKIP` queda contado en el
@@ -411,7 +464,7 @@ La equivalencia completa y el estado de cada criterio están en
 
 ---
 
-## 13. Documentos
+## 14. Documentos
 
 - [`docs/audit-handoff.md`](docs/audit-handoff.md) — handoff de auditoría: qué hace XAMMU, cómo y por qué,
   alcance incluido y excluido, análisis de seguridad de la infraestructura, hallazgos priorizados y mejoras.

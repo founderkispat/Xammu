@@ -1,0 +1,86 @@
+{
+  "authorization_id": "7f3c1a2e-5b4d-4c8a-9e21-0d6b7a8c9f10",
+  "ref": "AUTH-EFFECTIVENESS-LOCAL-001",
+  "issued_at": "2026-11-05T00:00:00Z",
+  "expires_at": "2026-12-05T23:59:59Z",
+  "issuer": "security-owner@example.internal",
+  "approved_by": "CISO delegate",
+  "environment": "laboratory",
+  "origins": [
+    {
+      "scheme": "http",
+      "host": "127.0.0.1",
+      "port": 8099,
+      "path_prefixes": [
+        "/api/",
+        "/search"
+      ],
+      "allowed_ips": [
+        "127.0.0.1",
+        "::1"
+      ]
+    }
+  ],
+  "methods": [
+    "GET",
+    "POST"
+  ],
+  "limits": {
+    "max_requests": 700,
+    "rate_per_second": 100,
+    "max_redirects": 3,
+    "timeout_ms": 5000,
+    "max_concurrent": 2,
+    "max_body_retain_bytes": 4096,
+    "round_cooldown_ms": 1000
+  },
+  "retention_policy": "digest_only",
+  "allowed_attack_classes": [
+    "sqli",
+    "xss",
+    "path_traversal",
+    "command_injection",
+    "ssrf",
+    "crlf_injection",
+    "ldap_injection",
+    "xxe",
+    "nosql_injection",
+    "ssti"
+  ],
+  "allowed_vectors": [
+    "query",
+    "body_json",
+    "body_form",
+    "path",
+    "header",
+    "cookie"
+  ],
+  "allowed_encodings": [
+    "canonical",
+    "url_single",
+    "url_double",
+    "html_entity_named",
+    "html_entity_numeric",
+    "unicode_escape",
+    "case_variant",
+    "comment_insertion",
+    "whitespace_variant",
+    "mixed_nested"
+  ],
+  "corpus_partitions": [
+    "development",
+    "calibration"
+  ],
+  "statement_of_scope": "Effectiveness measurement of the laboratory WAF in front of 127.0.0.1:8099 using the inert Phase 1 attack and benign corpus; no exploitation.",
+  "rules_of_engagement": [
+    "no exploitation attempts",
+    "stop on any 429 and report",
+    "no requests outside the listed path prefixes",
+    "every attack payload must pass the inertness gate before it is sent"
+  ],
+  "contact_for_halt": "oncall@example.internal",
+  "issuer_key_fingerprint": "ed25519:7aa1afc9d6072c5714967edc6bb70767c27b145f1dc26f5accb0f29c4d1cf289",
+  "notes": [
+    "Phase 1 effectiveness fixture: 300 attack and 300 benign cases, budget 700, local laboratory only"
+  ]
+}

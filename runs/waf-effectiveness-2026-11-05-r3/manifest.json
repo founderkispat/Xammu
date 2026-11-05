@@ -1,0 +1,61 @@
+{
+  "manifest_id": "f22225e8-6a96-4393-921b-14fcfea98903",
+  "run_id": "waf-effectiveness-2026-11-05-r3",
+  "generated_at": "2026-11-05T20:00:48.7331207Z",
+  "tool_version": "xammu-1.0.0",
+  "authorization_ref": "AUTH-EFFECTIVENESS-LOCAL-001",
+  "algorithm": "ed25519",
+  "signer_key_id": "edabfbcda5eb8f56",
+  "public_key_base64": "Do2WUIck2VSq2ZKokIsbCJw52g/i3wK1ELC+2mnTZ3U=",
+  "signature_base64": "fYx3VOdZmbcFXStcfPtgBdewOTtdg+3+3bQhsRtb8QW9+5S1R//esQhi9XMSkhZeGX/M3l3R9lj8RLJcJcxQDA==",
+  "payload_digest": "sha256:1cd64cbfd8fe8f7495219137bf317e25f24dc399455f6c1de85f27426d9cd38d",
+  "observation_chain_head": "sha256:421e35c2323b8c6f0e81014d0832c60bacfbbff8230944edfaff853158757036",
+  "merkle_root": "sha256:aea71ffea99e509a8cc04f48073152d92e3db4d5d06728ee35bbc9498716adbe",
+  "file_count": 3,
+  "observation_count": 600,
+  "contract_versions": {
+    "attribution": "1.0.0",
+    "attribution_status": "1.0.0",
+    "behavioral_classification": "1.0.0",
+    "corpus_item": "1.0.0",
+    "corpus_partition": "1.0.0",
+    "discovery_finding": "1.0.0",
+    "evidence_profile": "1.0.0",
+    "hypothesis": "1.0.0",
+    "integrity_manifest": "1.0.0",
+    "profiling_authorization": "1.0.0",
+    "raw_observation": "1.0.0",
+    "report": "1.0.0",
+    "run_profile": "1.0.0",
+    "signature_analysis": "1.0.0",
+    "transient_capture": "1.0.0",
+    "validation_authorization": "1.0.0"
+  },
+  "files": [
+    {
+      "path": "effectiveness_cases.jsonl",
+      "digest": "sha256:28152c4fd5c91c252b1af42ecf16763579648671b6f314cc5f0dec6f8f5c08eb",
+      "bytes": 472739,
+      "lines": 600,
+      "contract_type": "journal:effectiveness_cases",
+      "append_only": true
+    },
+    {
+      "path": "effectiveness_metrics.jsonl",
+      "digest": "sha256:3bf642cfa8415f2f81582d6a7eadef061567a5accdb75599b533fae3bbdfa916",
+      "bytes": 6659,
+      "lines": 1,
+      "contract_type": "journal:effectiveness_metrics",
+      "append_only": true
+    },
+    {
+      "path": "effectiveness_outcomes.jsonl",
+      "digest": "sha256:97df2cfb2301e5c6776708a92b543ab80cf7c1b551cdc75d2faf700d0a13ccd6",
+      "bytes": 435474,
+      "lines": 600,
+      "contract_type": "journal:effectiveness_outcomes",
+      "append_only": true
+    }
+  ],
+  "signing_rule": "ed25519 over sha256(canonical-json(manifest minus signature and payload_digest)); payload_digest commits to the merkle root of per-file sha256 digests, ordered by path"
+}

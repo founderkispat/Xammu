@@ -71,13 +71,17 @@ type Sent struct {
 // Transport states how the connection behaved. A transport error is a fact
 // about the socket, not a verdict about the WAF.
 type Transport struct {
-	Protocol      string `json:"protocol"`
-	TLSVerified   bool   `json:"tls_verified"`
-	HTTP2Used     bool   `json:"http2_used"`
-	ErrorClass    string `json:"error_class,omitempty"`
-	ErrorDetail   string `json:"error_detail,omitempty"`
-	ConnectMS     int64  `json:"connect_ms"`
-	RedirectCount int    `json:"redirect_count"`
+	Protocol    string `json:"protocol"`
+	TLSVerified bool   `json:"tls_verified"`
+	HTTP2Used   bool   `json:"http2_used"`
+	ErrorClass  string `json:"error_class,omitempty"`
+	ErrorDetail string `json:"error_detail,omitempty"`
+	ConnectMS   int64  `json:"connect_ms"`
+	// TotalMS is the wall-clock time from the first byte written to the last
+	// response byte read, as the client measured it. It is optional so bundles
+	// written before the field existed still validate; an absent value reads as 0.
+	TotalMS       int64 `json:"total_ms,omitempty"`
+	RedirectCount int   `json:"redirect_count"`
 }
 
 // RawObservation is C-01: what happened on the wire, with no reading of it.

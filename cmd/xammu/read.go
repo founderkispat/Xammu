@@ -640,6 +640,13 @@ func cmdVerify(c *cli, args []string) error {
 	if err != nil {
 		return err
 	}
+	if isEffectivenessBundle(dir) {
+		// E-03 is arithmetic over the E-01/E-02 journals, not a re-issued report
+		// finding, so the re-derivation does not need the C-09 that paid for the
+		// traffic. The bundle names that authorization and --authorization can
+		// still be supplied to verify it.
+		return verifyEffectivenessBundle(c, dir, trustKey, rederive, f)
+	}
 	if rederive && f.authorization == "" {
 		return fmt.Errorf("--rederive re-issues the report from the evidence, and the evidence ladder " +
 			"starts at the permission that allowed the requests: pass --authorization REF or FILE too. " +

@@ -41,6 +41,16 @@ const (
 	StreamRefusals        Stream = "refusals"
 	StreamPlan            Stream = "plan"
 	StreamNotes           Stream = "notes"
+
+	// The effectiveness streams carry the E-01 case list, the E-02 per-case
+	// outcome and the E-03 derived metrics. They are journals rather than new
+	// registered contracts on purpose: C-12 pins a version for every registered
+	// contract, so minting C-17..C-19 would make every existing bundle fail
+	// verification. Each stream's records are validated by internal/effectiveness
+	// before they are appended.
+	StreamEffectivenessCases    Stream = "effectiveness_cases"
+	StreamEffectivenessOutcomes Stream = "effectiveness_outcomes"
+	StreamEffectivenessMetrics  Stream = "effectiveness_metrics"
 )
 
 // AllStreams lists the journal names a complete run must be able to produce.
@@ -48,7 +58,8 @@ func AllStreams() []Stream {
 	return []Stream{StreamObservations, StreamCaptures, StreamAnalyses,
 		StreamClassifications, StreamAttributions, StreamStatuses, StreamEvidence,
 		StreamHypotheses, StreamProfiles,
-		StreamTransitions, StreamFindings, StreamRefusals, StreamPlan, StreamNotes}
+		StreamTransitions, StreamFindings, StreamRefusals, StreamPlan, StreamNotes,
+		StreamEffectivenessCases, StreamEffectivenessOutcomes, StreamEffectivenessMetrics}
 }
 
 // StreamContract maps a journal to the contract its records must satisfy. A
