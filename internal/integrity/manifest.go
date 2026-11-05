@@ -97,6 +97,11 @@ func keyID(pub ed25519.PublicKey) string {
 	return hex.EncodeToString(sum[:8])
 }
 
+// KeyIDOf is the short identifier a signature names. It is exported so a
+// verifier of a detached document can check the declared signer without
+// re-deriving the truncation convention itself.
+func KeyIDOf(pub ed25519.PublicKey) string { return keyID(pub) }
+
 // FileEntry describes one artifact on disk, exactly as the manifest records it.
 type FileEntry struct {
 	Path     string

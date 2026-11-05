@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://xammu.local/schemas/xammu-policy-v1.schema.json",
+  "title": "XAMMU gate policy",
+  "description": "The xammu.policy/v1 thresholds. The file is YAML read through internal/yamlish; this schema describes the normalized document. Thresholds live in the file, never in the binary. At least one section must be present, and a section the bundle needs but the file omits is a usage error, not a silent pass.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version"],
+  "properties": {
+    "schema_version": { "const": "xammu.policy/v1" },
+    "effectiveness": { "$ref": "#/$defs/effectiveness" },
+    "findings": { "$ref": "#/$defs/findings" }
+  },
+  "anyOf": [
+    { "required": ["effectiveness"] },
+    { "required": ["findings"] }
+  ],
+  "$defs": {
+    "ratio": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "effectiveness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min_tpr", "max_fpr"],
+      "properties": {
+        "min_tpr": { "$ref": "#/$defs/ratio" },
+        "max_fpr": { "$ref": "#/$defs/ratio" },
+        "min_precision": { "$ref": "#/$defs/ratio" },
+        "max_excluded_ratio": { "$ref": "#/$defs/ratio" }
+      }
+    },
+    "findings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fail_on_priority"],
+      "properties": {
+        "fail_on_priority": {
+          "description": "The highest C-16 priority is high. XAMMU does not add a critical level the evidence does not have.",
+          "enum": ["high", "medium", "low"]
+        }
+      }
+    }
+  }
+}

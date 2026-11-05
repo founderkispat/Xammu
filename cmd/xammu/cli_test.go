@@ -1168,6 +1168,11 @@ func TestReadCommandsNeverConnect(t *testing.T) {
 	dir := t.TempDir()
 	authPath := writeAuthFile(t, dir, testAuth(t, k.port()), "auth.json")
 	bundle, _, _ := sealedBundle(t)
+	policy := filepath.Join(dir, "gate-policy.yaml")
+	if err := os.WriteFile(policy, []byte("schema_version: xammu.policy/v1\nfindings:\n  fail_on_priority: high\n"),
+		0o600); err != nil {
+		t.Fatalf("writing the gate policy: %v", err)
+	}
 
 	commands := [][]string{
 		{"version"},
@@ -1175,6 +1180,7 @@ func TestReadCommandsNeverConnect(t *testing.T) {
 		{"playbook", "--authorization", authPath, "--issuer-keyring", testKeyring(dir),
 			"--corpus", testCorpusRoot, "--class", "sqli", "--vector", "query", "--budget", "8"},
 		{"verify", "--store", bundle},
+		{"gate", "--store", bundle, "--policy", policy},
 		{"report", "--store", bundle, "--authorization", authPath,
 			"--issuer-keyring", testKeyring(dir), "--corpus", testCorpusRoot},
 		{"validate", "--finding", "GAP-001", "--store", bundle, "--authorization", authPath,

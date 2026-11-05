@@ -1,0 +1,1651 @@
+{
+  "run_id": "waf-effectiveness-2026-11-05-r7",
+  "authorization_ref": "AUTH-EFFECTIVENESS-LOCAL-002",
+  "corpus_digest": "sha256:377882d1ccaea712fdee69f8ec96a46c7976a565658c32a3e8c4082dd06eeefd",
+  "cases": 600,
+  "counts": {
+    "tp": 300,
+    "fn": 0,
+    "fp": 0,
+    "tn": 300,
+    "excluded": 0
+  },
+  "rates": {
+    "tpr": 1,
+    "fpr": 0,
+    "precision": 1,
+    "f1": 1,
+    "mcc": 1
+  },
+  "classes": [
+    {
+      "class": "sqli",
+      "kind": "attack",
+      "counts": {
+        "tp": 30,
+        "fn": 0,
+        "fp": 0,
+        "tn": 0,
+        "excluded": 0
+      },
+      "rates": {
+        "tpr": 1,
+        "fpr": null,
+        "precision": 1,
+        "f1": 1,
+        "mcc": null
+      },
+      "latency": {
+        "n": 30,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "p99_ms": 1,
+        "sufficient_sample": true,
+        "p99_sufficient": false,
+        "method": "nearest_rank"
+      },
+      "owasp": "A03:2021-Injection"
+    },
+    {
+      "class": "xss",
+      "kind": "attack",
+      "counts": {
+        "tp": 30,
+        "fn": 0,
+        "fp": 0,
+        "tn": 0,
+        "excluded": 0
+      },
+      "rates": {
+        "tpr": 1,
+        "fpr": null,
+        "precision": 1,
+        "f1": 1,
+        "mcc": null
+      },
+      "latency": {
+        "n": 30,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "p99_ms": 0,
+        "sufficient_sample": true,
+        "p99_sufficient": false,
+        "method": "nearest_rank"
+      },
+      "owasp": "A03:2021-Injection"
+    },
+    {
+      "class": "path_traversal",
+      "kind": "attack",
+      "counts": {
+        "tp": 30,
+        "fn": 0,
+        "fp": 0,
+        "tn": 0,
+        "excluded": 0
+      },
+      "rates": {
+        "tpr": 1,
+        "fpr": null,
+        "precision": 1,
+        "f1": 1,
+        "mcc": null
+      },
+      "latency": {
+        "n": 30,
+        "p50_ms": 0,
+        "p95_ms": 1,
+        "p99_ms": 1,
+        "sufficient_sample": true,
+        "p99_sufficient": false,
+        "method": "nearest_rank"
+      },
+      "owasp": "A01:2021-Broken Access Control"
+    },
+    {
+      "class": "command_injection",
+      "kind": "attack",
+      "counts": {
+        "tp": 30,
+        "fn": 0,
+        "fp": 0,
+        "tn": 0,
+        "excluded": 0
+      },
+      "rates": {
+        "tpr": 1,
+        "fpr": null,
+        "precision": 1,
+        "f1": 1,
+        "mcc": null
+      },
+      "latency": {
+        "n": 30,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "p99_ms": 2,
+        "sufficient_sample": true,
+        "p99_sufficient": false,
+        "method": "nearest_rank"
+      },
+      "owasp": "A03:2021-Injection"
+    },
+    {
+      "class": "ssrf",
+      "kind": "attack",
+      "counts": {
+        "tp": 30,
+        "fn": 0,
+        "fp": 0,
+        "tn": 0,
+        "excluded": 0
+      },
+      "rates": {
+        "tpr": 1,
+        "fpr": null,
+        "precision": 1,
+        "f1": 1,
+        "mcc": null
+      },
+      "latency": {
+        "n": 30,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "p99_ms": 1,
+        "sufficient_sample": true,
+        "p99_sufficient": false,
+        "method": "nearest_rank"
+      },
+      "owasp": "A10:2021-Server-Side Request Forgery"
+    },
+    {
+      "class": "ldap_injection",
+      "kind": "attack",
+      "counts": {
+        "tp": 30,
+        "fn": 0,
+        "fp": 0,
+        "tn": 0,
+        "excluded": 0
+      },
+      "rates": {
+        "tpr": 1,
+        "fpr": null,
+        "precision": 1,
+        "f1": 1,
+        "mcc": null
+      },
+      "latency": {
+        "n": 30,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "p99_ms": 0,
+        "sufficient_sample": true,
+        "p99_sufficient": false,
+        "method": "nearest_rank"
+      },
+      "owasp": "A03:2021-Injection"
+    },
+    {
+      "class": "nosql_injection",
+      "kind": "attack",
+      "counts": {
+        "tp": 30,
+        "fn": 0,
+        "fp": 0,
+        "tn": 0,
+        "excluded": 0
+      },
+      "rates": {
+        "tpr": 1,
+        "fpr": null,
+        "precision": 1,
+        "f1": 1,
+        "mcc": null
+      },
+      "latency": {
+        "n": 30,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "p99_ms": 0,
+        "sufficient_sample": true,
+        "p99_sufficient": false,
+        "method": "nearest_rank"
+      },
+      "owasp": "A03:2021-Injection"
+    },
+    {
+      "class": "xxe",
+      "kind": "attack",
+      "counts": {
+        "tp": 30,
+        "fn": 0,
+        "fp": 0,
+        "tn": 0,
+        "excluded": 0
+      },
+      "rates": {
+        "tpr": 1,
+        "fpr": null,
+        "precision": 1,
+        "f1": 1,
+        "mcc": null
+      },
+      "latency": {
+        "n": 30,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "p99_ms": 0,
+        "sufficient_sample": true,
+        "p99_sufficient": false,
+        "method": "nearest_rank"
+      },
+      "owasp": "A05:2021-Security Misconfiguration"
+    },
+    {
+      "class": "crlf_injection",
+      "kind": "attack",
+      "counts": {
+        "tp": 30,
+        "fn": 0,
+        "fp": 0,
+        "tn": 0,
+        "excluded": 0
+      },
+      "rates": {
+        "tpr": 1,
+        "fpr": null,
+        "precision": 1,
+        "f1": 1,
+        "mcc": null
+      },
+      "latency": {
+        "n": 30,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "p99_ms": 0,
+        "sufficient_sample": true,
+        "p99_sufficient": false,
+        "method": "nearest_rank"
+      },
+      "owasp": "A03:2021-Injection"
+    },
+    {
+      "class": "ssti",
+      "kind": "attack",
+      "counts": {
+        "tp": 30,
+        "fn": 0,
+        "fp": 0,
+        "tn": 0,
+        "excluded": 0
+      },
+      "rates": {
+        "tpr": 1,
+        "fpr": null,
+        "precision": 1,
+        "f1": 1,
+        "mcc": null
+      },
+      "latency": {
+        "n": 30,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "p99_ms": 0,
+        "sufficient_sample": true,
+        "p99_sufficient": false,
+        "method": "nearest_rank"
+      },
+      "owasp": "A03:2021-Injection"
+    },
+    {
+      "class": "benign_text",
+      "kind": "benign",
+      "counts": {
+        "tp": 0,
+        "fn": 0,
+        "fp": 0,
+        "tn": 60,
+        "excluded": 0
+      },
+      "rates": {
+        "tpr": null,
+        "fpr": 0,
+        "precision": null,
+        "f1": null,
+        "mcc": null
+      },
+      "latency": {
+        "n": 60,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "p99_ms": 0,
+        "sufficient_sample": true,
+        "p99_sufficient": false,
+        "method": "nearest_rank"
+      }
+    },
+    {
+      "class": "benign_json",
+      "kind": "benign",
+      "counts": {
+        "tp": 0,
+        "fn": 0,
+        "fp": 0,
+        "tn": 60,
+        "excluded": 0
+      },
+      "rates": {
+        "tpr": null,
+        "fpr": 0,
+        "precision": null,
+        "f1": null,
+        "mcc": null
+      },
+      "latency": {
+        "n": 60,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "p99_ms": 1,
+        "sufficient_sample": true,
+        "p99_sufficient": false,
+        "method": "nearest_rank"
+      }
+    },
+    {
+      "class": "benign_form",
+      "kind": "benign",
+      "counts": {
+        "tp": 0,
+        "fn": 0,
+        "fp": 0,
+        "tn": 50,
+        "excluded": 0
+      },
+      "rates": {
+        "tpr": null,
+        "fpr": 0,
+        "precision": null,
+        "f1": null,
+        "mcc": null
+      },
+      "latency": {
+        "n": 50,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "p99_ms": 1,
+        "sufficient_sample": true,
+        "p99_sufficient": false,
+        "method": "nearest_rank"
+      }
+    },
+    {
+      "class": "benign_query",
+      "kind": "benign",
+      "counts": {
+        "tp": 0,
+        "fn": 0,
+        "fp": 0,
+        "tn": 59,
+        "excluded": 0
+      },
+      "rates": {
+        "tpr": null,
+        "fpr": 0,
+        "precision": null,
+        "f1": null,
+        "mcc": null
+      },
+      "latency": {
+        "n": 59,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "p99_ms": 0,
+        "sufficient_sample": true,
+        "p99_sufficient": false,
+        "method": "nearest_rank"
+      }
+    },
+    {
+      "class": "benign_header",
+      "kind": "benign",
+      "counts": {
+        "tp": 0,
+        "fn": 0,
+        "fp": 0,
+        "tn": 40,
+        "excluded": 0
+      },
+      "rates": {
+        "tpr": null,
+        "fpr": 0,
+        "precision": null,
+        "f1": null,
+        "mcc": null
+      },
+      "latency": {
+        "n": 40,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "p99_ms": 0,
+        "sufficient_sample": true,
+        "p99_sufficient": false,
+        "method": "nearest_rank"
+      }
+    },
+    {
+      "class": "benign_cookie",
+      "kind": "benign",
+      "counts": {
+        "tp": 0,
+        "fn": 0,
+        "fp": 0,
+        "tn": 30,
+        "excluded": 0
+      },
+      "rates": {
+        "tpr": null,
+        "fpr": 0,
+        "precision": null,
+        "f1": null,
+        "mcc": null
+      },
+      "latency": {
+        "n": 30,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "p99_ms": 0,
+        "sufficient_sample": true,
+        "p99_sufficient": false,
+        "method": "nearest_rank"
+      }
+    },
+    {
+      "class": "benign_path",
+      "kind": "benign",
+      "counts": {
+        "tp": 0,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "excluded": 0
+      },
+      "rates": {
+        "tpr": null,
+        "fpr": 0,
+        "precision": null,
+        "f1": null,
+        "mcc": null
+      },
+      "latency": {
+        "n": 1,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "p99_ms": 0,
+        "sufficient_sample": false,
+        "p99_sufficient": false,
+        "method": "nearest_rank"
+      }
+    }
+  ],
+  "latency": {
+    "n": 600,
+    "p50_ms": 0,
+    "p95_ms": 0,
+    "p99_ms": 1,
+    "sufficient_sample": true,
+    "p99_sufficient": true,
+    "method": "nearest_rank"
+  },
+  "excluded_by_reason": {},
+  "arms": [
+    {
+      "arm": "baseline",
+      "cases": 600,
+      "counts": {
+        "tp": 300,
+        "fn": 0,
+        "fp": 0,
+        "tn": 300,
+        "excluded": 0
+      },
+      "rates": {
+        "tpr": 1,
+        "fpr": 0,
+        "precision": 1,
+        "f1": 1,
+        "mcc": 1
+      },
+      "classes": [
+        {
+          "class": "sqli",
+          "kind": "attack",
+          "counts": {
+            "tp": 30,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": 1,
+            "fpr": null,
+            "precision": 1,
+            "f1": 1,
+            "mcc": null
+          },
+          "latency": {
+            "n": 30,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 1,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          },
+          "owasp": "A03:2021-Injection"
+        },
+        {
+          "class": "xss",
+          "kind": "attack",
+          "counts": {
+            "tp": 30,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": 1,
+            "fpr": null,
+            "precision": 1,
+            "f1": 1,
+            "mcc": null
+          },
+          "latency": {
+            "n": 30,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 0,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          },
+          "owasp": "A03:2021-Injection"
+        },
+        {
+          "class": "path_traversal",
+          "kind": "attack",
+          "counts": {
+            "tp": 30,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": 1,
+            "fpr": null,
+            "precision": 1,
+            "f1": 1,
+            "mcc": null
+          },
+          "latency": {
+            "n": 30,
+            "p50_ms": 0,
+            "p95_ms": 1,
+            "p99_ms": 1,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          },
+          "owasp": "A01:2021-Broken Access Control"
+        },
+        {
+          "class": "command_injection",
+          "kind": "attack",
+          "counts": {
+            "tp": 30,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": 1,
+            "fpr": null,
+            "precision": 1,
+            "f1": 1,
+            "mcc": null
+          },
+          "latency": {
+            "n": 30,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 2,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          },
+          "owasp": "A03:2021-Injection"
+        },
+        {
+          "class": "ssrf",
+          "kind": "attack",
+          "counts": {
+            "tp": 30,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": 1,
+            "fpr": null,
+            "precision": 1,
+            "f1": 1,
+            "mcc": null
+          },
+          "latency": {
+            "n": 30,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 1,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          },
+          "owasp": "A10:2021-Server-Side Request Forgery"
+        },
+        {
+          "class": "ldap_injection",
+          "kind": "attack",
+          "counts": {
+            "tp": 30,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": 1,
+            "fpr": null,
+            "precision": 1,
+            "f1": 1,
+            "mcc": null
+          },
+          "latency": {
+            "n": 30,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 0,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          },
+          "owasp": "A03:2021-Injection"
+        },
+        {
+          "class": "nosql_injection",
+          "kind": "attack",
+          "counts": {
+            "tp": 30,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": 1,
+            "fpr": null,
+            "precision": 1,
+            "f1": 1,
+            "mcc": null
+          },
+          "latency": {
+            "n": 30,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 0,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          },
+          "owasp": "A03:2021-Injection"
+        },
+        {
+          "class": "xxe",
+          "kind": "attack",
+          "counts": {
+            "tp": 30,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": 1,
+            "fpr": null,
+            "precision": 1,
+            "f1": 1,
+            "mcc": null
+          },
+          "latency": {
+            "n": 30,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 0,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          },
+          "owasp": "A05:2021-Security Misconfiguration"
+        },
+        {
+          "class": "crlf_injection",
+          "kind": "attack",
+          "counts": {
+            "tp": 30,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": 1,
+            "fpr": null,
+            "precision": 1,
+            "f1": 1,
+            "mcc": null
+          },
+          "latency": {
+            "n": 30,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 0,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          },
+          "owasp": "A03:2021-Injection"
+        },
+        {
+          "class": "ssti",
+          "kind": "attack",
+          "counts": {
+            "tp": 30,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": 1,
+            "fpr": null,
+            "precision": 1,
+            "f1": 1,
+            "mcc": null
+          },
+          "latency": {
+            "n": 30,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 0,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          },
+          "owasp": "A03:2021-Injection"
+        },
+        {
+          "class": "benign_text",
+          "kind": "benign",
+          "counts": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 60,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": null,
+            "fpr": 0,
+            "precision": null,
+            "f1": null,
+            "mcc": null
+          },
+          "latency": {
+            "n": 60,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 0,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          }
+        },
+        {
+          "class": "benign_json",
+          "kind": "benign",
+          "counts": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 60,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": null,
+            "fpr": 0,
+            "precision": null,
+            "f1": null,
+            "mcc": null
+          },
+          "latency": {
+            "n": 60,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 1,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          }
+        },
+        {
+          "class": "benign_form",
+          "kind": "benign",
+          "counts": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 50,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": null,
+            "fpr": 0,
+            "precision": null,
+            "f1": null,
+            "mcc": null
+          },
+          "latency": {
+            "n": 50,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 1,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          }
+        },
+        {
+          "class": "benign_query",
+          "kind": "benign",
+          "counts": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 59,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": null,
+            "fpr": 0,
+            "precision": null,
+            "f1": null,
+            "mcc": null
+          },
+          "latency": {
+            "n": 59,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 0,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          }
+        },
+        {
+          "class": "benign_header",
+          "kind": "benign",
+          "counts": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 40,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": null,
+            "fpr": 0,
+            "precision": null,
+            "f1": null,
+            "mcc": null
+          },
+          "latency": {
+            "n": 40,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 0,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          }
+        },
+        {
+          "class": "benign_cookie",
+          "kind": "benign",
+          "counts": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 30,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": null,
+            "fpr": 0,
+            "precision": null,
+            "f1": null,
+            "mcc": null
+          },
+          "latency": {
+            "n": 30,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 0,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          }
+        },
+        {
+          "class": "benign_path",
+          "kind": "benign",
+          "counts": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 1,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": null,
+            "fpr": 0,
+            "precision": null,
+            "f1": null,
+            "mcc": null
+          },
+          "latency": {
+            "n": 1,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 0,
+            "sufficient_sample": false,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          }
+        }
+      ],
+      "latency": {
+        "n": 600,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "p99_ms": 1,
+        "sufficient_sample": true,
+        "p99_sufficient": true,
+        "method": "nearest_rank"
+      }
+    },
+    {
+      "arm": "tamper",
+      "tamper_stack": [
+        "url_encode_double",
+        "case_switch"
+      ],
+      "selection_basis": "auto: vendor=xammu-reference-waf confidence=high; generic representation-shifting candidate; no vendor-specific bypass knowledge is asserted",
+      "cases": 600,
+      "counts": {
+        "tp": 285,
+        "fn": 15,
+        "fp": 0,
+        "tn": 299,
+        "excluded": 1
+      },
+      "rates": {
+        "tpr": 0.95,
+        "fpr": 0,
+        "precision": 1,
+        "f1": 0.9743589743589743,
+        "mcc": 0.9511139965298085
+      },
+      "classes": [
+        {
+          "class": "sqli",
+          "kind": "attack",
+          "counts": {
+            "tp": 29,
+            "fn": 1,
+            "fp": 0,
+            "tn": 0,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": 0.9666666666666667,
+            "fpr": null,
+            "precision": 1,
+            "f1": 0.983050847457627,
+            "mcc": null
+          },
+          "latency": {
+            "n": 30,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 0,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          },
+          "owasp": "A03:2021-Injection"
+        },
+        {
+          "class": "xss",
+          "kind": "attack",
+          "counts": {
+            "tp": 29,
+            "fn": 1,
+            "fp": 0,
+            "tn": 0,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": 0.9666666666666667,
+            "fpr": null,
+            "precision": 1,
+            "f1": 0.983050847457627,
+            "mcc": null
+          },
+          "latency": {
+            "n": 30,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 0,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          },
+          "owasp": "A03:2021-Injection"
+        },
+        {
+          "class": "path_traversal",
+          "kind": "attack",
+          "counts": {
+            "tp": 29,
+            "fn": 1,
+            "fp": 0,
+            "tn": 0,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": 0.9666666666666667,
+            "fpr": null,
+            "precision": 1,
+            "f1": 0.983050847457627,
+            "mcc": null
+          },
+          "latency": {
+            "n": 30,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 0,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          },
+          "owasp": "A01:2021-Broken Access Control"
+        },
+        {
+          "class": "command_injection",
+          "kind": "attack",
+          "counts": {
+            "tp": 28,
+            "fn": 2,
+            "fp": 0,
+            "tn": 0,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": 0.9333333333333333,
+            "fpr": null,
+            "precision": 1,
+            "f1": 0.9655172413793104,
+            "mcc": null
+          },
+          "latency": {
+            "n": 30,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 0,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          },
+          "owasp": "A03:2021-Injection"
+        },
+        {
+          "class": "ssrf",
+          "kind": "attack",
+          "counts": {
+            "tp": 30,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": 1,
+            "fpr": null,
+            "precision": 1,
+            "f1": 1,
+            "mcc": null
+          },
+          "latency": {
+            "n": 30,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 0,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          },
+          "owasp": "A10:2021-Server-Side Request Forgery"
+        },
+        {
+          "class": "ldap_injection",
+          "kind": "attack",
+          "counts": {
+            "tp": 29,
+            "fn": 1,
+            "fp": 0,
+            "tn": 0,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": 0.9666666666666667,
+            "fpr": null,
+            "precision": 1,
+            "f1": 0.983050847457627,
+            "mcc": null
+          },
+          "latency": {
+            "n": 30,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 0,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          },
+          "owasp": "A03:2021-Injection"
+        },
+        {
+          "class": "nosql_injection",
+          "kind": "attack",
+          "counts": {
+            "tp": 29,
+            "fn": 1,
+            "fp": 0,
+            "tn": 0,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": 0.9666666666666667,
+            "fpr": null,
+            "precision": 1,
+            "f1": 0.983050847457627,
+            "mcc": null
+          },
+          "latency": {
+            "n": 30,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 0,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          },
+          "owasp": "A03:2021-Injection"
+        },
+        {
+          "class": "xxe",
+          "kind": "attack",
+          "counts": {
+            "tp": 29,
+            "fn": 1,
+            "fp": 0,
+            "tn": 0,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": 0.9666666666666667,
+            "fpr": null,
+            "precision": 1,
+            "f1": 0.983050847457627,
+            "mcc": null
+          },
+          "latency": {
+            "n": 30,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 0,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          },
+          "owasp": "A05:2021-Security Misconfiguration"
+        },
+        {
+          "class": "crlf_injection",
+          "kind": "attack",
+          "counts": {
+            "tp": 24,
+            "fn": 6,
+            "fp": 0,
+            "tn": 0,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": 0.8,
+            "fpr": null,
+            "precision": 1,
+            "f1": 0.888888888888889,
+            "mcc": null
+          },
+          "latency": {
+            "n": 30,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 0,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          },
+          "owasp": "A03:2021-Injection"
+        },
+        {
+          "class": "ssti",
+          "kind": "attack",
+          "counts": {
+            "tp": 29,
+            "fn": 1,
+            "fp": 0,
+            "tn": 0,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": 0.9666666666666667,
+            "fpr": null,
+            "precision": 1,
+            "f1": 0.983050847457627,
+            "mcc": null
+          },
+          "latency": {
+            "n": 30,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 0,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          },
+          "owasp": "A03:2021-Injection"
+        },
+        {
+          "class": "benign_text",
+          "kind": "benign",
+          "counts": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 60,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": null,
+            "fpr": 0,
+            "precision": null,
+            "f1": null,
+            "mcc": null
+          },
+          "latency": {
+            "n": 60,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 1,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          }
+        },
+        {
+          "class": "benign_json",
+          "kind": "benign",
+          "counts": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 60,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": null,
+            "fpr": 0,
+            "precision": null,
+            "f1": null,
+            "mcc": null
+          },
+          "latency": {
+            "n": 60,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 0,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          }
+        },
+        {
+          "class": "benign_form",
+          "kind": "benign",
+          "counts": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 50,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": null,
+            "fpr": 0,
+            "precision": null,
+            "f1": null,
+            "mcc": null
+          },
+          "latency": {
+            "n": 50,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 1,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          }
+        },
+        {
+          "class": "benign_query",
+          "kind": "benign",
+          "counts": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 59,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": null,
+            "fpr": 0,
+            "precision": null,
+            "f1": null,
+            "mcc": null
+          },
+          "latency": {
+            "n": 59,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 0,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          }
+        },
+        {
+          "class": "benign_header",
+          "kind": "benign",
+          "counts": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 40,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": null,
+            "fpr": 0,
+            "precision": null,
+            "f1": null,
+            "mcc": null
+          },
+          "latency": {
+            "n": 40,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 0,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          }
+        },
+        {
+          "class": "benign_cookie",
+          "kind": "benign",
+          "counts": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 30,
+            "excluded": 0
+          },
+          "rates": {
+            "tpr": null,
+            "fpr": 0,
+            "precision": null,
+            "f1": null,
+            "mcc": null
+          },
+          "latency": {
+            "n": 30,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 0,
+            "sufficient_sample": true,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          }
+        },
+        {
+          "class": "benign_path",
+          "kind": "benign",
+          "counts": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "excluded": 1
+          },
+          "rates": {
+            "tpr": null,
+            "fpr": null,
+            "precision": null,
+            "f1": null,
+            "mcc": null
+          },
+          "latency": {
+            "n": 0,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 0,
+            "sufficient_sample": false,
+            "p99_sufficient": false,
+            "method": "nearest_rank"
+          }
+        }
+      ],
+      "latency": {
+        "n": 599,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "p99_ms": 0,
+        "sufficient_sample": true,
+        "p99_sufficient": true,
+        "method": "nearest_rank"
+      },
+      "excluded_by_reason": {
+        "other_4xx": 1
+      }
+    }
+  ],
+  "comparison": [
+    {
+      "class": "sqli",
+      "baseline_tpr": 1,
+      "tamper_tpr": 0.9666666666666667,
+      "delta_pp": -3.3333333333333326,
+      "baseline_n": 30,
+      "tamper_n": 30
+    },
+    {
+      "class": "xss",
+      "baseline_tpr": 1,
+      "tamper_tpr": 0.9666666666666667,
+      "delta_pp": -3.3333333333333326,
+      "baseline_n": 30,
+      "tamper_n": 30
+    },
+    {
+      "class": "path_traversal",
+      "baseline_tpr": 1,
+      "tamper_tpr": 0.9666666666666667,
+      "delta_pp": -3.3333333333333326,
+      "baseline_n": 30,
+      "tamper_n": 30
+    },
+    {
+      "class": "command_injection",
+      "baseline_tpr": 1,
+      "tamper_tpr": 0.9333333333333333,
+      "delta_pp": -6.666666666666665,
+      "baseline_n": 30,
+      "tamper_n": 30
+    },
+    {
+      "class": "ssrf",
+      "baseline_tpr": 1,
+      "tamper_tpr": 1,
+      "delta_pp": 0,
+      "baseline_n": 30,
+      "tamper_n": 30
+    },
+    {
+      "class": "ldap_injection",
+      "baseline_tpr": 1,
+      "tamper_tpr": 0.9666666666666667,
+      "delta_pp": -3.3333333333333326,
+      "baseline_n": 30,
+      "tamper_n": 30
+    },
+    {
+      "class": "nosql_injection",
+      "baseline_tpr": 1,
+      "tamper_tpr": 0.9666666666666667,
+      "delta_pp": -3.3333333333333326,
+      "baseline_n": 30,
+      "tamper_n": 30
+    },
+    {
+      "class": "xxe",
+      "baseline_tpr": 1,
+      "tamper_tpr": 0.9666666666666667,
+      "delta_pp": -3.3333333333333326,
+      "baseline_n": 30,
+      "tamper_n": 30
+    },
+    {
+      "class": "crlf_injection",
+      "baseline_tpr": 1,
+      "tamper_tpr": 0.8,
+      "delta_pp": -19.999999999999996,
+      "baseline_n": 30,
+      "tamper_n": 30
+    },
+    {
+      "class": "ssti",
+      "baseline_tpr": 1,
+      "tamper_tpr": 0.9666666666666667,
+      "delta_pp": -3.3333333333333326,
+      "baseline_n": 30,
+      "tamper_n": 30
+    },
+    {
+      "class": "all attack classes",
+      "baseline_tpr": 1,
+      "tamper_tpr": 0.95,
+      "delta_pp": -5.000000000000004,
+      "baseline_n": 300,
+      "tamper_n": 300
+    }
+  ],
+  "fingerprint": {
+    "policy": "xammu-waf-fingerprint/1.0.0",
+    "observed_outcomes": 600,
+    "outcomes_with_evidence": 600,
+    "vendors": [
+      {
+        "vendor": "xammu-reference-waf",
+        "support": "high",
+        "evidence": [
+          {
+            "vendor": "xammu-reference-waf",
+            "signature": "reference-block-marker",
+            "kind": "error_page",
+            "strength": "identifying",
+            "detail": "error_page:reference-block-marker"
+          },
+          {
+            "vendor": "xammu-reference-waf",
+            "signature": "reference-action",
+            "kind": "header",
+            "strength": "identifying",
+            "detail": "header:x-xammu-reference-action"
+          },
+          {
+            "vendor": "xammu-reference-waf",
+            "signature": "reference-server",
+            "kind": "header",
+            "strength": "identifying",
+            "detail": "header:server"
+          }
+        ],
+        "cases": 600,
+        "recommended_stacks": [
+          {
+            "stack": [
+              "url_encode_double",
+              "case_switch"
+            ],
+            "basis": "generic representation-shifting candidate; no vendor-specific bypass knowledge is asserted"
+          }
+        ],
+        "recommendation_basis": "generic candidate only: no cited vendor-specific technique is available"
+      }
+    ]
+  },
+  "notes": [
+    "The top-level matrix is the baseline arm; arms publishes each arm separately.",
+    "Delta in the comparison table is tamper TPR minus baseline TPR in percentage points; it is arithmetic over the two matrices, not an estimated effect size.",
+    "TPR and FPR describe agreement with this corpus, on this target, in this window; they are not a claim of absolute efficacy.",
+    "429 is pacing, never a block (criterion 24): it is excluded and counted with the other inconclusive outcomes.",
+    "A zero-denominator metric is null; no value is invented.",
+    "Percentiles use nearest rank; p99 is marked insufficient below 100 samples and every summary below 20 samples."
+  ],
+  "generated_at": "2026-11-05T22:26:51.6988711Z"
+}

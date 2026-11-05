@@ -107,17 +107,28 @@ fi
 log "release: two builds compared byte for byte; hash written under dist/"
 
 log ""
-log "== 5. source anchor =="
+log "== 5. gate demonstration =="
+if ! ./scripts/gate-demo.sh >>"$evidence" 2>&1; then
+	log "the gate demonstration failed"
+	log "RESULT: FAILED"
+	exit 1
+fi
+log "gate: r6 exits 1, r7 exits 0, both signed deliveries verify"
+
+log ""
+log "== 6. source anchor =="
 source_hash=$(
-	find cmd internal corpus lab docs scripts tools authorizations trust go.mod \
-		README.md LICENSE runs/demo-lab runs/demo-origin \
+	find cmd internal corpus lab docs scripts tools authorizations trust policies schemas \
+		examples go.mod README.md LICENSE runs/demo-lab runs/demo-origin \
 		runs/waf-effectiveness-2026-11-05-r3 runs/waf-effectiveness-2026-11-05-r6 \
+		runs/waf-effectiveness-2026-11-05-r7 publications \
 		-type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1
 )
 log "source tree sha256: ${source_hash}"
-log "anchor: this hash covers every source, document, script, authorization and"
-log "        demonstration bundle in the delivery; a byte changed without a new"
-log "        run makes two certifications incomparable, not equivalent."
+log "anchor: this hash covers every source, document, script, authorization, policy,"
+log "        schema, example, demonstration bundle and signed publication in the"
+log "        delivery; a byte changed without a new run makes two certifications"
+log "        incomparable, not equivalent."
 
 log ""
 log "RESULT: PASSED"

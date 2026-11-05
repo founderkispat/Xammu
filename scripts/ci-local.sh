@@ -82,7 +82,11 @@ log "== 5. reproducible release build =="
 run ./scripts/release.sh
 
 log ""
-log "== 6. SBOM =="
+log "== 6. gate demonstration =="
+run ./scripts/gate-demo.sh
+
+log ""
+log "== 7. SBOM =="
 if command -v syft >/dev/null 2>&1; then
 	version=$(sed -n 's/^const ToolVersion = "xammu-\([^"]*\)"$/\1/p' internal/integrity/manifest.go)
 	goos=$(go env GOOS)

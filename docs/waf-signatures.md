@@ -41,6 +41,9 @@ error), no por contar tres marcas.
 | `lab-server` | `xammu-lab-waf` | header | identifying | `Server` contiene `xammu-lab-waf` | el fixture del repositorio lo emite en `lab/waf/proxy.go` | solo el laboratorio |
 | `lab-action` | `xammu-lab-waf` | header | identifying | `X-Lab-Waf-Action` contiene `reject` | ídem | solo el laboratorio |
 | `lab-block-marker` | `xammu-lab-waf` | error_page | identifying | cuerpo contiene `XAMMU-LAB-WAF-BLOCK` | ídem | solo el laboratorio; del cuerpo solo se guarda el id de firma |
+| `reference-server` | `xammu-reference-waf` | header | identifying | `Server` contiene `xammu-reference-waf` | el fixture de Fase 3 lo emite en `examples/reference-waf` | solo el fixture de referencia |
+| `reference-action` | `xammu-reference-waf` | header | identifying | `X-Xammu-Reference-Action` contiene `reject` | ídem | solo el fixture de referencia |
+| `reference-block-marker` | `xammu-reference-waf` | error_page | identifying | cuerpo contiene `XAMMU-REFERENCE-WAF-BLOCK` | ídem | solo el fixture de referencia; del cuerpo solo se guarda el id de firma |
 | `cloudflare-ray` | `cloudflare` | header | identifying | cabecera `cf-ray` | identificador de petición documentado por Cloudflare | no distingue plan ni reglas activas |
 | `sucuri-id` | `sucuri` | header | identifying | cabecera `x-sucuri-id` | cabecera de proxy documentada por Sucuri | no prueba que el WAF esté inspeccionando |
 | `sucuri-cache` | `sucuri` | header | supporting | cabecera `x-sucuri-cache` | ídem | por sí sola no atribuye; solo suma clase |
@@ -59,7 +62,9 @@ La recomendación adjunta al fingerprint es una **hipótesis a medir**, no intel
   mide la primera; no se afirma que funcione fuera del fixture.
 - Cualquier otro vendor recibe una única pila genérica de cambio de representación
   (`url_encode_double → case_switch`) etiquetada como genérica. No se publica conocimiento de
-  bypass específico que no esté citado.
+  bypass específico que no esté citado. El fixture de Fase 3 (`xammu-reference-waf`) cae aquí a
+  propósito: sus reglas normalizan la representación, así que la candidata genérica mide si el
+  endurecimiento aguanta, no si existe un bypass conocido.
 - `unknown` no recibe pila: sin vendor no hay candidata que medir, y `auto` no selecciona nada.
 
 `base64` nunca está en una candidata automática: borra el marcador en línea y obliga a una cabecera

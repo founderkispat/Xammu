@@ -24,6 +24,8 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"xammu/internal/gate"
 )
 
 const usageText = `xammu -- defensive-behaviour discovery through one authorized egress
@@ -38,8 +40,10 @@ usage:
   xammu effectiveness tampers
   xammu effectiveness run    --authorization FILE --authorize REF --issuer-keyring DIR --run ID [--corpus DIR]
   xammu effectiveness report --run ID | --store DIR [--format F] [--rederive]
+  xammu gate             (--store DIR | --run ID) --policy FILE --format json|yaml|sarif|markdown|annex|all [--out DIR]
   xammu report           --run ID | --store DIR --authorization FILE --issuer-keyring DIR --corpus DIR [--format F]
   xammu verify           --run ID | --store DIR [--trust-key FILE] [--authorization FILE --issuer-keyring DIR] [--rederive]
+  xammu verify           --publication DIR [--trust-key FILE] [--store DIR | --run ID]
   xammu validate         --finding REF --run ID --authorization FILE --issuer-keyring DIR --corpus DIR
   xammu lab              scenarios | test --scenario NAME [--apply]
 
@@ -92,6 +96,23 @@ read flags:
   --finding REF      finding to re-derive; repeatable
   --trust-key FILE   hex ed25519 public key this operator trusts
   --rederive         re-issue the report from the sealed evidence and compare it
+
+gate flags:
+  --policy FILE      xammu.policy/v1 thresholds; required, and never discovered from the bundle
+  --format F         json, yaml, sarif, markdown (report.md), annex (annex-LANG.md) or all
+  --out DIR          write the document instead of printing it; --format all requires it and writes
+                     gate.json, gate.yaml, results.sarif, report.md, both annexes and the envelope
+  --signing-key FILE ed25519 seed that signs publication.json; --format all only, never copied out
+  --lang es|en       --format annex only; --format all writes both languages
+  --prepared-by NAME preparer named in the report and the annexes; the bundle stays anonymous
+  --trust-key FILE   anchor the bundle signature to this hex ed25519 public key
+  gate exit codes:   0 every applicable check passed, 1 a check failed, 2 the gate could not evaluate.
+
+verify --publication flags:
+  --publication DIR  verify a signed delivery: envelope signature, every listed file, gate.json
+                     against its embedded policy, and the source bundle's manifest digest
+  --store DIR        the source bundle, when it does not sit where the envelope says
+  --trust-key FILE   anchor both the envelope and the source manifest to this key
 
 laboratory flags:
   --lab-dir DIR      where the laboratory lives (default "lab")
@@ -152,6 +173,8 @@ func dispatch(argv []string, stdout, stderr io.Writer) int {
 		ctx, stop := contextWithStop()
 		defer stop()
 		err = cmdEffectiveness(ctx, c, rest)
+	case "gate":
+		err = cmdGate(c, rest)
 	case "report":
 		err = cmdReport(c, rest)
 	case "verify":
@@ -165,7 +188,16 @@ func dispatch(argv []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	if err != nil {
+		if errors.Is(err, gate.ErrFailed) {
+			// cmdGate already published the failing check summary. Exit 1 is a
+			// result about the target, not a tool error.
+			return 1
+		}
 		if errors.Is(err, errUsage) || errors.Is(err, flag.ErrHelp) {
+			fmt.Fprintf(stderr, "xammu: %v\n", err)
+			return 2
+		}
+		if errors.Is(err, gate.ErrUnusable) {
 			fmt.Fprintf(stderr, "xammu: %v\n", err)
 			return 2
 		}

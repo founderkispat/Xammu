@@ -1,0 +1,373 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://xammu.local/schemas/xammu-gate-v1.schema.json",
+  "title": "XAMMU gate document",
+  "description": "The xammu.gate/v1 consumable: one policy decision over one sealed bundle. Metrics are evidence copied from E-03; the verdict is a policy decision, not a security claim.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "tool_version",
+    "source",
+    "policy",
+    "verdict",
+    "checks",
+    "metrics",
+    "findings",
+    "controls",
+    "limits",
+    "not_applicable"
+  ],
+  "properties": {
+    "schema_version": { "const": "xammu.gate/v1" },
+    "tool_version": { "type": "string", "minLength": 1 },
+    "source": { "$ref": "#/$defs/source" },
+    "policy": { "$ref": "#/$defs/policy" },
+    "verdict": { "enum": ["pass", "fail"] },
+    "checks": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/check" }
+    },
+    "metrics": {
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/metrics" }]
+    },
+    "findings": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/finding" }
+    },
+    "controls": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/control" }
+    },
+    "limits": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "not_applicable": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "run_id",
+        "bundle",
+        "manifest_sha256",
+        "manifest_signer_key_id",
+        "artifacts"
+      ],
+      "properties": {
+        "kind": { "enum": ["effectiveness", "profiling"] },
+        "run_id": { "type": "string", "minLength": 1 },
+        "bundle": { "type": "string", "minLength": 1 },
+        "manifest_sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "manifest_signer_key_id": { "type": "string" },
+        "artifacts": {
+          "type": "object",
+          "additionalProperties": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256", "schema_version"],
+      "properties": {
+        "sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "schema_version": { "const": "xammu.policy/v1" },
+        "effectiveness": { "$ref": "#/$defs/effectivenessPolicy" },
+        "findings": { "$ref": "#/$defs/findingsPolicy" }
+      }
+    },
+    "effectivenessPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min_tpr", "max_fpr", "max_excluded_ratio"],
+      "properties": {
+        "min_tpr": { "type": "number", "minimum": 0, "maximum": 1 },
+        "max_fpr": { "type": "number", "minimum": 0, "maximum": 1 },
+        "min_precision": { "type": "number", "minimum": 0, "maximum": 1 },
+        "max_excluded_ratio": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "findingsPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fail_on_priority"],
+      "properties": {
+        "fail_on_priority": { "enum": ["high", "medium", "low"] }
+      }
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "applies", "status"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "applies": { "type": "boolean" },
+        "status": { "enum": ["pass", "fail", "not_applicable"] },
+        "threshold": { "type": "string" },
+        "observed": { "type": "string" },
+        "reason": { "type": "string" },
+        "evidence": { "type": "string" },
+        "line": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "control": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expectation", "observed", "evidence", "status"],
+      "properties": {
+        "expectation": { "type": "string" },
+        "observed": { "type": "string" },
+        "evidence": { "type": "string" },
+        "status": { "enum": ["pass", "fail", "not_applicable", "info"] }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tp", "fn", "fp", "tn", "excluded"],
+      "properties": {
+        "tp": { "type": "integer", "minimum": 0 },
+        "fn": { "type": "integer", "minimum": 0 },
+        "fp": { "type": "integer", "minimum": 0 },
+        "tn": { "type": "integer", "minimum": 0 },
+        "excluded": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "rates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tpr", "fpr", "precision", "f1", "mcc"],
+      "properties": {
+        "tpr": { "type": ["number", "null"] },
+        "fpr": { "type": ["number", "null"] },
+        "precision": { "type": ["number", "null"] },
+        "f1": { "type": ["number", "null"] },
+        "mcc": { "type": ["number", "null"] }
+      }
+    },
+    "latency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["n", "p50_ms", "p95_ms", "p99_ms", "sufficient_sample", "p99_sufficient", "method"],
+      "properties": {
+        "n": { "type": "integer", "minimum": 0 },
+        "p50_ms": { "type": "number" },
+        "p95_ms": { "type": "number" },
+        "p99_ms": { "type": "number" },
+        "sufficient_sample": { "type": "boolean" },
+        "p99_sufficient": { "type": "boolean" },
+        "method": { "type": "string", "minLength": 1 }
+      }
+    },
+    "class": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["class", "kind", "counts", "rates", "latency"],
+      "properties": {
+        "class": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "minLength": 1 },
+        "counts": { "$ref": "#/$defs/counts" },
+        "rates": { "$ref": "#/$defs/rates" },
+        "latency": { "$ref": "#/$defs/latency" },
+        "owasp": { "type": "string" }
+      }
+    },
+    "arm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["arm", "cases", "counts", "rates", "latency"],
+      "properties": {
+        "arm": { "type": "string", "minLength": 1 },
+        "tamper_stack": { "type": "array", "items": { "type": "string" } },
+        "selection_basis": { "type": "string" },
+        "cases": { "type": "integer", "minimum": 0 },
+        "counts": { "$ref": "#/$defs/counts" },
+        "rates": { "$ref": "#/$defs/rates" },
+        "classes": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/class" }
+        },
+        "latency": { "$ref": "#/$defs/latency" },
+        "excluded_by_reason": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["class", "baseline_tpr", "tamper_tpr", "delta_pp", "baseline_n", "tamper_n"],
+      "properties": {
+        "class": { "type": "string", "minLength": 1 },
+        "baseline_tpr": { "type": ["number", "null"] },
+        "tamper_tpr": { "type": ["number", "null"] },
+        "delta_pp": { "type": ["number", "null"] },
+        "baseline_n": { "type": "integer", "minimum": 0 },
+        "tamper_n": { "type": "integer", "minimum": 0 },
+        "note": { "type": "string" }
+      }
+    },
+    "fingerprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policy", "observed_outcomes", "outcomes_with_evidence", "vendors"],
+      "properties": {
+        "policy": { "type": "string" },
+        "observed_outcomes": { "type": "integer", "minimum": 0 },
+        "outcomes_with_evidence": { "type": "integer", "minimum": 0 },
+        "vendors": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["vendor", "support", "evidence", "cases"],
+            "properties": {
+              "vendor": { "type": "string" },
+              "support": { "type": "string" },
+              "evidence": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["signature", "kind", "strength", "detail"],
+                  "properties": {
+                    "signature": { "type": "string" },
+                    "kind": { "type": "string" },
+                    "strength": { "type": "string" },
+                    "detail": { "type": "string" }
+                  }
+                }
+              },
+              "cases": { "type": "integer", "minimum": 0 },
+              "recommended_stacks": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["stack", "basis"],
+                  "properties": {
+                    "stack": { "type": "array", "items": { "type": "string" } },
+                    "basis": { "type": "string" }
+                  }
+                }
+              },
+              "recommendation_basis": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_id",
+        "authorization_ref",
+        "corpus_digest",
+        "cases",
+        "counts",
+        "rates",
+        "classes",
+        "latency",
+        "excluded_by_reason",
+        "notes",
+        "generated_at"
+      ],
+      "properties": {
+        "run_id": { "type": "string", "minLength": 1 },
+        "authorization_ref": { "type": "string" },
+        "corpus_digest": { "type": "string" },
+        "cases": { "type": "integer", "minimum": 0 },
+        "counts": { "$ref": "#/$defs/counts" },
+        "rates": { "$ref": "#/$defs/rates" },
+        "classes": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/class" }
+        },
+        "latency": { "$ref": "#/$defs/latency" },
+        "excluded_by_reason": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "arms": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/arm" }
+        },
+        "comparison": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/comparison" }
+        },
+        "fingerprint": { "$ref": "#/$defs/fingerprint" },
+        "notes": { "type": "array", "items": { "type": "string" } },
+        "generated_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "ratio": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["numerator", "denominator", "basis", "excluded_inconclusive", "excluded_invalid"],
+      "properties": {
+        "numerator": { "type": "integer", "minimum": 0 },
+        "denominator": { "type": "integer", "minimum": 0 },
+        "basis": { "type": "string" },
+        "excluded_inconclusive": { "type": "integer", "minimum": 0 },
+        "excluded_invalid": { "type": "integer", "minimum": 0 },
+        "population_ref": { "type": "string" }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ref",
+        "finding_type",
+        "claim_type",
+        "priority",
+        "priority_basis",
+        "attribution_status",
+        "evidence_basis",
+        "evidence_level",
+        "what_was_observed",
+        "what_is_inferred",
+        "what_evidence_is_missing",
+        "affected_scope",
+        "reproduction_command",
+        "recommendation",
+        "regression_test_to_run",
+        "measured_impact",
+        "line"
+      ],
+      "properties": {
+        "ref": { "type": "string", "minLength": 1 },
+        "finding_type": { "type": "string", "minLength": 1 },
+        "claim_type": { "type": "string", "minLength": 1 },
+        "priority": { "enum": ["high", "medium", "low"] },
+        "priority_basis": { "type": "string" },
+        "attribution_status": { "type": "string" },
+        "evidence_basis": { "type": "string" },
+        "evidence_level": { "type": "string" },
+        "what_was_observed": { "type": "string" },
+        "what_is_inferred": { "type": "string" },
+        "what_evidence_is_missing": { "type": "string" },
+        "limitations": { "type": "array", "items": { "type": "string" } },
+        "affected_scope": { "type": "string" },
+        "attack_class": { "type": "string" },
+        "vector": { "type": "string" },
+        "encoding": { "type": "string" },
+        "reproduction_command": { "type": "string" },
+        "recommendation": { "type": "string" },
+        "regression_test_to_run": { "type": "string" },
+        "measured_impact": { "$ref": "#/$defs/ratio" },
+        "line": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

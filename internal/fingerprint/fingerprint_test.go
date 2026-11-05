@@ -29,6 +29,24 @@ func TestAttributeLabFromHeadersAndMarkedPage(t *testing.T) {
 	}
 }
 
+func TestAttributeReferenceFixtureFromHeadersAndMarkedPage(t *testing.T) {
+	ev := Attribute([]contracts.HeaderEntry{
+		header("Server", "xammu-reference-waf/1.0"),
+		header("X-Xammu-Reference-Action", "reject"),
+	}, []byte("<html>XAMMU-REFERENCE-WAF-BLOCK</html>"))
+	if len(ev) != 3 {
+		t.Fatalf("expected three reference signatures, got %d: %+v", len(ev), ev)
+	}
+	for _, e := range ev {
+		if e.Vendor != "xammu-reference-waf" {
+			t.Fatalf("unexpected vendor %q", e.Vendor)
+		}
+	}
+	if stacks, basis := CandidateStacks("xammu-reference-waf"); len(stacks) == 0 || basis == "" {
+		t.Fatalf("the reference fixture must receive a measured candidate: %+v %q", stacks, basis)
+	}
+}
+
 func TestAttributeIsCaseInsensitiveOnHeaderValues(t *testing.T) {
 	ev := Attribute([]contracts.HeaderEntry{header("SERVER", "XAMMU-LAB-WAF/1.0")}, nil)
 	if len(ev) != 1 || ev[0].Signature != "lab-server" {

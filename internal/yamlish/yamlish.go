@@ -192,7 +192,8 @@ func parseSequence(lines []line, i, indent int) (any, int, error) {
 		if item == "" {
 			return nil, i, fmt.Errorf("line %d: an empty sequence item is not supported", lines[i].number)
 		}
-		if strings.Contains(item, ": ") || strings.HasSuffix(item, ":") {
+		quoted := item[0] == '\'' || item[0] == '"'
+		if !quoted && (strings.Contains(item, ": ") || strings.HasSuffix(item, ":")) {
 			return nil, i, fmt.Errorf("line %d: sequence items are scalars in this subset; "+
 				"a nested mapping must be written as its own document field", lines[i].number)
 		}

@@ -1,0 +1,54 @@
+{
+  "schema_version": "xammu.publication/v1",
+  "tool_version": "xammu-1.0.0",
+  "created_at": "2026-11-05T22:29:14.8632531Z",
+  "source": {
+    "kind": "effectiveness",
+    "run_id": "waf-effectiveness-2026-11-05-r6",
+    "bundle": "runs/waf-effectiveness-2026-11-05-r6",
+    "manifest_sha256": "sha256:03adcedc1648487327c0334119e458a54ba30456119289c895dd99d266fddb0d",
+    "manifest_signer_key_id": "edabfbcda5eb8f56",
+    "manifest_signature_valid": true,
+    "manifest_signer_anchored": true
+  },
+  "policy_sha256": "sha256:8fdd3a47858e0d9b8f12d63f6ae09c2baf090578cd0be44eced054f847a82ea9",
+  "verdict": "fail",
+  "exit_code": 1,
+  "files": [
+    {
+      "path": "annex-en.md",
+      "sha256": "sha256:3f4c9659861151719bb1ca508d54156fdf61b57e90cd3c30abb639f083201b13",
+      "bytes": 7577
+    },
+    {
+      "path": "annex-es.md",
+      "sha256": "sha256:0784b7a6ae98b3241f9eafa26629442a55922e3a52c31f7d70ab897ef6f43313",
+      "bytes": 7732
+    },
+    {
+      "path": "gate.json",
+      "sha256": "sha256:7dde793b5ca9db76ab71ad2a7339dd85deac108c61daca6d4161550c81b618ea",
+      "bytes": 48568
+    },
+    {
+      "path": "gate.yaml",
+      "sha256": "sha256:04246d35ddc9029868f67f099f33555ba715a46921f32a9c22c2c59b54057fc6",
+      "bytes": 37243
+    },
+    {
+      "path": "report.md",
+      "sha256": "sha256:35d8ac94e4afd55da44c8e93f89bb4909a9f5e9263a444f30f651f4ab5da89c5",
+      "bytes": 8647
+    },
+    {
+      "path": "results.sarif",
+      "sha256": "sha256:81074085d55a3fa12880797beb79488d51d7d2fbd0be019347225f5f808fedb8",
+      "bytes": 1488
+    }
+  ],
+  "algorithm": "ed25519",
+  "signer_key_id": "edabfbcda5eb8f56",
+  "public_key_base64": "Do2WUIck2VSq2ZKokIsbCJw52g/i3wK1ELC+2mnTZ3U=",
+  "signature_base64": "xjWTfYoVNTlc1QqGDFHLSqqAp7QIJsZVth0n8fzEI8knQDBrItDqz4jOBDbHu/nwiy7ObUuXP0LgtsFjmSSRDw==",
+  "signing_rule": "ed25519 over sha256(canonical-json(publication minus signature_base64, public_key_base64 and signer_key_id))"
+}

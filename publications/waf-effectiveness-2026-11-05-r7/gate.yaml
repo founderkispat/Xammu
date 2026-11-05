@@ -1,0 +1,1520 @@
+checks:
+  effectiveness.excluded_ratio:
+    applies: true
+    evidence: effectiveness_metrics.jsonl
+    id: effectiveness.excluded_ratio
+    line: 1
+    observed: "0/600 = 0 (0.00%)"
+    status: pass
+    threshold: "<= 0"
+  effectiveness.fpr:
+    applies: true
+    evidence: effectiveness_metrics.jsonl
+    id: effectiveness.fpr
+    line: 1
+    observed: "0 (0.00%)"
+    status: pass
+    threshold: "<= 0.05"
+  effectiveness.precision:
+    applies: true
+    evidence: effectiveness_metrics.jsonl
+    id: effectiveness.precision
+    line: 1
+    observed: "1 (100.00%)"
+    status: pass
+    threshold: ">= 0.7"
+  effectiveness.tpr:
+    applies: true
+    evidence: effectiveness_metrics.jsonl
+    id: effectiveness.tpr
+    line: 1
+    observed: "1 (100.00%)"
+    status: pass
+    threshold: ">= 0.8"
+  evidence.manifest:
+    applies: true
+    evidence: manifest.json
+    id: evidence.manifest
+    reason: "manifest, inventory, merkle root and hash chains verify; signer identity anchored by a trusted key"
+    status: pass
+  evidence.rederive:
+    applies: true
+    evidence: "effectiveness_cases.jsonl, effectiveness_outcomes.jsonl, effectiveness_metrics.jsonl"
+    id: evidence.rederive
+    reason: "E-03 recomputes from E-01/E-02 and matches the journaled record and the published metrics document"
+    status: pass
+controls:
+  comparison.base_vs_tamper:
+    evidence: "effectiveness_metrics.jsonl (E-03 comparison)"
+    expectation: "informational: tamper minus baseline, no threshold"
+    observed: "baseline TPR 100.00% (n=300); tamper TPR 95.00% (n=300); delta -5.00 pp"
+    status: info
+  effectiveness.excluded_ratio:
+    evidence: effectiveness_metrics.jsonl
+    expectation: "<= 0"
+    observed: "0/600 = 0 (0.00%)"
+    status: pass
+  effectiveness.fpr:
+    evidence: effectiveness_metrics.jsonl
+    expectation: "<= 0.05"
+    observed: "0 (0.00%)"
+    status: pass
+  effectiveness.precision:
+    evidence: effectiveness_metrics.jsonl
+    expectation: ">= 0.7"
+    observed: "1 (100.00%)"
+    status: pass
+  effectiveness.tpr:
+    evidence: effectiveness_metrics.jsonl
+    expectation: ">= 0.8"
+    observed: "1 (100.00%)"
+    status: pass
+  evidence.manifest:
+    evidence: manifest.json
+    expectation: "manifest, inventory, merkle root and hash chains verify; signer identity anchored by a trusted key"
+    observed: n/a
+    status: pass
+  evidence.rederive:
+    evidence: "effectiveness_cases.jsonl, effectiveness_outcomes.jsonl, effectiveness_metrics.jsonl"
+    expectation: "E-03 recomputes from E-01/E-02 and matches the journaled record and the published metrics document"
+    observed: n/a
+    status: pass
+  fingerprint.attribution:
+    evidence: "effectiveness_metrics.jsonl (E-03 fingerprint)"
+    expectation: "informational: categorical support, not a probability"
+    observed: "xammu-reference-waf=high"
+    status: info
+limits:
+  - "The gate reads sealed evidence; it sends no traffic and does not modify the bundle."
+  - "Rates describe agreement with this corpus, on this target, in this window; they are not a claim of absolute efficacy."
+  - "The verdict is a policy decision over declared thresholds; it does not state that the WAF is secure."
+  - "A zero-denominator metric is null: the check fails with reason \"no denominator\" and the null is never read as zero or one."
+  - "C-16 priorities are high, medium and low; XAMMU does not add a critical level the evidence does not have."
+  - "The SARIF document is validated structurally against 2.1.0, not against the complete OASIS JSON Schema."
+  - "E-03 is recomputed from the E-01 case list and the E-02 outcome journal before any threshold is evaluated; a disagreement is exit 2, not a verdict."
+  - "Fingerprint support is a categorical reading of observed signatures, not a probability and not a product claim."
+  - "The target identified as the repository's reference fixture, a WAF calibrated against this inert corpus. Its rates show that the pipeline measures; they are not the efficacy of any real product."
+metrics:
+  arms:
+    baseline:
+      arm: baseline
+      cases: 600
+      classes:
+        benign_cookie:
+          class: benign_cookie
+          counts:
+            excluded: 0
+            fn: 0
+            fp: 0
+            tn: 30
+            tp: 0
+          kind: benign
+          latency:
+            method: nearest_rank
+            n: 30
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 0
+            p99_sufficient: false
+            sufficient_sample: true
+          rates:
+            f1: null
+            fpr: 0
+            mcc: null
+            precision: null
+            tpr: null
+        benign_form:
+          class: benign_form
+          counts:
+            excluded: 0
+            fn: 0
+            fp: 0
+            tn: 50
+            tp: 0
+          kind: benign
+          latency:
+            method: nearest_rank
+            n: 50
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 1
+            p99_sufficient: false
+            sufficient_sample: true
+          rates:
+            f1: null
+            fpr: 0
+            mcc: null
+            precision: null
+            tpr: null
+        benign_header:
+          class: benign_header
+          counts:
+            excluded: 0
+            fn: 0
+            fp: 0
+            tn: 40
+            tp: 0
+          kind: benign
+          latency:
+            method: nearest_rank
+            n: 40
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 0
+            p99_sufficient: false
+            sufficient_sample: true
+          rates:
+            f1: null
+            fpr: 0
+            mcc: null
+            precision: null
+            tpr: null
+        benign_json:
+          class: benign_json
+          counts:
+            excluded: 0
+            fn: 0
+            fp: 0
+            tn: 60
+            tp: 0
+          kind: benign
+          latency:
+            method: nearest_rank
+            n: 60
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 1
+            p99_sufficient: false
+            sufficient_sample: true
+          rates:
+            f1: null
+            fpr: 0
+            mcc: null
+            precision: null
+            tpr: null
+        benign_path:
+          class: benign_path
+          counts:
+            excluded: 0
+            fn: 0
+            fp: 0
+            tn: 1
+            tp: 0
+          kind: benign
+          latency:
+            method: nearest_rank
+            n: 1
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 0
+            p99_sufficient: false
+            sufficient_sample: false
+          rates:
+            f1: null
+            fpr: 0
+            mcc: null
+            precision: null
+            tpr: null
+        benign_query:
+          class: benign_query
+          counts:
+            excluded: 0
+            fn: 0
+            fp: 0
+            tn: 59
+            tp: 0
+          kind: benign
+          latency:
+            method: nearest_rank
+            n: 59
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 0
+            p99_sufficient: false
+            sufficient_sample: true
+          rates:
+            f1: null
+            fpr: 0
+            mcc: null
+            precision: null
+            tpr: null
+        benign_text:
+          class: benign_text
+          counts:
+            excluded: 0
+            fn: 0
+            fp: 0
+            tn: 60
+            tp: 0
+          kind: benign
+          latency:
+            method: nearest_rank
+            n: 60
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 0
+            p99_sufficient: false
+            sufficient_sample: true
+          rates:
+            f1: null
+            fpr: 0
+            mcc: null
+            precision: null
+            tpr: null
+        command_injection:
+          class: command_injection
+          counts:
+            excluded: 0
+            fn: 0
+            fp: 0
+            tn: 0
+            tp: 30
+          kind: attack
+          latency:
+            method: nearest_rank
+            n: 30
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 2
+            p99_sufficient: false
+            sufficient_sample: true
+          owasp: "A03:2021-Injection"
+          rates:
+            f1: 1
+            fpr: null
+            mcc: null
+            precision: 1
+            tpr: 1
+        crlf_injection:
+          class: crlf_injection
+          counts:
+            excluded: 0
+            fn: 0
+            fp: 0
+            tn: 0
+            tp: 30
+          kind: attack
+          latency:
+            method: nearest_rank
+            n: 30
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 0
+            p99_sufficient: false
+            sufficient_sample: true
+          owasp: "A03:2021-Injection"
+          rates:
+            f1: 1
+            fpr: null
+            mcc: null
+            precision: 1
+            tpr: 1
+        ldap_injection:
+          class: ldap_injection
+          counts:
+            excluded: 0
+            fn: 0
+            fp: 0
+            tn: 0
+            tp: 30
+          kind: attack
+          latency:
+            method: nearest_rank
+            n: 30
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 0
+            p99_sufficient: false
+            sufficient_sample: true
+          owasp: "A03:2021-Injection"
+          rates:
+            f1: 1
+            fpr: null
+            mcc: null
+            precision: 1
+            tpr: 1
+        nosql_injection:
+          class: nosql_injection
+          counts:
+            excluded: 0
+            fn: 0
+            fp: 0
+            tn: 0
+            tp: 30
+          kind: attack
+          latency:
+            method: nearest_rank
+            n: 30
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 0
+            p99_sufficient: false
+            sufficient_sample: true
+          owasp: "A03:2021-Injection"
+          rates:
+            f1: 1
+            fpr: null
+            mcc: null
+            precision: 1
+            tpr: 1
+        path_traversal:
+          class: path_traversal
+          counts:
+            excluded: 0
+            fn: 0
+            fp: 0
+            tn: 0
+            tp: 30
+          kind: attack
+          latency:
+            method: nearest_rank
+            n: 30
+            p50_ms: 0
+            p95_ms: 1
+            p99_ms: 1
+            p99_sufficient: false
+            sufficient_sample: true
+          owasp: "A01:2021-Broken Access Control"
+          rates:
+            f1: 1
+            fpr: null
+            mcc: null
+            precision: 1
+            tpr: 1
+        sqli:
+          class: sqli
+          counts:
+            excluded: 0
+            fn: 0
+            fp: 0
+            tn: 0
+            tp: 30
+          kind: attack
+          latency:
+            method: nearest_rank
+            n: 30
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 1
+            p99_sufficient: false
+            sufficient_sample: true
+          owasp: "A03:2021-Injection"
+          rates:
+            f1: 1
+            fpr: null
+            mcc: null
+            precision: 1
+            tpr: 1
+        ssrf:
+          class: ssrf
+          counts:
+            excluded: 0
+            fn: 0
+            fp: 0
+            tn: 0
+            tp: 30
+          kind: attack
+          latency:
+            method: nearest_rank
+            n: 30
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 1
+            p99_sufficient: false
+            sufficient_sample: true
+          owasp: "A10:2021-Server-Side Request Forgery"
+          rates:
+            f1: 1
+            fpr: null
+            mcc: null
+            precision: 1
+            tpr: 1
+        ssti:
+          class: ssti
+          counts:
+            excluded: 0
+            fn: 0
+            fp: 0
+            tn: 0
+            tp: 30
+          kind: attack
+          latency:
+            method: nearest_rank
+            n: 30
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 0
+            p99_sufficient: false
+            sufficient_sample: true
+          owasp: "A03:2021-Injection"
+          rates:
+            f1: 1
+            fpr: null
+            mcc: null
+            precision: 1
+            tpr: 1
+        xss:
+          class: xss
+          counts:
+            excluded: 0
+            fn: 0
+            fp: 0
+            tn: 0
+            tp: 30
+          kind: attack
+          latency:
+            method: nearest_rank
+            n: 30
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 0
+            p99_sufficient: false
+            sufficient_sample: true
+          owasp: "A03:2021-Injection"
+          rates:
+            f1: 1
+            fpr: null
+            mcc: null
+            precision: 1
+            tpr: 1
+        xxe:
+          class: xxe
+          counts:
+            excluded: 0
+            fn: 0
+            fp: 0
+            tn: 0
+            tp: 30
+          kind: attack
+          latency:
+            method: nearest_rank
+            n: 30
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 0
+            p99_sufficient: false
+            sufficient_sample: true
+          owasp: "A05:2021-Security Misconfiguration"
+          rates:
+            f1: 1
+            fpr: null
+            mcc: null
+            precision: 1
+            tpr: 1
+      counts:
+        excluded: 0
+        fn: 0
+        fp: 0
+        tn: 300
+        tp: 300
+      latency:
+        method: nearest_rank
+        n: 600
+        p50_ms: 0
+        p95_ms: 0
+        p99_ms: 1
+        p99_sufficient: true
+        sufficient_sample: true
+      rates:
+        f1: 1
+        fpr: 0
+        mcc: 1
+        precision: 1
+        tpr: 1
+    tamper:
+      arm: tamper
+      cases: 600
+      classes:
+        benign_cookie:
+          class: benign_cookie
+          counts:
+            excluded: 0
+            fn: 0
+            fp: 0
+            tn: 30
+            tp: 0
+          kind: benign
+          latency:
+            method: nearest_rank
+            n: 30
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 0
+            p99_sufficient: false
+            sufficient_sample: true
+          rates:
+            f1: null
+            fpr: 0
+            mcc: null
+            precision: null
+            tpr: null
+        benign_form:
+          class: benign_form
+          counts:
+            excluded: 0
+            fn: 0
+            fp: 0
+            tn: 50
+            tp: 0
+          kind: benign
+          latency:
+            method: nearest_rank
+            n: 50
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 1
+            p99_sufficient: false
+            sufficient_sample: true
+          rates:
+            f1: null
+            fpr: 0
+            mcc: null
+            precision: null
+            tpr: null
+        benign_header:
+          class: benign_header
+          counts:
+            excluded: 0
+            fn: 0
+            fp: 0
+            tn: 40
+            tp: 0
+          kind: benign
+          latency:
+            method: nearest_rank
+            n: 40
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 0
+            p99_sufficient: false
+            sufficient_sample: true
+          rates:
+            f1: null
+            fpr: 0
+            mcc: null
+            precision: null
+            tpr: null
+        benign_json:
+          class: benign_json
+          counts:
+            excluded: 0
+            fn: 0
+            fp: 0
+            tn: 60
+            tp: 0
+          kind: benign
+          latency:
+            method: nearest_rank
+            n: 60
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 0
+            p99_sufficient: false
+            sufficient_sample: true
+          rates:
+            f1: null
+            fpr: 0
+            mcc: null
+            precision: null
+            tpr: null
+        benign_path:
+          class: benign_path
+          counts:
+            excluded: 1
+            fn: 0
+            fp: 0
+            tn: 0
+            tp: 0
+          kind: benign
+          latency:
+            method: nearest_rank
+            n: 0
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 0
+            p99_sufficient: false
+            sufficient_sample: false
+          rates:
+            f1: null
+            fpr: null
+            mcc: null
+            precision: null
+            tpr: null
+        benign_query:
+          class: benign_query
+          counts:
+            excluded: 0
+            fn: 0
+            fp: 0
+            tn: 59
+            tp: 0
+          kind: benign
+          latency:
+            method: nearest_rank
+            n: 59
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 0
+            p99_sufficient: false
+            sufficient_sample: true
+          rates:
+            f1: null
+            fpr: 0
+            mcc: null
+            precision: null
+            tpr: null
+        benign_text:
+          class: benign_text
+          counts:
+            excluded: 0
+            fn: 0
+            fp: 0
+            tn: 60
+            tp: 0
+          kind: benign
+          latency:
+            method: nearest_rank
+            n: 60
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 1
+            p99_sufficient: false
+            sufficient_sample: true
+          rates:
+            f1: null
+            fpr: 0
+            mcc: null
+            precision: null
+            tpr: null
+        command_injection:
+          class: command_injection
+          counts:
+            excluded: 0
+            fn: 2
+            fp: 0
+            tn: 0
+            tp: 28
+          kind: attack
+          latency:
+            method: nearest_rank
+            n: 30
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 0
+            p99_sufficient: false
+            sufficient_sample: true
+          owasp: "A03:2021-Injection"
+          rates:
+            f1: 0.9655172413793104
+            fpr: null
+            mcc: null
+            precision: 1
+            tpr: 0.9333333333333333
+        crlf_injection:
+          class: crlf_injection
+          counts:
+            excluded: 0
+            fn: 6
+            fp: 0
+            tn: 0
+            tp: 24
+          kind: attack
+          latency:
+            method: nearest_rank
+            n: 30
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 0
+            p99_sufficient: false
+            sufficient_sample: true
+          owasp: "A03:2021-Injection"
+          rates:
+            f1: 0.888888888888889
+            fpr: null
+            mcc: null
+            precision: 1
+            tpr: 0.8
+        ldap_injection:
+          class: ldap_injection
+          counts:
+            excluded: 0
+            fn: 1
+            fp: 0
+            tn: 0
+            tp: 29
+          kind: attack
+          latency:
+            method: nearest_rank
+            n: 30
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 0
+            p99_sufficient: false
+            sufficient_sample: true
+          owasp: "A03:2021-Injection"
+          rates:
+            f1: 0.983050847457627
+            fpr: null
+            mcc: null
+            precision: 1
+            tpr: 0.9666666666666667
+        nosql_injection:
+          class: nosql_injection
+          counts:
+            excluded: 0
+            fn: 1
+            fp: 0
+            tn: 0
+            tp: 29
+          kind: attack
+          latency:
+            method: nearest_rank
+            n: 30
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 0
+            p99_sufficient: false
+            sufficient_sample: true
+          owasp: "A03:2021-Injection"
+          rates:
+            f1: 0.983050847457627
+            fpr: null
+            mcc: null
+            precision: 1
+            tpr: 0.9666666666666667
+        path_traversal:
+          class: path_traversal
+          counts:
+            excluded: 0
+            fn: 1
+            fp: 0
+            tn: 0
+            tp: 29
+          kind: attack
+          latency:
+            method: nearest_rank
+            n: 30
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 0
+            p99_sufficient: false
+            sufficient_sample: true
+          owasp: "A01:2021-Broken Access Control"
+          rates:
+            f1: 0.983050847457627
+            fpr: null
+            mcc: null
+            precision: 1
+            tpr: 0.9666666666666667
+        sqli:
+          class: sqli
+          counts:
+            excluded: 0
+            fn: 1
+            fp: 0
+            tn: 0
+            tp: 29
+          kind: attack
+          latency:
+            method: nearest_rank
+            n: 30
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 0
+            p99_sufficient: false
+            sufficient_sample: true
+          owasp: "A03:2021-Injection"
+          rates:
+            f1: 0.983050847457627
+            fpr: null
+            mcc: null
+            precision: 1
+            tpr: 0.9666666666666667
+        ssrf:
+          class: ssrf
+          counts:
+            excluded: 0
+            fn: 0
+            fp: 0
+            tn: 0
+            tp: 30
+          kind: attack
+          latency:
+            method: nearest_rank
+            n: 30
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 0
+            p99_sufficient: false
+            sufficient_sample: true
+          owasp: "A10:2021-Server-Side Request Forgery"
+          rates:
+            f1: 1
+            fpr: null
+            mcc: null
+            precision: 1
+            tpr: 1
+        ssti:
+          class: ssti
+          counts:
+            excluded: 0
+            fn: 1
+            fp: 0
+            tn: 0
+            tp: 29
+          kind: attack
+          latency:
+            method: nearest_rank
+            n: 30
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 0
+            p99_sufficient: false
+            sufficient_sample: true
+          owasp: "A03:2021-Injection"
+          rates:
+            f1: 0.983050847457627
+            fpr: null
+            mcc: null
+            precision: 1
+            tpr: 0.9666666666666667
+        xss:
+          class: xss
+          counts:
+            excluded: 0
+            fn: 1
+            fp: 0
+            tn: 0
+            tp: 29
+          kind: attack
+          latency:
+            method: nearest_rank
+            n: 30
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 0
+            p99_sufficient: false
+            sufficient_sample: true
+          owasp: "A03:2021-Injection"
+          rates:
+            f1: 0.983050847457627
+            fpr: null
+            mcc: null
+            precision: 1
+            tpr: 0.9666666666666667
+        xxe:
+          class: xxe
+          counts:
+            excluded: 0
+            fn: 1
+            fp: 0
+            tn: 0
+            tp: 29
+          kind: attack
+          latency:
+            method: nearest_rank
+            n: 30
+            p50_ms: 0
+            p95_ms: 0
+            p99_ms: 0
+            p99_sufficient: false
+            sufficient_sample: true
+          owasp: "A05:2021-Security Misconfiguration"
+          rates:
+            f1: 0.983050847457627
+            fpr: null
+            mcc: null
+            precision: 1
+            tpr: 0.9666666666666667
+      counts:
+        excluded: 1
+        fn: 15
+        fp: 0
+        tn: 299
+        tp: 285
+      excluded_by_reason:
+        other_4xx: 1
+      latency:
+        method: nearest_rank
+        n: 599
+        p50_ms: 0
+        p95_ms: 0
+        p99_ms: 0
+        p99_sufficient: true
+        sufficient_sample: true
+      rates:
+        f1: 0.9743589743589743
+        fpr: 0
+        mcc: 0.9511139965298085
+        precision: 1
+        tpr: 0.95
+      selection_basis: "auto: vendor=xammu-reference-waf confidence=high; generic representation-shifting candidate; no vendor-specific bypass knowledge is asserted"
+      tamper_stack:
+        - url_encode_double
+        - case_switch
+  authorization_ref: AUTH-EFFECTIVENESS-LOCAL-002
+  cases: 600
+  classes:
+    benign_cookie:
+      class: benign_cookie
+      counts:
+        excluded: 0
+        fn: 0
+        fp: 0
+        tn: 30
+        tp: 0
+      kind: benign
+      latency:
+        method: nearest_rank
+        n: 30
+        p50_ms: 0
+        p95_ms: 0
+        p99_ms: 0
+        p99_sufficient: false
+        sufficient_sample: true
+      rates:
+        f1: null
+        fpr: 0
+        mcc: null
+        precision: null
+        tpr: null
+    benign_form:
+      class: benign_form
+      counts:
+        excluded: 0
+        fn: 0
+        fp: 0
+        tn: 50
+        tp: 0
+      kind: benign
+      latency:
+        method: nearest_rank
+        n: 50
+        p50_ms: 0
+        p95_ms: 0
+        p99_ms: 1
+        p99_sufficient: false
+        sufficient_sample: true
+      rates:
+        f1: null
+        fpr: 0
+        mcc: null
+        precision: null
+        tpr: null
+    benign_header:
+      class: benign_header
+      counts:
+        excluded: 0
+        fn: 0
+        fp: 0
+        tn: 40
+        tp: 0
+      kind: benign
+      latency:
+        method: nearest_rank
+        n: 40
+        p50_ms: 0
+        p95_ms: 0
+        p99_ms: 0
+        p99_sufficient: false
+        sufficient_sample: true
+      rates:
+        f1: null
+        fpr: 0
+        mcc: null
+        precision: null
+        tpr: null
+    benign_json:
+      class: benign_json
+      counts:
+        excluded: 0
+        fn: 0
+        fp: 0
+        tn: 60
+        tp: 0
+      kind: benign
+      latency:
+        method: nearest_rank
+        n: 60
+        p50_ms: 0
+        p95_ms: 0
+        p99_ms: 1
+        p99_sufficient: false
+        sufficient_sample: true
+      rates:
+        f1: null
+        fpr: 0
+        mcc: null
+        precision: null
+        tpr: null
+    benign_path:
+      class: benign_path
+      counts:
+        excluded: 0
+        fn: 0
+        fp: 0
+        tn: 1
+        tp: 0
+      kind: benign
+      latency:
+        method: nearest_rank
+        n: 1
+        p50_ms: 0
+        p95_ms: 0
+        p99_ms: 0
+        p99_sufficient: false
+        sufficient_sample: false
+      rates:
+        f1: null
+        fpr: 0
+        mcc: null
+        precision: null
+        tpr: null
+    benign_query:
+      class: benign_query
+      counts:
+        excluded: 0
+        fn: 0
+        fp: 0
+        tn: 59
+        tp: 0
+      kind: benign
+      latency:
+        method: nearest_rank
+        n: 59
+        p50_ms: 0
+        p95_ms: 0
+        p99_ms: 0
+        p99_sufficient: false
+        sufficient_sample: true
+      rates:
+        f1: null
+        fpr: 0
+        mcc: null
+        precision: null
+        tpr: null
+    benign_text:
+      class: benign_text
+      counts:
+        excluded: 0
+        fn: 0
+        fp: 0
+        tn: 60
+        tp: 0
+      kind: benign
+      latency:
+        method: nearest_rank
+        n: 60
+        p50_ms: 0
+        p95_ms: 0
+        p99_ms: 0
+        p99_sufficient: false
+        sufficient_sample: true
+      rates:
+        f1: null
+        fpr: 0
+        mcc: null
+        precision: null
+        tpr: null
+    command_injection:
+      class: command_injection
+      counts:
+        excluded: 0
+        fn: 0
+        fp: 0
+        tn: 0
+        tp: 30
+      kind: attack
+      latency:
+        method: nearest_rank
+        n: 30
+        p50_ms: 0
+        p95_ms: 0
+        p99_ms: 2
+        p99_sufficient: false
+        sufficient_sample: true
+      owasp: "A03:2021-Injection"
+      rates:
+        f1: 1
+        fpr: null
+        mcc: null
+        precision: 1
+        tpr: 1
+    crlf_injection:
+      class: crlf_injection
+      counts:
+        excluded: 0
+        fn: 0
+        fp: 0
+        tn: 0
+        tp: 30
+      kind: attack
+      latency:
+        method: nearest_rank
+        n: 30
+        p50_ms: 0
+        p95_ms: 0
+        p99_ms: 0
+        p99_sufficient: false
+        sufficient_sample: true
+      owasp: "A03:2021-Injection"
+      rates:
+        f1: 1
+        fpr: null
+        mcc: null
+        precision: 1
+        tpr: 1
+    ldap_injection:
+      class: ldap_injection
+      counts:
+        excluded: 0
+        fn: 0
+        fp: 0
+        tn: 0
+        tp: 30
+      kind: attack
+      latency:
+        method: nearest_rank
+        n: 30
+        p50_ms: 0
+        p95_ms: 0
+        p99_ms: 0
+        p99_sufficient: false
+        sufficient_sample: true
+      owasp: "A03:2021-Injection"
+      rates:
+        f1: 1
+        fpr: null
+        mcc: null
+        precision: 1
+        tpr: 1
+    nosql_injection:
+      class: nosql_injection
+      counts:
+        excluded: 0
+        fn: 0
+        fp: 0
+        tn: 0
+        tp: 30
+      kind: attack
+      latency:
+        method: nearest_rank
+        n: 30
+        p50_ms: 0
+        p95_ms: 0
+        p99_ms: 0
+        p99_sufficient: false
+        sufficient_sample: true
+      owasp: "A03:2021-Injection"
+      rates:
+        f1: 1
+        fpr: null
+        mcc: null
+        precision: 1
+        tpr: 1
+    path_traversal:
+      class: path_traversal
+      counts:
+        excluded: 0
+        fn: 0
+        fp: 0
+        tn: 0
+        tp: 30
+      kind: attack
+      latency:
+        method: nearest_rank
+        n: 30
+        p50_ms: 0
+        p95_ms: 1
+        p99_ms: 1
+        p99_sufficient: false
+        sufficient_sample: true
+      owasp: "A01:2021-Broken Access Control"
+      rates:
+        f1: 1
+        fpr: null
+        mcc: null
+        precision: 1
+        tpr: 1
+    sqli:
+      class: sqli
+      counts:
+        excluded: 0
+        fn: 0
+        fp: 0
+        tn: 0
+        tp: 30
+      kind: attack
+      latency:
+        method: nearest_rank
+        n: 30
+        p50_ms: 0
+        p95_ms: 0
+        p99_ms: 1
+        p99_sufficient: false
+        sufficient_sample: true
+      owasp: "A03:2021-Injection"
+      rates:
+        f1: 1
+        fpr: null
+        mcc: null
+        precision: 1
+        tpr: 1
+    ssrf:
+      class: ssrf
+      counts:
+        excluded: 0
+        fn: 0
+        fp: 0
+        tn: 0
+        tp: 30
+      kind: attack
+      latency:
+        method: nearest_rank
+        n: 30
+        p50_ms: 0
+        p95_ms: 0
+        p99_ms: 1
+        p99_sufficient: false
+        sufficient_sample: true
+      owasp: "A10:2021-Server-Side Request Forgery"
+      rates:
+        f1: 1
+        fpr: null
+        mcc: null
+        precision: 1
+        tpr: 1
+    ssti:
+      class: ssti
+      counts:
+        excluded: 0
+        fn: 0
+        fp: 0
+        tn: 0
+        tp: 30
+      kind: attack
+      latency:
+        method: nearest_rank
+        n: 30
+        p50_ms: 0
+        p95_ms: 0
+        p99_ms: 0
+        p99_sufficient: false
+        sufficient_sample: true
+      owasp: "A03:2021-Injection"
+      rates:
+        f1: 1
+        fpr: null
+        mcc: null
+        precision: 1
+        tpr: 1
+    xss:
+      class: xss
+      counts:
+        excluded: 0
+        fn: 0
+        fp: 0
+        tn: 0
+        tp: 30
+      kind: attack
+      latency:
+        method: nearest_rank
+        n: 30
+        p50_ms: 0
+        p95_ms: 0
+        p99_ms: 0
+        p99_sufficient: false
+        sufficient_sample: true
+      owasp: "A03:2021-Injection"
+      rates:
+        f1: 1
+        fpr: null
+        mcc: null
+        precision: 1
+        tpr: 1
+    xxe:
+      class: xxe
+      counts:
+        excluded: 0
+        fn: 0
+        fp: 0
+        tn: 0
+        tp: 30
+      kind: attack
+      latency:
+        method: nearest_rank
+        n: 30
+        p50_ms: 0
+        p95_ms: 0
+        p99_ms: 0
+        p99_sufficient: false
+        sufficient_sample: true
+      owasp: "A05:2021-Security Misconfiguration"
+      rates:
+        f1: 1
+        fpr: null
+        mcc: null
+        precision: 1
+        tpr: 1
+  comparison:
+    "all attack classes":
+      baseline_n: 300
+      baseline_tpr: 1
+      class: "all attack classes"
+      delta_pp: -5.000000000000004
+      tamper_n: 300
+      tamper_tpr: 0.95
+    command_injection:
+      baseline_n: 30
+      baseline_tpr: 1
+      class: command_injection
+      delta_pp: -6.666666666666665
+      tamper_n: 30
+      tamper_tpr: 0.9333333333333333
+    crlf_injection:
+      baseline_n: 30
+      baseline_tpr: 1
+      class: crlf_injection
+      delta_pp: -19.999999999999996
+      tamper_n: 30
+      tamper_tpr: 0.8
+    ldap_injection:
+      baseline_n: 30
+      baseline_tpr: 1
+      class: ldap_injection
+      delta_pp: -3.3333333333333326
+      tamper_n: 30
+      tamper_tpr: 0.9666666666666667
+    nosql_injection:
+      baseline_n: 30
+      baseline_tpr: 1
+      class: nosql_injection
+      delta_pp: -3.3333333333333326
+      tamper_n: 30
+      tamper_tpr: 0.9666666666666667
+    path_traversal:
+      baseline_n: 30
+      baseline_tpr: 1
+      class: path_traversal
+      delta_pp: -3.3333333333333326
+      tamper_n: 30
+      tamper_tpr: 0.9666666666666667
+    sqli:
+      baseline_n: 30
+      baseline_tpr: 1
+      class: sqli
+      delta_pp: -3.3333333333333326
+      tamper_n: 30
+      tamper_tpr: 0.9666666666666667
+    ssrf:
+      baseline_n: 30
+      baseline_tpr: 1
+      class: ssrf
+      delta_pp: 0
+      tamper_n: 30
+      tamper_tpr: 1
+    ssti:
+      baseline_n: 30
+      baseline_tpr: 1
+      class: ssti
+      delta_pp: -3.3333333333333326
+      tamper_n: 30
+      tamper_tpr: 0.9666666666666667
+    xss:
+      baseline_n: 30
+      baseline_tpr: 1
+      class: xss
+      delta_pp: -3.3333333333333326
+      tamper_n: 30
+      tamper_tpr: 0.9666666666666667
+    xxe:
+      baseline_n: 30
+      baseline_tpr: 1
+      class: xxe
+      delta_pp: -3.3333333333333326
+      tamper_n: 30
+      tamper_tpr: 0.9666666666666667
+  corpus_digest: "sha256:377882d1ccaea712fdee69f8ec96a46c7976a565658c32a3e8c4082dd06eeefd"
+  counts:
+    excluded: 0
+    fn: 0
+    fp: 0
+    tn: 300
+    tp: 300
+  excluded_by_reason: null
+  fingerprint:
+    observed_outcomes: 600
+    outcomes_with_evidence: 600
+    policy: xammu-waf-fingerprint/1.0.0
+    vendors:
+      xammu-reference-waf:
+        cases: 600
+        evidence:
+          reference-action:
+            detail: "header:x-xammu-reference-action"
+            kind: header
+            signature: reference-action
+            strength: identifying
+          reference-block-marker:
+            detail: "error_page:reference-block-marker"
+            kind: error_page
+            signature: reference-block-marker
+            strength: identifying
+          reference-server:
+            detail: "header:server"
+            kind: header
+            signature: reference-server
+            strength: identifying
+        recommendation_basis: "generic candidate only: no cited vendor-specific technique is available"
+        recommended_stacks:
+          "url_encode_double+case_switch":
+            basis: "generic representation-shifting candidate; no vendor-specific bypass knowledge is asserted"
+            stack:
+              - url_encode_double
+              - case_switch
+        support: high
+        vendor: xammu-reference-waf
+  generated_at: "2026-11-05T22:26:51.6988711Z"
+  latency:
+    method: nearest_rank
+    n: 600
+    p50_ms: 0
+    p95_ms: 0
+    p99_ms: 1
+    p99_sufficient: true
+    sufficient_sample: true
+  notes:
+    - "The top-level matrix is the baseline arm; arms publishes each arm separately."
+    - "Delta in the comparison table is tamper TPR minus baseline TPR in percentage points; it is arithmetic over the two matrices, not an estimated effect size."
+    - "TPR and FPR describe agreement with this corpus, on this target, in this window; they are not a claim of absolute efficacy."
+    - "429 is pacing, never a block (criterion 24): it is excluded and counted with the other inconclusive outcomes."
+    - "A zero-denominator metric is null; no value is invented."
+    - "Percentiles use nearest rank; p99 is marked insufficient below 100 samples and every summary below 20 samples."
+  rates:
+    f1: 1
+    fpr: 0
+    mcc: 1
+    precision: 1
+    tpr: 1
+  run_id: waf-effectiveness-2026-11-05-r7
+policy:
+  effectiveness:
+    max_excluded_ratio: 0
+    max_fpr: 0.05
+    min_precision: 0.7
+    min_tpr: 0.8
+  schema_version: xammu.policy/v1
+  sha256: "sha256:8fdd3a47858e0d9b8f12d63f6ae09c2baf090578cd0be44eced054f847a82ea9"
+schema_version: xammu.gate/v1
+source:
+  artifacts:
+    effectiveness_cases.jsonl: "sha256:8dec4e25fc2f577bbee6a469b8f69c6982ba639efabc0c794105afdb01194431"
+    effectiveness_metrics.jsonl: "sha256:a12998a5415e585bd261f1c799481ddfe363b3f6c4d614927e89533412a73995"
+    effectiveness_outcomes.jsonl: "sha256:d846464378bef72eb8b542f489d5de15d4a55291505f01368215cc2aa131624a"
+  bundle: runs/waf-effectiveness-2026-11-05-r7
+  kind: effectiveness
+  manifest_sha256: "sha256:07e6ccab529c0992a9a3bed87bed62348bd85b1858fca90cec41a46a6fee9497"
+  manifest_signer_key_id: edabfbcda5eb8f56
+  run_id: waf-effectiveness-2026-11-05-r7
+tool_version: xammu-1.0.0
+verdict: pass

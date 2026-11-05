@@ -1,0 +1,3 @@
+schema_version: "xammu.policy/v1"
+findings:
+  fail_on_priority: medium

@@ -6,5 +6,7 @@
 *.sh text eol=lf
 
 # Sealed evidence is hashed over the bytes on disk. Git must never convert these
-# files on checkout: a CRLF rewrite would break every signature in the bundle.
+# files on checkout: a CRLF rewrite would break every signature in the bundle,
+# and a byte added to a delivered document fails the same check.
 runs/** -text
+publications/** -text

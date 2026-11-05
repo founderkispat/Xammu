@@ -66,6 +66,9 @@ jobs:
       - name: reproducible release build
         run: ./scripts/release.sh
 
+      - name: gate demonstration (r6 fails, r7 passes, deliveries verify)
+        run: ./scripts/gate-demo.sh
+
       - name: upload checksum and evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:

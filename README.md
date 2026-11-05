@@ -9,8 +9,9 @@ observó, qué se infiere, qué falta y qué no puede saberse.
 
 > Estado a 2026-11-05: **entrega funcional en revisión**, no un producto aprobado. La suite
 > local está verde, los dos bundles de demostración verifican y las fases 1 y 2 de eficacia (§8)
-> se aceptaron en local; quedan declarados dos criterios que este repositorio no puede cerrar por
-> sí solo (CI y prueba con ingeniero externo) en [`docs/acceptance.md`](docs/acceptance.md).
+> y la fase 3 (gate, informe y entrega sellada) se aceptaron en local; quedan declarados dos
+> criterios que este repositorio no puede cerrar por sí solo (CI y prueba con ingeniero externo)
+> en [`docs/acceptance.md`](docs/acceptance.md).
 
 ---
 
@@ -404,6 +405,74 @@ también al re-admitir su valor transformado, sin relajar ninguna otra regla.
 
 ---
 
+## Gate de CI/CD y entregables (fase 3)
+
+La Fase 3 convierte la medición en un artefacto que una tubería puede consumir: un documento
+versionado, un SARIF para Code Scanning, un informe profesional y una entrega firmada. El gate no
+envía tráfico: lee un bundle sellado, aplica una política declarada y devuelve un código de salida.
+La política no se descubre: sin `--policy` el comando se niega a ejecutarse.
+
+```powershell
+# el bundle que falla la política (r6, TPR 8,33 %) sale 1
+go run ./cmd/xammu gate --store runs/waf-effectiveness-2026-11-05-r6 `
+  --policy policies/effectiveness-reference.yaml --format markdown
+
+# el bundle que la cumple (r7) sale 0 y escribe la entrega completa firmada
+go run ./cmd/xammu gate --store runs/waf-effectiveness-2026-11-05-r7 `
+  --policy policies/effectiveness-reference.yaml --format all `
+  --out publications/waf-effectiveness-2026-11-05-r7 `
+  --signing-key .xammu-signing.ed25519 --trust-key trust/waf-effectiveness.pub
+
+# verificar la entrega: esquema, firma del sobre, sha256 de cada archivo y del manifiesto
+go run ./cmd/xammu verify --publication publications/waf-effectiveness-2026-11-05-r7 `
+  --trust-key trust/waf-effectiveness.pub
+```
+
+- **Códigos de salida:** `0` todos los checks aplicables cumplen la política; `1` un check falla
+  (es un resultado sobre el objetivo); `2` el gate no pudo evaluar (CLI, bundle, política o
+  evidencia) y el defecto es de la herramienta.
+- **Documentos:** `gate --format json` es la fuente autoritativa (`xammu.gate/v1`, esquema en
+  `schemas/`); `yaml` indexa los mismos valores; `sarif` produce un resultado por check fallido y
+  por finding C-16 sellado; `markdown` es el informe de siete secciones; `annex` y `all` añaden el
+  anexo ES/EN. `--format all` exige `--out` y `--signing-key`: sin firma no hay entrega sellada.
+- **Entrega sellada:** seis documentos más `publication.json` (`xammu.publication/v1`). El sobre
+  firma con Ed25519 sobre `sha256(canonical-json(publication sin los campos de firma))`, lista cada
+  archivo con su sha256 y nombra el manifiesto de origen, su digest y su firmante. `verify
+  --publication` re-deriva el veredicto desde `gate.json` y la política embebida, así que un
+  veredicto re-firmado que sus propios checks no producen se rechaza.
+- **Confianza:** `--trust-key` ancla la **identidad del sobre**. El manifiesto de origen debe
+  verificar y coincidir con el digest y la clave que el sobre declara; su identidad solo se informa
+  como anclada cuando la misma clave lo firmó. La clave privada no se copia al bundle ni a la
+  entrega, y `.xammu-signing.ed25519` no está en el árbol.
+- **Fingerprint en el informe:** si el objetivo se identifica como el fixture de referencia, el
+  resumen y los límites lo dicen: esas cifras demuestran la tubería, no la eficacia de un producto.
+- **Pipeline de ejemplo:** [`examples/ci`](examples/ci) declara la ingesta en GitHub Code Scanning,
+  GitLab, Azure Pipelines y Jenkins. `scripts/gate-demo.sh` comprueba sin red que r6 sale 1, r7 sale
+  0, los SARIF declaran cada regla que citan y ambas entregas publicadas verifican; corre dentro de
+  `scripts/ci-local.sh` y del workflow activo.
+
+**El WAF de referencia separado del laboratorio.** `examples/reference-waf` es un fixture de
+demostración —no una modificación de `lab/waf` ni una recomendación de producto— que escucha en
+`127.0.0.1:8099`, reenvía al mismo origen y usa la misma C-09 `AUTH-EFFECTIVENESS-LOCAL-002` con
+`--budget 1200`. Sus reglas son compuestas (marcador **y** forma de la clase), normaliza con hasta
+tres pasadas de percent-decode y minúsculas, y bloquea con 403 y `XAMMU-REFERENCE-WAF-BLOCK` sin
+ejecutar nada. Un test carga los 600 casos y exige 300 bloqueos de ataque y 300 pasos benignos antes
+de gastar una sola solicitud.
+
+| corrida | solicitudes | TP | FN | FP | TN | TPR |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `r7` línea base | 600 | 300 | 0 | 0 | 300 | 100,00 % |
+| `r7` brazo tamper (`url_encode_double → case_switch`) | 600 | 285 | 15 | 0 | 300 | 95,00 % |
+
+Con `policies/effectiveness-reference.yaml` (umbrales fijados **antes** de la corrida), `r6` sale 1
+por `effectiveness.tpr` y `r7` sale 0 con 6 checks aplicables. La comparación base vs tamper entra
+como control informativo: 100,00 % → 95,00 %, delta −5,00 pp. El fingerprint identifica
+`xammu-reference-waf` con apoyo `high`; la pila candidata es la genérica de cambio de representación,
+porque no se publica conocimiento de bypass del fixture. Los sobres de r6 y r7 se publican en
+`publications/` y verifican con `trust/waf-effectiveness.pub`.
+
+---
+
 ## 9. Qué garantiza `verify` y qué no
 
 Garantiza: el manifiesto satisface C-12, la firma Ed25519 es válida, el payload recomputa, todos
@@ -436,8 +505,11 @@ también: `TestVerifyStatesWhatTheSignatureDoesNotCover` y `TestVerifyAnchoredne
 | `internal/effectiveness` | corpus de eficacia, ejecución por brazos, observación y métricas E-01/E-02/E-03 |
 | `internal/tamper` | primitivas de re-codificación, pilas de 1–3 y conservación del marcador |
 | `internal/fingerprint` | tabla de firmas de WAF, atribución por respuesta y apoyo categórico |
+| `internal/annex` | anexo de cliente ES/EN y vista de eficacia, desde el mismo documento |
+| `internal/gate` | política, checks, JSON/YAML/SARIF, informe de siete secciones y sobre `xammu.publication/v1` |
 | `internal/yamlish` | parser YAML restringido: documentos, mapas, escalares; rechaza lo que no soporta |
-| `cmd/xammu` | CLI: `run`, `playbook`, `report`, `verify`, `validate`, `corpus`, `lab`, `effectiveness` |
+| `examples/reference-waf` | fixture de demostración con reglas compuestas y preflight sobre los 600 casos |
+| `cmd/xammu` | CLI: `run`, `playbook`, `report`, `verify`, `validate`, `corpus`, `lab`, `effectiveness`, `gate` |
 
 ---
 
@@ -495,11 +567,11 @@ La equivalencia completa y el estado de cada criterio están en
 1. `bash scripts/certify.sh` — formato, vet, build, suite completa, `corpus check`,
    `effectiveness check`, `verify` de los dos bundles de demostración y del bundle de eficacia,
    anexos ES/EN, build reproducible byte a byte y hash del árbol; escribe la evidencia
-   en `dist/certification-<UTC>.txt`. Solo `go test ./...` son 346 funciones en 19 paquetes.
+   en `dist/certification-<UTC>.txt`. Solo `go test ./...` son 428 funciones en 23 paquetes.
 2. `bash scripts/ci-local.sh` — espejo local de `.github/workflows/ci.yml`: formato, vet, suite,
-   `-race` si hay cgo, `govulncheck` y gitleaks si están en `PATH`, build reproducible y SBOM si
-   Syft está instalado. Escribe `dist/ci-local-<UTC>.txt` y cada `SKIP` queda contado en el
-   resultado.
+   `-race` si hay cgo, `govulncheck` y gitleaks si están en `PATH`, build reproducible, la
+   demostración del gate y SBOM si Syft está instalado. Escribe `dist/ci-local-<UTC>.txt` y cada
+   `SKIP` queda contado en el resultado.
 3. `sed -n '1,80p' docs/acceptance.md` — los 29 criterios con su prueba y lo que falta.
 4. `go run ./cmd/xammu verify --run demo-lab --authorization AUTH-SMOKE-LOCAL-001 --authorizations authorizations --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query,body_json,cookie --trust-key trust/demo-lab.pub`
 5. `go run ./cmd/xammu report --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --authorizations authorizations --issuer-keyring trust/issuers --corpus corpus --format human` — los tres `coverage_gap`.
@@ -519,6 +591,12 @@ La equivalencia completa y el estado de cada criterio están en
   límites, brechas abiertas y tabla de firma.
 - [`docs/acceptance.md`](docs/acceptance.md) — matriz de los 29 criterios, definición de
   terminado, desviación de §9.3, protocolo de la prueba de utilidad y qué garantiza `verify`.
+- [`docs/gate-output.md`](docs/gate-output.md) — formato de `gate.json`, `gate.yaml`, `results.sarif`,
+  `report.md`, los anexos y `publication.json`, y qué comprueba `verify --publication`.
+- [`examples/ci`](examples/ci) — workflow de GitHub Code Scanning y snippets de GitLab, Azure
+  Pipelines y Jenkins para consumir el código de salida, la política y el SARIF.
+- [`examples/reference-waf`](examples/reference-waf) — fixture de demostración fail/pass, con su
+  preflight sobre los 600 casos y sus límites declarados.
 - [`lab/README.md`](lab/README.md) — reconstrucción del fixture, comportamientos, límites y
   decisiones documentadas.
 - [`corpus/README.md`](corpus/README.md) — particiones, controles de calibración y límites del

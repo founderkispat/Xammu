@@ -1,0 +1,6 @@
+schema_version: "xammu.policy/v1"
+effectiveness:
+  min_tpr: 0.80
+  max_fpr: 0.05
+  min_precision: 0.70
+  max_excluded_ratio: 0.0

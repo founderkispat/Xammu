@@ -15,6 +15,11 @@ import "xammu/internal/contracts"
 // in E-03 so a reader can see which rule produced a finding.
 const Policy = "xammu-waf-fingerprint/1.0.0"
 
+// VendorReferenceFixture is the vendor the repository's own Phase 3 fixture
+// identifies as. It is named here so a reader that reports on its numbers can
+// say what they do and do not demonstrate.
+const VendorReferenceFixture = "xammu-reference-waf"
+
 // Kind is what produced one piece of evidence.
 type Kind string
 
@@ -68,6 +73,21 @@ var signatures = []signature{
 		Detail: "error_page:lab-block-marker",
 	},
 	{
+		ID: "reference-server", Vendor: VendorReferenceFixture, Kind: KindHeader,
+		Strength: StrengthIdentifying, Header: "server", ValueContains: "xammu-reference-waf",
+		Detail: "header:server",
+	},
+	{
+		ID: "reference-action", Vendor: VendorReferenceFixture, Kind: KindHeader,
+		Strength: StrengthIdentifying, Header: "x-xammu-reference-action", ValueContains: "reject",
+		Detail: "header:x-xammu-reference-action",
+	},
+	{
+		ID: "reference-block-marker", Vendor: VendorReferenceFixture, Kind: KindErrorPage,
+		Strength: StrengthIdentifying, BodyContains: "XAMMU-REFERENCE-WAF-BLOCK",
+		Detail: "error_page:reference-block-marker",
+	},
+	{
 		ID: "cloudflare-ray", Vendor: "cloudflare", Kind: KindHeader,
 		Strength: StrengthIdentifying, Header: "cf-ray",
 		Detail: "header:cf-ray",
@@ -115,6 +135,8 @@ func SignatureBasis(id string) string {
 	switch id {
 	case "lab-server", "lab-action", "lab-block-marker":
 		return "the laboratory WAF sets this marker itself; see lab/waf/proxy.go"
+	case "reference-server", "reference-action", "reference-block-marker":
+		return "the repository's reference fixture sets this marker itself; see examples/reference-waf"
 	case "cloudflare-ray":
 		return "cf-ray is Cloudflare's documented request identifier"
 	case "sucuri-id", "sucuri-cache":

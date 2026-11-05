@@ -119,6 +119,31 @@ detecciones como los falsos positivos, que es un resultado de ceguera, no de mej
 identifica el WAF del laboratorio con apoyo `high`; las pilas se publican como candidatas a medir.
 El detalle está en `runs/waf-effectiveness-2026-11-05-r6/effectiveness-report.md`.
 
+## 2.7 Fase 3 — gate de CI/CD, informe y entrega sellada
+
+La Fase 3 tampoco amplía los 29 criterios. Su contrato está en `docs/audit-handoff.md` §15 y su
+aceptación, con la evidencia ejecutada, en §15.11; aquí se resume la prueba de cada punto.
+
+| punto | criterio | prueba / evidencia | estado |
+| --- | --- | --- | --- |
+| 3.1 JSON | `schema_version` presente; bytes idénticos en dos evaluaciones; campos de E-03 representados | `internal/gate/gate_test.go: TestJSONIsDeterministic`; el documento emitido lleva todas las claves de `MetricsView`; `schemas/xammu-gate-v1.schema.json` | ✅ |
+| 3.1 YAML | el documento emitido se re-parsea con `internal/yamlish` y coincide con el JSON | `gate_test.go: TestYAMLRoundTripsThroughTheRepositoryParser` | ✅ |
+| 3.1 SARIF | versión y `$schema` correctos, cada `ruleId` declarado, `level` en `error|warning|note`, ubicación en un journal inventariado | `gate_test.go: TestSARIFCarriesOneResultPerFailedCheck`, `TestSARIFReportsOneResultPerFindingAtTheFloor`, `TestSARIFIsEmptyWhenEveryCheckPasses`; `scripts/gate-demo.sh` repite la comprobación de forma | ✅ |
+| 3.2 umbrales | r6 sale 1 por `effectiveness.tpr`; r7 sale 0; un TPR nulo falla con `no denominator`; una política con `critical` sale 2 | `policies/effectiveness-reference.yaml`; `TestNullRateFailsWithNoDenominatorInsteadOfZero`; ejecución manual del caso `critical` | ✅ |
+| 3.2 hallazgos | `fail_on_priority: medium` sobre `runs/demo-lab` sale 1 por sus 2 hallazgos; SARIF con un resultado por hallazgo citando `findings.jsonl` | `policies/profiling-demo.yaml`; gate sobre `runs/demo-lab` (`XAMMU-FINDING-ENCODING_BYPASS_PATTERN`, `XAMMU-FINDING-OVER_BLOCKING`) | ✅ |
+| 3.3 informe | siete secciones, nulos `n/a`, controles con evidencia y límites; el fixture de referencia se declara en resumen y límites | `publications/waf-effectiveness-2026-11-05-r7/report.md`; `internal/gate/report_test.go` | ✅ |
+| 3.3 anexo | `annex-es.md` y `annex-en.md` con las mismas cifras y campos; solo cambia el idioma | `internal/annex/effectiveness_test.go`; los dos archivos de la entrega de r7 | ✅ |
+| 3.3 sello | `publication.json` Ed25519, `verify --publication` sale 0, un byte alterado sale 1, otra clave de confianza sale 1, sin clave se informa no anclado | `internal/gate/publication_test.go`; `verify --publication publications/...-r6|r7 --trust-key trust/waf-effectiveness.pub` | ✅ |
+| demostración | r7 contra `examples/reference-waf`: preflight 600/600, TPR base 100,00 %, tamper 95,00 %, gate r6 = 1 y r7 = 0 | `examples/reference-waf/waf_test.go`; `runs/waf-effectiveness-2026-11-05-r7`; `scripts/gate-demo.sh` | ✅ |
+| pipeline | GitHub con `upload-sarif`, snippets de GitLab, Azure y Jenkins; demostración enganchada a CI | `examples/ci`; `scripts/gate-demo.sh` en `scripts/ci-local.sh` y `.github/workflows/ci.yml` | ✅ |
+| regresión | `go test ./...` en verde; r3, r6 y r7 re-derivan; corpus y `lab/waf` intactos; sin dependencias externas | suite completa; `verify --rederive` sobre los tres bundles | ✅ |
+
+Resultado de aceptación (loopback, 2026-11-05): r7 mide **TP 300 / FN 0 / FP 0 / TN 300** en la
+línea base y **TP 285 / FN 15 / FP 0 / TN 300** con `url_encode_double → case_switch`, 0 excluidos
+en ambos. El gate falla r6 (TPR 8,33 % < 80 %) y pasa r7 con 6 checks aplicables. Las cifras
+describen el fixture de referencia, calibrado contra este corpus; no son eficacia de un WAF real.
+Los sobres de ambas entregas verifican con `trust/waf-effectiveness.pub`.
+
 ---
 
 ## 3. Equivalencia de vocabulario
@@ -155,9 +180,9 @@ bash scripts/certify.sh        # aceptación interna completa
 ```
 
 `ci-local.sh` ejecuta formato, vet, build, suite, `-race` si hay cgo, `govulncheck` y gitleaks si
-están en `PATH`, el build reproducible y SBOM si Syft está instalado. Escribe
-`dist/ci-local-<UTC>.txt` y el resultado declara cuántos checks se saltaron y por qué. La secuencia
-manual equivalente, paso a paso, es la siguiente; cualquier fallo detiene la entrega:
+están en `PATH`, el build reproducible, `scripts/gate-demo.sh` y SBOM si Syft está instalado.
+Escribe `dist/ci-local-<UTC>.txt` y el resultado declara cuántos checks se saltaron y por qué. La
+secuencia manual equivalente, paso a paso, es la siguiente; cualquier fallo detiene la entrega:
 
 ```bash
 cd /d/Xammu
@@ -165,10 +190,12 @@ cd /d/Xammu
 gofmt -l cmd internal          # debe imprimir nada
 go vet ./...
 go build ./...
-go test ./...                  # 346 funciones de prueba, 19 paquetes
+go test ./...                  # 428 funciones de prueba, 23 paquetes
 
 go run ./cmd/xammu corpus check --corpus corpus
 go run ./cmd/xammu lab scenarios
+
+bash scripts/gate-demo.sh      # r6 = 1, r7 = 0, SARIF con forma, entregas que verifican
 
 go run ./cmd/xammu verify --run demo-lab \
   --authorization AUTH-SMOKE-LOCAL-001 --authorizations authorizations \

@@ -7,9 +7,10 @@
 *.ed25519
 *.key
 
-# Ephemeral run bundles; the two demonstrations are kept
+# Ephemeral run bundles; the demonstration runs are kept
 /runs/*
 !/runs/demo-lab/
 !/runs/demo-origin/
 !/runs/waf-effectiveness-2026-11-05-r3/
 !/runs/waf-effectiveness-2026-11-05-r6/
+!/runs/waf-effectiveness-2026-11-05-r7/

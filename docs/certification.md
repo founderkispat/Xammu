@@ -15,6 +15,10 @@ cumplimiento y no convierte a XAMMU en un escáner de vulnerabilidades.
   `runs/waf-effectiveness-2026-11-05-r3` y §13.6 de [`docs/audit-handoff.md`](audit-handoff.md).
 - Fase 2 (evasión y fingerprinting): aceptada en local el 2026-11-05; evidencia en
   `runs/waf-effectiveness-2026-11-05-r6` y §14.11 de [`docs/audit-handoff.md`](audit-handoff.md).
+- Fase 3 (gate, informe y entrega sellada): aceptada en local el 2026-11-05; evidencia en
+  `runs/waf-effectiveness-2026-11-05-r7` y en las entregas de `publications/` (r6 y r7), firmadas
+  con la clave cuya pública es `trust/waf-effectiveness.pub`; §15.11 de
+  [`docs/audit-handoff.md`](audit-handoff.md) y [`docs/gate-output.md`](gate-output.md).
 
 ---
 
@@ -44,9 +48,10 @@ la clave que verificó, nunca se acepta el texto declarado.
 La unidad certificada es el **árbol fuente más el binario**:
 
 1. El árbol se identifica con un `sha256` calculado sobre `cmd/`, `internal/`, `corpus/`, `lab/`,
-   `docs/`, `scripts/`, `tools/`, `authorizations/` (permisos y sus `.sig`), `trust/`, `go.mod`,
-   `README.md`, `LICENSE`, los dos bundles de demostración y los bundles de eficacia `r3` y `r6`. Lo
-   imprime `scripts/certify.sh` como `source tree sha256`.
+   `docs/`, `scripts/`, `tools/`, `authorizations/` (permisos y sus `.sig`), `trust/`, `policies/`,
+   `schemas/`, `examples/`, `publications/`, `go.mod`, `README.md`, `LICENSE`, los dos bundles de
+   demostración y los bundles de eficacia `r3`, `r6` y `r7`. Lo imprime `scripts/certify.sh` como
+   `source tree sha256`.
 2. El binario se construye con `scripts/release.sh`: `CGO_ENABLED=0`, `-trimpath`,
    `-buildvcs=false`, `-ldflags "-s -w -buildid="`, dos compilaciones comparadas byte a byte, y
    `dist/xammu-1.0.0-<os>-<arch>[.exe].sha256`. La ruta de release del workflow añade SBOM
@@ -71,9 +76,10 @@ bash scripts/certify.sh
 ```
 
 `scripts/ci-local.sh` es el espejo local de `.github/workflows/ci.yml`: formato, vet, build, suite,
-`-race` si hay cgo, `govulncheck` y gitleaks si están en `PATH`, build reproducible y SBOM si Syft
-está instalado. Imprime `SKIP` por cada check que no puede ejecutar y lo cuenta en el resultado. El
-workflow de GitHub no se ha ejecutado todavía; sin push, la evidencia es local.
+`-race` si hay cgo, `govulncheck` y gitleaks si están en `PATH`, build reproducible, la
+demostración del gate y SBOM si Syft está instalado. Imprime `SKIP` por cada check que no puede
+ejecutar y lo cuenta en el resultado. El workflow de GitHub no se ha ejecutado todavía; sin push,
+la evidencia es local.
 
 La corrida ejecuta, en este orden, y falla en el primer desacuerdo:
 
@@ -88,7 +94,11 @@ La corrida ejecuta, en este orden, y falla en el primer desacuerdo:
 7. Anexo ES en Markdown desde `demo-lab` y anexo EN en HTML desde `demo-origin`, con hash de cada
    archivo.
 8. Construcción reproducible y hash del binario.
-9. Hash del árbol fuente.
+9. `scripts/gate-demo.sh`: el gate falla `r6` (salida 1), pasa `r7` (salida 0), los SARIF declaran
+   cada regla que citan y las entregas de `publications/` verifican con
+   `trust/waf-effectiveness.pub`.
+10. Hash del árbol fuente, que incluye `policies/`, `schemas/`, `examples/`, `runs/` de eficacia y
+    `publications/`.
 
 Salida esperada: secciones `== 1.` a `== 5.` y `RESULT: PASSED`. La última sección del archivo
 declara lo que la corrida **no** prueba.
@@ -99,7 +109,7 @@ declara lo que la corrida **no** prueba.
 
 | propiedad | cómo se comprueba | resultado esperado |
 | --- | --- | --- |
-| suite completa | `go test ./... -count=1` | 384 funciones de prueba en 19 paquetes, sin fallos |
+| suite completa | `go test ./... -count=1` | 428 funciones de prueba en 23 paquetes, sin fallos |
 | cabeceras sensibles | `go test ./cmd/xammu/ ./internal/httpclient/ ./internal/contracts/` | el valor literal no aparece en ningún artefacto; digests salados estables dentro del run y distintos entre runs; `Server` y `Content-Type` intactos |
 | firmas de autorización | `go test ./cmd/xammu/ ./internal/integrity/` | sidecar válido aceptado; campo, firma, contrato, clave o emisor alterados rechazados; `run` no abre socket con una C-09 inválida |
 | criterios del handoff | [`acceptance.md`](acceptance.md) §2 | 29 criterios clasificados; ninguno ⚠ contado como cumplido |
@@ -108,6 +118,7 @@ declara lo que la corrida **no** prueba.
 | re-derivación | `xammu verify --rederive` con la autorización del run | los hallazgos publicados se re-derivan sin divergencias |
 | brazos y fingerprint | `go test ./internal/effectiveness/ ./internal/fingerprint/ ./internal/tamper/` | E-03 con `arms`, `comparison` y `fingerprint` re-deriva; bundles de Fase 1 siguen sin esos campos; pilas y marcador cubiertos |
 | anexo de cliente | `go test ./internal/annex/` y `./cmd/xammu/` | estructura ES/EN, escape HTML, cifras del informe y evidencia verbatim |
+| gate y entrega sellada | `go test ./internal/gate/ ./internal/annex/` y `scripts/gate-demo.sh` | JSON determinista, YAML re-parseable, SARIF con reglas declaradas, veredicto que se reproduce desde los checks, sobre Ed25519 que rechaza un byte alterado, otra clave de confianza o un veredicto que sus checks no producen |
 | no hay escalas numéricas | `internal/contracts/forbidden_source_test.go` | ninguna puntuación ni confianza numérica en contratos y código |
 | un solo egress | `internal/httpclient/egress_test.go` | ninguna otra ruta de red en el árbol |
 | cadena de CI fijada | revisión de `.github/workflows/ci.yml`; `scripts/ci-local.sh` | acciones de terceros por SHA, herramientas por versión, `go.mod` sin dependencias externas; gitleaks y `govulncheck` se ejecutan si están disponibles |
@@ -230,6 +241,16 @@ Reglas de entrega:
   artefactos inventariados de ambos bundles a CRLF. Se restauraron los bytes LF cuyo `sha256`
   coincide con el manifiesto, y `verify` volvió a pasar en los dos bundles. El incidente confirma
   por qué `verify` es parte de cada corrida y no un paso opcional.
+- **La corrida de Fase 3 mide un fixture, no un producto.** `examples/reference-waf` está
+  calibrado contra el marcador inerte de este corpus; que r7 pase la política demuestra la tubería
+  y no la eficacia de ningún WAF comercial. El informe lo declara en el resumen y en los límites, y
+  el anexo repite la misma frase.
+- **La ingesta del SARIF no se ejecutó.** Los documentos se validan estructuralmente y la forma se
+  comprueba en `scripts/gate-demo.sh`; que GitHub Code Scanning, GitLab, Azure o Jenkins los
+  acepten es una comprobación del consumidor, descrita pero no ejecutada aquí.
+- **La clave del sobre de publicación no se custodia aquí.** Las entregas de r6 y r7 se firmaron con
+  `.xammu-signing.ed25519`, que no está en el árbol; la pública vive en `trust/waf-effectiveness.pub`.
+  La rotación y custodia son H-09 de la Fase 4.
 
 ---
 
@@ -238,7 +259,8 @@ Reglas de entrega:
 Hay que repetir `scripts/certify.sh`, revisar §4–§5 y registrar una nueva aceptación cuando:
 
 - cambie cualquier archivo bajo `cmd/`, `internal/`, `corpus/`, `lab/`, `scripts/`,
-  `authorizations/`, `trust/`, `docs/`, `README.md` o los bundles de demostración;
+  `authorizations/`, `trust/`, `policies/`, `schemas/`, `examples/`, `publications/`, `docs/`,
+  `README.md` o los bundles de demostración y de eficacia;
 - cambie la versión de Go o las banderas de `scripts/release.sh`;
 - cambie `.github/workflows/ci.yml`, `scripts/ci-local.sh` o la versión fijada de una acción o
   herramienta de CI;

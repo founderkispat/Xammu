@@ -64,6 +64,17 @@ owasp: A03:2021-Injection
 	}
 }
 
+func TestParseQuotedSequenceItemMayHoldAColon(t *testing.T) {
+	m := one(t, `notes:
+  - "observed: block"
+  - plain
+`)
+	list, ok := m["notes"].([]any)
+	if !ok || len(list) != 2 || list[0] != "observed: block" || list[1] != "plain" {
+		t.Fatalf("quoted sequence decoded as %#v", m["notes"])
+	}
+}
+
 func TestParseCommentsAndDocuments(t *testing.T) {
 	src := `# leading comment
 id: first

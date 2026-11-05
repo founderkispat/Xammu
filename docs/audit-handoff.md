@@ -1189,3 +1189,354 @@ go run ./cmd/xammu effectiveness report --store runs/waf-effectiveness-2026-11-0
   `base64` porque destruye el marcador y obliga a la cabecera diagnóstica.
 - **Resultado de la suite:** 384 funciones `Test*` en 19 paquetes; `scripts/certify.sh` incluye la
   corrida `r6` en su ancla de fuentes y en su verificación.
+
+## 15. Fase 3 — Integración CI/CD e informes (P2)
+
+**Estado:** implementada y aceptada en local el 2026-11-05. 3.1, 3.2 y 3.3 están en el árbol, la
+demostración fail/pass corre contra el WAF de referencia (§15.6) y la entrega de r6/r7 verifica con
+`trust/waf-effectiveness.pub`. El resumen de aceptación está en §15.11. No se ha hecho push, tag ni
+release.
+
+### 15.0 Regla de ejecución
+
+Una fase por commit. Esta fase añade la capa de consumo —SARIF, JSON con esquema versionado, YAML,
+quality gate, informe profesional y anexo ES/EN— sobre la evidencia sellada de las fases 1 y 2. No
+cambia el corpus, la puerta de inertitud, el egress único, la autorización firmada, el sellado del
+bundle ni las métricas E-03. No añade dependencias Go externas. Si un cambio propuesto exigiera
+relajar uno de esos límites, la fase se detiene y se reporta.
+
+Los hallazgos P1 de operación que un borrador anterior de este apartado proponía (H-05, H-06, H-07,
+H-08, H-13) **no** son esta fase: pertenecen a la Fase 4 del programa, junto con H-09 y H-12. Este
+apartado sustituye aquel plan y no toca ninguno de esos ítems.
+
+### 15.1 Objetivo y criterio de aceptación
+
+Que un pipeline pueda consumir la medición de las fases 1 y 2 sin leer Markdown a mano, que falle
+ante un WAF que no alcanza los umbrales declarados y pase ante uno que sí, y que la entrega
+profesional —resumen ejecutivo, controles con evidencia, límites y anexo ES/EN— quede sellada con
+Ed25519 y verificable con `verify`.
+
+El criterio del programa se reproduce literalmente:
+
+- **3.1 Salidas consumibles:** SARIF para GitHub Code Scanning; JSON estable con esquema versionado;
+  YAML para GitLab/Azure/Jenkins.
+- **3.2 Quality gates:** salida distinta de cero si TPR < umbral, FPR > umbral o hay hallazgos
+  críticos; umbrales configurables por archivo de política.
+- **3.3 Informe profesional:** resumen ejecutivo con métricas y veredicto; anexo ES/EN; tabla de
+  controles con evidencia; límites explícitos de la revisión; todo sellado con Ed25519 y verificable
+  con `verify`.
+- **Aceptación:** pipeline de ejemplo que falla con un WAF mal configurado y pasa con uno bien
+  configurado, con SARIF válido.
+
+### 15.2 Decisiones de diseño que no se negocian
+
+1. **El gate lee evidencia sellada, no documentos derivados.** Para un bundle de eficacia, E-03 se
+   recomputa desde `effectiveness_cases.jsonl` y `effectiveness_outcomes.jsonl`; si no coincide con
+   `effectiveness_metrics.jsonl` o con `effectiveness-metrics.json`, el gate se niega a evaluar
+   (salida 2). Para un bundle de perfilado, los hallazgos se leen de `findings.jsonl`, que está
+   inventariado en el manifiesto; no se usa `report.json` como autoridad. `verify --rederive` sigue
+   siendo la prueba de reproducción, y el gate no la sustituye.
+2. **No se inventa una severidad «crítica».** El vocabulario C-16 es `high|medium|low`
+   (`internal/contracts/finding.go`). La política usa `findings.fail_on_priority: high|medium|low`;
+   `high` es la prioridad más alta que el contrato declara. Un archivo que escriba `critical` se
+   rechaza con un mensaje que explica que XAMMU no añade un nivel que la evidencia no tiene.
+3. **El veredicto es una decisión de política, no una medición.** El informe lo rotula así: las
+   métricas son EVIDENCIA derivada de E-01/E-02; el fingerprint es INFERENCIA categórica con su
+   evidencia; el veredicto sólo dice si se cumplen los umbrales de este archivo de política contra
+   este corpus y este origen. No dice que el WAF sea seguro.
+4. **El documento consumible es nuevo; E-03 no se modifica.** Añadir un campo a E-03 rompería la
+   re-derivación de `r3` y `r6`. El gate publica una vista versionada (`xammu.gate/v1`) que conserva
+   todos los campos de E-03 en colecciones indexadas por id, y deja E-03 intacto dentro del bundle.
+5. **El sellado es un sobre separado.** Los bundles de evidencia no se tocan después del sellado.
+   Los documentos del gate se firman con un `publication.json` Ed25519 que enumera cada archivo y su
+   sha256; `verify --publication` lo comprueba junto con el manifiesto de origen. La clave privada
+   sigue fuera del bundle y del repositorio.
+6. **La reproducibilidad es un invariante del gate.** Dos ejecuciones del gate sobre el mismo bundle
+   y la misma política producen los mismos bytes en `gate.json`, `gate.yaml` y `results.sarif`. El
+   sobre de publicación es la única pieza con hora de sellado, y se declara como tal.
+
+### 15.3 3.1 — Salidas consumibles
+
+**Comando nuevo:** `xammu gate`.
+
+```
+xammu gate --store DIR --policy FILE --format json|yaml|sarif|markdown|annex|all [--out DIR]
+            [--signing-key FILE] [--trust-key FILE] [--lang es|en] [--prepared-by NAME]
+```
+
+- **JSON (`gate.json`).** Esquema `xammu.gate/v1`, publicado en
+  `schemas/xammu-gate-v1.schema.json`. Campos de primer nivel: `schema_version`, `tool_version`,
+  `source`, `policy`, `verdict`, `checks`, `metrics`, `findings`, `controls`, `limits`,
+  `not_applicable`. `source` fija `kind`, `run_id`, `bundle` (ruta relativa), `manifest_sha256`,
+  `manifest_signer_key_id` y `artifacts` (mapa ruta→sha256 de cada archivo leído); `policy` fija
+  `sha256` y los valores normalizados.
+  Las colecciones son mapas indexados por id (`checks`, `metrics.classes`, `metrics.arms`,
+  `findings`), no listas, para que el orden sea estable y para que el mismo documento se pueda
+  emitir en YAML sin una segunda estructura.
+- **YAML (`gate.yaml`).** La misma estructura, emitida por un escritor determinista interno:
+  indentación de dos espacios, claves ordenadas, escalares entre comillas dobles cuando lo necesitan,
+  listas de escalares para `limits`/`notes`. No se añade un parser YAML nuevo: el subconjunto se
+  valida con `internal/yamlish` en la suite, que ya es la gramática documentada del proyecto. El
+  JSON sigue siendo la fuente autoritativa para herramientas; el YAML es para GitLab/Azure/Jenkins.
+- **SARIF (`results.sarif`).** SARIF 2.1.0 con `$schema`, `version: "2.1.0"`, un `run` con
+  `tool.driver.name: "XAMMU"`, `semanticVersion`, `rules` y `results`. Un resultado por check
+  fallido y uno por hallazgo C-16 que cruza el umbral. `level` es `error` para checks fallidos y
+  hallazgos `high`, `warning` para `medium` y `note` para `low`; esa correspondencia es presentación
+  SARIF, no una escala de severidad nueva. Cada resultado lleva `ruleId` estable
+  (`XAMMU-EFF-TPR`, `XAMMU-EFF-FPR`, `XAMMU-EFF-PRECISION`, `XAMMU-EFF-EXCLUDED`,
+  `XAMMU-FINDING-<finding_type>`), `message.text` con el valor observado, el umbral y la referencia
+  de evidencia, `locations` al journal sellado (`effectiveness_metrics.jsonl` o `findings.jsonl`,
+  `region.startLine` = línea del registro) y `partialFingerprints` deterministas. `invocations[0]`
+  declara `executionSuccessful: true` y el `exitCode` real. Los checks que pasan no generan
+  resultados: el SARIF enumera problemas, el JSON/YAML enumera todos los checks.
+- **Markdown (`report.md`) y anexos (`annex-es.md`, `annex-en.md`).** Se describen en §15.5. No son
+  una segunda autoridad: se renderizan desde el mismo documento del gate.
+- **`--format all`** exige `--out` y `--signing-key`; es la única forma que produce la entrega
+  sellada. Las salidas por stdout son vistas efímeras y no se presentan como selladas. `--out` se
+  niega si apunta al bundle de evidencia, con el mismo criterio que `publishEffectivenessOut`.
+
+**Validez SARIF declarada:** la suite comprueba la forma obligatoria de 2.1.0, que `version` y
+`$schema` sean los correctos, que todo `ruleId` de un resultado exista en `tool.driver.rules` y que
+los `level` estén en el vocabulario. No se valida contra el JSON Schema completo de OASIS para no
+incorporar una dependencia ni un validador externo; la ingesta real la hace el paso
+`upload-sarif` del pipeline de ejemplo. Esa limitación se publica en el informe y en
+`docs/gate-output.md`, no se disimula.
+
+### 15.4 3.2 — Quality gates
+
+**Archivo de política.** YAML leído con `internal/yamlish`; esquema `xammu.policy/v1`, publicado en
+`schemas/xammu-policy-v1.schema.json`. Ejemplo de referencia del repositorio:
+
+```yaml
+schema_version: "xammu.policy/v1"
+effectiveness:
+  min_tpr: 0.80
+  max_fpr: 0.05
+  min_precision: 0.70
+  max_excluded_ratio: 0.0
+```
+
+Para un bundle de perfilado, la política puede contener sólo la sección de hallazgos:
+
+```yaml
+schema_version: "xammu.policy/v1"
+findings:
+  fail_on_priority: medium
+```
+
+- Al menos una sección (`effectiveness` o `findings`) debe estar presente. Una sección ausente que el
+  bundle necesite es un error de uso (salida 2), no un gate silencioso que pasa.
+- Claves desconocidas, tipos incorrectos, umbrales fuera de `[0,1]` o `fail_on_priority: critical` se
+  rechazan antes de leer el bundle.
+- `min_precision` y `max_excluded_ratio` son opcionales; `max_excluded_ratio` vale `0` si no se
+  declara. Un denominador nulo (`TPR`/`FPR`/`Precision` nulos en E-03) **no** puede cumplir un
+  umbral: el check falla con `reason: "no denominator"`, nunca se interpreta como cero ni como uno.
+- La política se copia normalizada dentro de `gate.json` y su sha256 viaja en el sobre. Cambiar el
+  archivo cambia el veredicto y el sello; no hay umbrales universales escondidos en el binario.
+
+**Checks y salidas.**
+
+| check | se aplica a | condición | fallo |
+| --- | --- | --- | --- |
+| `effectiveness.tpr` | eficacia | `tpr >= min_tpr` | sí |
+| `effectiveness.fpr` | eficacia | `fpr <= max_fpr` | sí |
+| `effectiveness.precision` | eficacia | `precision >= min_precision` si está declarado | sí |
+| `effectiveness.excluded_ratio` | eficacia | `excluded / total <= max_excluded_ratio` | sí |
+| `findings.priority` | perfilado | ningún hallazgo sellado con `priority >= fail_on_priority` | sí |
+| `evidence.manifest` | ambos | manifiesto y hashes de los artefactos leídos | salida 2, no se evalúa |
+| `evidence.rederive` | eficacia | E-03 recomputado = journalizado = publicado | salida 2, no se evalúa |
+
+- **Salida 0:** todos los checks aplicables pasan.
+- **Salida 1:** al menos un check aplicable falla; es un resultado del target, no un error del tool.
+- **Salida 2:** línea de comandos, política, bundle o evidencia no utilizables (incluido un manifiesto
+  que no verifica o una re-derivación que discrepa). En CI cualquier valor distinto de cero falla;
+  la distinción permite a un humano saber si el WAF falló o si el gate no pudo medir.
+- Un bundle de eficacia con una política sólo de hallazgos, o uno de perfilado con una política sólo
+  de umbrales, sale 2: no se evalúa una sección que no existe. Las secciones presentes pero no
+  aplicables se enumeran en `not_applicable` para que el lector vea que no se ignoraron en silencio.
+
+### 15.5 3.3 — Informe profesional y sellado
+
+**`report.md`** contiene, en este orden:
+
+1. **Resumen ejecutivo:** veredicto `PASS`/`FAIL`, checks fallidos, TPR/FPR/Precision/F1/MCC,
+   p50/p95/p99 con `n` y suficiencia de muestra, fingerprint con `support` categórico, y la frase
+   que separa medición de política («cumple/no cumple los umbrales configurados para este corpus y
+   este origen; no es una afirmación de seguridad general»).
+2. **Alcance y evidencia:** C-09 citada, digest del corpus, número de casos, brazos medidos, run id,
+   clave firmante y digests del manifiesto.
+3. **Métricas:** matriz de confusión, tasas con denominadores, tabla por clase y latencias; los
+   valores nulos se imprimen `n/a`, nunca `0`.
+4. **Controles con evidencia:** una fila por control con `expectativa/umbral`, `observado`,
+   `evidencia` (ruta sellada + id de check) y `estado`. Los controles informativos —por ejemplo la
+   comparación base vs tamper— llevan `info`, no un veredicto inventado.
+5. **Hallazgos C-16** cuando el bundle es de perfilado: prioridad, `what_was_observed`,
+   `what_is_inferred`, `what_evidence_is_missing`, `limitations` y comando de reproducción, copiados
+   del registro sellado.
+6. **Límites explícitos:** los de §15.9, más los del bundle (loopback, corpus fijo, fingerprint
+   categórico, etiquetas OWASP declarativas, SARIF validado estructuralmente).
+7. **Reproducción y sello:** comandos `verify` y `verify --publication`, ruta del sobre, regla de
+   firma y la razón por la que el digest del sobre lo imprime `verify` y no el informe.
+
+**Anexo ES/EN.** `internal/annex` gana una vista de eficacia que renderiza el mismo documento en
+español e inglés, con las mismas cifras y los mismos campos de evidencia citados literalmente. No
+traduce ni reescribe lo observado; sólo traduce rótulos y prosa. `--format all` escribe ambos; un
+`--lang` suelto escribe uno.
+
+**Sobre de publicación (`publication.json`).** Esquema `xammu.publication/v1`, publicado en
+`schemas/xammu-publication-v1.schema.json`. Campos: `schema_version`, `tool_version`, `created_at`,
+`source` (kind, run_id, ruta relativa al bundle, `manifest_sha256`, `manifest_signer_key_id`,
+`manifest_signature_valid`, `manifest_signer_anchored`), `policy_sha256`, `verdict`, `exit_code`,
+`files` (ruta, sha256, bytes), `algorithm`, `signer_key_id`, `public_key_base64`,
+`signature_base64` y `signing_rule`. La firma es Ed25519 sobre
+`sha256(canonical-json(publication sin `signature_base64`, `public_key_base64` ni
+`signer_key_id`))`; la regla viaja dentro del documento, igual que en el manifiesto C-12.
+
+- **Firma:** `gate --format all --out DIR --signing-key FILE`. La clave se carga con
+  `integrity.LoadKey`; no se crea una clave nueva en un comando de lectura. Sin `--signing-key` no
+  hay entrega sellada. La clave privada no se copia al directorio de salida ni al bundle.
+- **Verificación:** `xammu verify --publication DIR --trust-key FILE`. Comprueba el esquema, la
+  firma del sobre, el sha256 de cada archivo listado, que el manifiesto de origen tenga el digest
+  declarado y firma válida, y que el veredicto y los checks se reproduzcan desde `gate.json` y la
+  política embebida. Sin `--trust-key` informa que la identidad no está anclada, igual que `verify`
+  hoy; con una clave que no firma el sobre, falla.
+- **Qué ancla `--trust-key`.** Ancla la identidad del **sobre**. El manifiesto de origen es un
+  documento anterior y distinto: se exige que verifique, que su digest sea el declarado y que su
+  `signer_key_id` sea el que el sobre nombra; su identidad queda anclada cuando la misma clave firmó
+  ambos (el caso de una entrega firmada por la identidad del engagement) y el detalle de
+  `source_bundle_verifies` dice cuál de las dos cosas ocurrió. Un sobre firmado por una identidad
+  de publicación distinta de la del bundle sigue siendo verificable y lo declara; no se presenta
+  como si el manifiesto estuviera anclado.
+- **Ciclo informe ↔ sobre.** El informe no puede contener el digest del sobre que lo hashea. Por eso
+  `report.md` y los anexos citan la regla de firma, la ruta `publication.json` y el comando
+  `verify --publication`; el digest del sobre lo imprime `verify`, que es el único punto donde ya
+  existen todos los bytes. El sobre sí enumera los digests del informe y de los anexos, de modo que
+  un byte cambiado en cualquiera de ellos falla `delivery_files_unchanged`.
+- **Ubicación:** `publications/<run-id>/` fuera del bundle. El bundle sellado no se modifica y
+  `verify` sigue enumerando como «fuera del inventario» cualquier documento derivado que se le
+  ponga al lado. La entrega se puede archivar con el bundle o separada; el sobre nombra la ruta
+  relativa y el digest, no confía en que el archivo esté en el mismo sitio.
+- **Renderizados efímeros.** `--format markdown|annex` con `--out DIR` escribe `report.md` o
+  `annex-<lang>.md` sin sobre; imprimirlo sin `--out` no crea archivos. `--format all` es la única
+  forma de entrega sellada y exige `--out` y `--signing-key`.
+
+### 15.6 Demostración fail/pass y pipeline de ejemplo
+
+**WAF de referencia separado del laboratorio.** `examples/reference-waf` es un fixture de
+demostración, no una modificación de `lab/waf` ni una recomendación de producto. Escucha en
+`127.0.0.1:8099`, reenvía al mismo `lab/origin` de `127.0.0.1:8081` y usa la misma C-09
+`AUTH-EFFECTIVENESS-LOCAL-002` (1.300 solicitudes por ejecución; r7 usa 1.200). Inspecciona path,
+query, cabeceras, cookies, cuerpo JSON y cuerpo de formulario; normaliza con hasta tres pasadas de
+percent-decode y minúsculas; bloquea con 403 y el marcador `XAMMU-LAB-WAF-BLOCK`, sin ejecutar nada.
+
+- Sus reglas son compuestas: exigen `xammu-probe` **y** una forma de la clase. Es un WAF de
+  referencia calibrado contra el marcador inerte del corpus, no un WAF comercial. Esa calibración se
+  declara en el README del fixture, en el informe y en el handoff: sirve para demostrar el pipeline,
+  no para afirmar eficacia de ningún producto.
+- Antes de gastar una sola solicitud, un test carga los 600 casos y exige que el matcher bloquee los
+  300 ataques y reenvíe los 300 benignos. Si falla, se corrige el fixture; no se rebaja la política.
+- Se detiene `lab/waf` mientras el WAF de referencia ocupa el 8099 y se restaura después. El origen,
+  la C-09 y el corpus no cambian.
+
+**Corrida r7.** `runs/waf-effectiveness-2026-11-05-r7`, con los mismos dos brazos y `--budget 1200`
+que r6, contra el WAF de referencia. Se verifica con `verify --rederive` y se publica el informe.
+Los umbrales de `policies/effectiveness-reference.yaml` se fijan **antes** de la corrida. Si r7 no
+los alcanza, se reporta el fallo y se ajusta el fixture con un máximo de dos corridas; no se bajan
+los umbrales después de ver el resultado.
+
+**Pipeline de ejemplo.** `examples/ci/github-actions-effectiveness.yml` y
+`examples/ci/README.md` muestran GitHub Code Scanning, GitLab CI, Azure Pipelines y Jenkins
+consumiendo el código de salida, `gate.yaml` y `results.sarif`. `scripts/gate-demo.sh` es la versión
+ejecutable sin red: construye el binario, corre el gate sobre `r6` (exige salida 1), sobre `r7`
+(exige salida 0), comprueba la forma del SARIF y verifica los sobres de
+`publications/waf-effectiveness-2026-11-05-r6` y `...-r7` con `trust/waf-effectiveness.pub`. Se
+engancha en `scripts/ci-local.sh` y en el workflow activo, para que la demostración no se degrade.
+
+### 15.7 Ficheros previstos
+
+| área | cambio |
+| --- | --- |
+| `internal/gate` | política, evaluación, JSON/YAML deterministas, SARIF, informe y sobre de publicación |
+| `internal/annex` | vista de eficacia ES/EN; sin cambios en la vista C-15 |
+| `cmd/xammu/gate.go` | comando `gate`, formatos y códigos de salida |
+| `cmd/xammu/read.go` | `verify --publication`; sin cambios en la verificación de bundles |
+| `examples/reference-waf` | WAF de referencia, matcher, test de preflight y README |
+| `policies` | `effectiveness-reference.yaml`; política de perfilado para la prueba de hallazgos |
+| `schemas` | JSON Schema de gate, política y publicación (documento, no dependencia) |
+| `examples/ci`, `scripts/gate-demo.sh` | pipeline de ejemplo y demostración local |
+| `runs/waf-effectiveness-2026-11-05-r7` | corrida sellada contra el WAF de referencia |
+| `publications/...` | sobres firmados de r6 y r7 |
+| docs | README, `docs/acceptance.md`, `docs/certification.md`, `docs/gate-output.md`, este apartado |
+| `.gitignore` | excepciones para r7 y `publications/` |
+
+No se toca `lab/waf`, `lab/verify.sh`, el corpus ni los bundles r3/r6.
+
+### 15.8 Pruebas y criterio de aceptación
+
+| punto | evidencia exigida |
+| --- | --- |
+| 3.1 JSON | `schema_version` presente; dos evaluaciones del mismo bundle y política producen bytes idénticos; los campos de E-03 están todos representados; `schemas/xammu-gate-v1.schema.json` parsea |
+| 3.1 YAML | el documento emitido vuelve a parsearse con `internal/yamlish` y coincide estructuralmente con el JSON y en sus valores tras normalizar los escalares que ese subconjunto devuelve como texto; claves ordenadas; sin tabs ni construcciones fuera del subconjunto |
+| 3.1 SARIF | `version`/`$schema` correctos; `tool.driver.rules` contiene cada `ruleId` usado; `level` en `error|warning|note`; `locations` apuntan a un journal inventariado; la forma se valida en test y el ejemplo declara la ingesta en GitHub |
+| 3.2 umbrales | r6 (TPR 8,33 %, FPR 2,67 %) falla con `min_tpr: 0.80` (salida 1); r7 pasa (salida 0); cambiar sólo `min_tpr` cambia el veredicto; un TPR/FPR nulo falla con `no denominator`; una política con `critical` sale 2 |
+| 3.2 hallazgos | gate sobre `runs/demo-lab` con `fail_on_priority: medium` sale 1 por sus 2 hallazgos `medium`; con `high` sale 0; el SARIF lleva un resultado por hallazgo y cita `findings.jsonl` |
+| 3.3 informe | `report.md` contiene resumen ejecutivo, veredicto, controles con evidencia y límites; los nulos se imprimen `n/a`; no hay puntuaciones ni CVSS inventados |
+| 3.3 anexo | `annex-es.md` y `annex-en.md` contienen las mismas cifras y los mismos campos de evidencia; el texto cambia de idioma, los datos no |
+| 3.3 sello | `publication.json` firma con Ed25519; `verify --publication` sale 0; alterar un byte de `report.md` sale 1; una clave de confianza distinta sale 1; sin `--trust-key` se informa que la identidad no está anclada |
+| pipeline | `scripts/gate-demo.sh` sale 0 sólo si r6=1, r7=0 y ambos sobres verifican; el workflow de ejemplo declara `upload-sarif`; GitLab/Azure/Jenkins tienen su snippet documentado |
+| regresión | `go test ./...` en verde; `scripts/certify.sh` PASSED; `scripts/ci-local.sh` PASSED; r3 y r6 re-derivan; el laboratorio por defecto sigue dando la misma matriz; el build sigue siendo reproducible |
+
+### 15.9 Riesgos y límites declarados
+
+- **El WAF de referencia está calibrado contra el marcador.** Es la concesión consciente de la
+  demostración: el objetivo es probar el pipeline, no comparar productos. El informe lo dice en el
+  resumen y en los límites; ninguna cifra de r7 se presenta como eficacia de un WAF real.
+- **SARIF validado estructuralmente, no contra el JSON Schema completo.** Se evita una dependencia
+  o un validador vendorizado; la ingesta de GitHub es el paso que valida de verdad y se documenta
+  como tal.
+- **«Crítico» no existe en C-16.** Se usa `high` y se explica; no se añade un nivel nuevo. Un lector
+  que quiera un umbral más amplio usa `medium` o `low`.
+- **El gate de perfilado no re-deriva los hallazgos.** Lee `findings.jsonl` sellado; la reproducción
+  sigue siendo `verify --rederive` con la C-09. El informe lo declara.
+- **YAML es una representación indexada, no una copia literal de los arrays de E-03.** Conserva
+  todos los campos, pero cambia listas por mapas para que sea estable y parseable por el subconjunto
+  del proyecto; el JSON es la fuente autoritativa.
+- **Custodia y rotación de la clave** siguen siendo H-09 de Fase 4. Esta fase usa la misma clave de
+  r6, cuya pública está en `trust/waf-effectiveness.pub`; no crea ni distribuye semillas.
+- **Presupuesto:** r7 usa 1.200 de las 1.300 solicitudes de AUTH-002, en loopback. Un ajuste del
+  fixture puede costar otra corrida; se limita a dos y, si no pasa, la fase se reporta bloqueada.
+- **Los umbrales son del engagement.** `policies/effectiveness-reference.yaml` es una referencia de
+  demostración; no se presenta como un mínimo universal ni como una recomendación para clientes.
+
+### 15.10 Confirmación
+
+Este apartado es el contrato de la Fase 3. No se escribe código hasta que el operador lo confirme o
+pida cambios en el alcance. La implementación respetará el orden 3.1 → 3.2 → 3.3 → demostración, con
+un solo commit de fase y la suite completa en verde antes de pedir aprobación.
+
+### 15.11 Estado de aceptación (2026-11-05)
+
+Se implementó en el orden confirmado y se verificó con evidencia local. Lo que sigue se leyó de los
+artefactos, no de la intención:
+
+| punto | evidencia observada |
+| --- | --- |
+| 3.1 JSON/YAML/SARIF | `gate.json` (`xammu.gate/v1`) es la fuente; `gate.yaml` se re-parsea con `internal/yamlish` y coincide; `results.sarif` cita solo reglas declaradas en `tool.driver.rules`; los tres esquemas viven en `schemas/` y parsean en test |
+| 3.2 umbrales | con `policies/effectiveness-reference.yaml` (min_tpr 0.80, max_fpr 0.05, min_precision 0.70, max_excluded 0.0), r6 sale 1 por `effectiveness.tpr` y r7 sale 0 con 6 checks aplicables; `critical` en política es error de uso; un TPR nulo falla con `no denominator` |
+| 3.2 hallazgos | gate sobre `runs/demo-lab` con `fail_on_priority: medium` sale 1 por sus 2 hallazgos; con `high` sale 0; SARIF con un resultado por hallazgo citando `findings.jsonl` |
+| 3.3 informe | `report.md` con siete secciones; nulos `n/a`; el fingerprint y, cuando el objetivo es el fixture, la frase de calibración aparecen en resumen y límites |
+| 3.3 anexo | `annex-es.md` y `annex-en.md` con las mismas cifras y campos de evidencia; solo cambia el idioma de rótulos y prosa |
+| 3.3 sello | `publication.json` Ed25519 sobre el sha256 canónico; `verify --publication` sale 0; un byte añadido a `report.md` sale 1; una clave de confianza distinta sale 1; sin `--trust-key` se informa que la identidad no está anclada |
+| demostración | r7 contra `examples/reference-waf`: preflight 600/600, línea base TPR 100,00 % (300/300), tamper `url_encode_double → case_switch` TPR 95,00 % (285/300), delta −5,00 pp, FPR 0 %; gate r6 = 1, r7 = 0; `scripts/gate-demo.sh` sale 0 |
+| pipeline | `examples/ci` declara `upload-sarif` para GitHub Code Scanning y snippets para GitLab, Azure y Jenkins; `scripts/gate-demo.sh` corre dentro de `scripts/ci-local.sh` y de `.github/workflows/ci.yml` |
+| regresión | `go test ./...` en verde; r3, r6 y r7 re-derivan; el corpus y `lab/waf` no se tocaron; sin dependencias Go externas |
+
+Sobres publicados: `publications/waf-effectiveness-2026-11-05-r6` y
+`publications/waf-effectiveness-2026-11-05-r7`, firmados por `edabfbcda5eb8f56` con la clave cuya
+pública es `trust/waf-effectiveness.pub`. El digest del sobre se imprime al verificarlo y no se copia
+aquí porque depende de los bytes entregados.
+
+Lo que esta aceptación **no** prueba: la eficacia de un WAF real (el objetivo es el fixture de
+referencia, calibrado contra este corpus); la ingesta efectiva en Code Scanning, GitLab, Azure o
+Jenkins; que un runner externo ejecute el workflow; la custodia de la clave (H-09, Fase 4); ni que
+los umbrales de `effectiveness-reference.yaml` sean un mínimo universal.

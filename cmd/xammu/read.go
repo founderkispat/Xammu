@@ -14,6 +14,7 @@ import (
 	"xammu/internal/annex"
 	"xammu/internal/contracts"
 	"xammu/internal/corpus"
+	"xammu/internal/gate"
 	"xammu/internal/integrity"
 	"xammu/internal/orchestrator"
 	"xammu/internal/report"
@@ -619,9 +620,10 @@ func renderCell(c *cli, rd reading, d *derivation, cellRef string) error {
 // a report cannot answer about itself: is this evidence what it claims to be.
 func cmdVerify(c *cli, args []string) error {
 	var (
-		f        planFlags
-		trustKey string
-		rederive bool
+		f              planFlags
+		trustKey       string
+		rederive       bool
+		publicationDir string
 	)
 	fs := newFlagSet("verify", c.err)
 	f.register(fs)
@@ -630,11 +632,17 @@ func cmdVerify(c *cli, args []string) error {
 			"only checked for self-consistency")
 	fs.BoolVar(&rederive, "rederive", false,
 		"re-run the inference pass over the sealed journals and report any reading that disagrees")
+	fs.StringVar(&publicationDir, "publication", "",
+		"verify a signed delivery directory instead of a bundle; checks the envelope, every listed "+
+			"file and the source manifest")
 	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if err := requireNoStrayArgs(fs); err != nil {
 		return err
+	}
+	if publicationDir != "" {
+		return verifyPublicationDelivery(c, publicationDir, trustKey, rederive, f, fs)
 	}
 	dir, err := f.bundle()
 	if err != nil {
@@ -748,6 +756,123 @@ func cmdVerify(c *cli, args []string) error {
 			"--trust-key FILE to make the identity a real check.\n")
 	}
 	return nil
+}
+
+// verifyPublicationDelivery verifies a signed delivery: the envelope, every file
+// it lists, the internal consistency of gate.json, and the source bundle the
+// envelope names. It re-derives no finding: the delivery is a presentation of a
+// gate verdict, and the verdict is rechecked by applying the embedded policy to
+// the embedded numbers.
+func verifyPublicationDelivery(c *cli, dir, trustKey string, rederive bool, f planFlags,
+	fs *flag.FlagSet) error {
+	if rederive {
+		return fmt.Errorf("%w: --rederive re-issues a report from a bundle's journals; a delivery "+
+			"is checked against its own gate.json, so verify the bundle instead", errUsage)
+	}
+	allowed := map[string]bool{"publication": true, "trust-key": true, "store": true,
+		"run": true, "runs-dir": true}
+	var stray []string
+	fs.Visit(func(fl *flag.Flag) {
+		if !allowed[fl.Name] {
+			stray = append(stray, "--"+fl.Name)
+		}
+	})
+	if len(stray) > 0 {
+		sort.Strings(stray)
+		return fmt.Errorf("%w: %s do not apply to --publication; a delivery is verified from its "+
+			"envelope and the bundle named by --store or --run", errUsage, strings.Join(stray, ", "))
+	}
+	var trusted []byte
+	if trustKey != "" {
+		raw, err := os.ReadFile(trustKey)
+		if err != nil {
+			return fmt.Errorf("cannot read the trusted key %s: %w", trustKey, err)
+		}
+		trusted, err = decodeHexKey(string(raw))
+		if err != nil {
+			return err
+		}
+	}
+	pub, statuses, err := gate.VerifyDelivery(dir, trusted)
+	if err != nil {
+		return err
+	}
+	bundleDir, bundleErr := resolvePublicationBundle(pub, dir, f)
+	if bundleErr == nil {
+		statuses = append(statuses, gate.VerifyPublicationSource(pub, bundleDir, trusted)...)
+	} else {
+		statuses = append(statuses, integrity.VerifyStatus{Check: "source_bundle_located",
+			OK: false, Detail: bundleErr.Error()})
+	}
+	var failed []integrity.VerifyStatus
+	unanchored := false
+	for _, s := range statuses {
+		mark := "ok"
+		if !s.OK {
+			if s.Check == integrity.CheckSignerTrusted && trustKey == "" {
+				mark = "note"
+				unanchored = true
+			} else {
+				mark = "FAIL"
+				failed = append(failed, s)
+			}
+		}
+		fmt.Fprintf(c.out, "%-4s %-32s %s\n", mark, s.Check, s.Detail)
+	}
+	digest, err := gate.PublicationDigest(*pub)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(c.out, "\ndelivery %s: run %s, verdict %s (exit %d), %d document(s)\n",
+		filepath.ToSlash(dir), pub.Source.RunID, pub.Verdict, pub.ExitCode, len(pub.Files))
+	fmt.Fprintf(c.out, "envelope %s signed by key %s; policy %s\n", digest, pub.SignerKeyID,
+		pub.PolicySHA256)
+	if bundleErr == nil {
+		fmt.Fprintf(c.out, "source bundle %s: manifest %s\n", filepath.ToSlash(bundleDir),
+			pub.Source.ManifestSHA256)
+	}
+	if len(failed) > 0 {
+		return fmt.Errorf("the delivery does not verify: %d check(s) failed, starting with %q: %s",
+			len(failed), failed[0].Check, failed[0].Detail)
+	}
+	fmt.Fprint(c.out, "\nthe delivery commits to itself and to the bundle it names. The signature "+
+		"proves who signed this envelope, not that the readings are correct: the report's controls "+
+		"and reproduction commands are for that.\n")
+	if unanchored {
+		fmt.Fprintf(c.out, "the identity is not anchored: no trusted key was supplied. Pass "+
+			"--trust-key FILE to make it a real check.\n")
+	}
+	return nil
+}
+
+// resolvePublicationBundle finds the evidence a delivery names. An explicit
+// --store or --run wins; otherwise the bundle path recorded in the envelope is
+// tried as written, then relative to the delivery and its two parent
+// directories, which covers the repository's publications/<run-id> layout
+// without guessing at an absolute path.
+func resolvePublicationBundle(p *gate.Publication, dir string, f planFlags) (string, error) {
+	if f.storeDir != "" || f.runID != "" {
+		return f.bundle()
+	}
+	named := strings.TrimSpace(p.Source.Bundle)
+	if named == "" {
+		return "", fmt.Errorf("the envelope names no source bundle; pass --store DIR or --run ID")
+	}
+	candidates := []string{named}
+	if !filepath.IsAbs(named) {
+		rel := filepath.FromSlash(named)
+		candidates = append(candidates,
+			filepath.Join(dir, rel),
+			filepath.Join(dir, "..", rel),
+			filepath.Join(dir, "..", "..", rel))
+	}
+	for _, candidate := range candidates {
+		if fi, err := os.Stat(filepath.Join(candidate, "manifest.json")); err == nil && !fi.IsDir() {
+			return candidate, nil
+		}
+	}
+	return "", fmt.Errorf("cannot locate the source bundle %q: a delivery names its evidence but "+
+		"does not copy it, so pass --store DIR or --run ID to verify where the evidence is", named)
 }
 
 // outsideInventory names the files in a bundle that the signed manifest does not
