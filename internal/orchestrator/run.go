@@ -54,6 +54,9 @@ type Config struct {
 	// CircuitThreshold is how many consecutive transport failures pause the run.
 	// Zero selects DefaultCircuitThreshold.
 	CircuitThreshold int
+	// SensitiveHeaders extends the capture-time redaction list. It can only add
+	// names; the base list (cookies and credentials) always applies.
+	SensitiveHeaders []string
 	// Now supplies the clock. Injectable so that expiry, monotonic timestamps and
 	// the whole resume path are testable without waiting.
 	Now func() time.Time
@@ -85,6 +88,19 @@ func (r *Run) now() time.Time {
 		return r.cfg.Now().UTC()
 	}
 	return time.Now().UTC()
+}
+
+// newClient builds the run's single egress with its capture-time header policy.
+// The redactor is created here, once per run, so every exchange of the run shares
+// one salt and no stage can replace it after the first request.
+func newClient(scope *httpclient.Scope, budget int, sensitive []string) (*httpclient.Client, error) {
+	redactor, err := contracts.NewHeaderRedactor(sensitive)
+	if err != nil {
+		return nil, fmt.Errorf("orchestrator: cannot build the header redactor: %w", err)
+	}
+	client := httpclient.New(scope, budget)
+	client.SetHeaderRedactor(redactor)
+	return client, nil
 }
 
 // Begin validates the authorization, creates the C-11 profile at the initialized
@@ -146,9 +162,13 @@ func Begin(auth *contracts.ProfilingAuthorization,
 	if err != nil {
 		return nil, err
 	}
+	client, err := newClient(scope, cfg.Budget, cfg.SensitiveHeaders)
+	if err != nil {
+		return nil, err
+	}
 	r := &Run{
 		store: store, scope: scope, auth: auth, val: val, cfg: cfg,
-		client:   httpclient.New(scope, cfg.Budget),
+		client:   client,
 		executed: map[string]bool{},
 		trigger:  contracts.TriggerNone,
 	}

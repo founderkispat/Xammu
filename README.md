@@ -365,6 +365,11 @@ La equivalencia completa y el estado de cada criterio están en
 - **Sólo HTTP(S) observado.** No hay sniffing, ni análisis de tráfico en vivo, ni integración SIEM.
 - **Retención digest-only por defecto en producción.** El cuerpo completo sale del proceso antes
   de la clasificación; el journal conserva digest y, como máximo, los bytes autorizados.
+- **Cabeceras sensibles fuera de la evidencia.** `set-cookie`, `cookie`, `authorization`,
+  `proxy-authorization`, `x-api-key` y `x-auth-token` se guardan como `[redacted]` con un digest
+  salado por ejecución; `--sensitive-header NAME` añade nombres y nunca quita. El valor no se
+  escribe en ningún artefacto y el salt no se serializa, así que dos runs no permiten correlacionar
+  el mismo valor. Los digests tampoco se pueden recalcular después: es la propiedad buscada.
 - **La autorización manda.** Presupuesto, métodos, clases, vectores, codificaciones, rutas,
   CIDRs y caducidad salen de la C-09; las banderas sólo recortan.
 - **El anillo de emisores es tuyo.** `--issuer-keyring` no tiene valor por defecto: la clave
@@ -383,7 +388,7 @@ La equivalencia completa y el estado de cada criterio están en
 
 1. `bash scripts/certify.sh` — formato, vet, build, suite completa, `corpus check`, `verify` de los
    dos bundles, anexos ES/EN, build reproducible byte a byte y hash del árbol; escribe la evidencia
-   en `dist/certification-<UTC>.txt`. Solo `go test ./...` son 296 funciones en 15 paquetes.
+   en `dist/certification-<UTC>.txt`. Solo `go test ./...` son 306 funciones en 15 paquetes.
 2. `sed -n '1,80p' docs/acceptance.md` — los 29 criterios con su prueba y lo que falta.
 3. `go run ./cmd/xammu verify --run demo-lab --authorization AUTH-SMOKE-LOCAL-001 --authorizations authorizations --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query,body_json,cookie --trust-key trust/demo-lab.pub`
 4. `go run ./cmd/xammu report --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --authorizations authorizations --issuer-keyring trust/issuers --corpus corpus --format human` — los tres `coverage_gap`.

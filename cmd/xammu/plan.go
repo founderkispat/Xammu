@@ -48,12 +48,15 @@ type planFlags struct {
 	headerName    string
 	cookieName    string
 	mediaType     string
-	runsDir       string
-	signingKey    string
-	generatedBy   string
-	runID         string
-	round         string
-	storeDir      string
+	// sensitiveHeaders extends the capture-time redaction list. It is an
+	// engagement input, not a scope: it can only withhold more, never send more.
+	sensitiveHeaders []string
+	runsDir          string
+	signingKey       string
+	generatedBy      string
+	runID            string
+	round            string
+	storeDir         string
 
 	// authorizationRef and authorizationDir are recorded by bindAuthorization, not
 	// typed by the operator: the reference the loaded C-09 carries and the directory
@@ -105,6 +108,10 @@ func (p *planFlags) register(fs *flag.FlagSet) {
 	fs.StringVar(&p.headerName, "header-name", "", "header carrying a header-vector probe")
 	fs.StringVar(&p.cookieName, "cookie-name", "", "cookie name carrying a cookie probe")
 	fs.StringVar(&p.mediaType, "media-type", "", "content type for the JSON body vector")
+	fs.Func("sensitive-header", "response header whose value is withheld from the evidence; "+
+		"repeatable, and it only adds to the base cookie/credential list", func(raw string) error {
+		return p.addSensitiveHeader(raw)
+	})
 	fs.StringVar(&p.runsDir, "runs-dir", "runs", "where run bundles live")
 	fs.StringVar(&p.signingKey, "signing-key", ".xammu-signing.ed25519",
 		"ed25519 seed file outside the bundle; created with 0600 if absent")
@@ -189,7 +196,29 @@ func (p planFlags) engagementFlags() string {
 	if p.mediaType != "" {
 		add("--media-type", p.mediaType)
 	}
+	// The redaction policy is published beside the permission because it changes
+	// what the evidence can show a reader, even though it never changes the plan.
+	for _, name := range p.sensitiveHeaders {
+		add("--sensitive-header", name)
+	}
 	return strings.Join(out, " ")
+}
+
+// addSensitiveHeader records one --sensitive-header. Names are folded to the form
+// the policy compares in and deduplicated, so a repeated flag neither redacts
+// twice nor prints twice in the evidence.
+func (p *planFlags) addSensitiveHeader(raw string) error {
+	name := contracts.NormalizeHeaderName(raw)
+	if name == "" {
+		return errors.New("--sensitive-header needs a header name")
+	}
+	for _, existing := range p.sensitiveHeaders {
+		if existing == name {
+			return nil
+		}
+	}
+	p.sensitiveHeaders = append(p.sensitiveHeaders, name)
+	return nil
 }
 
 // reproFlags renders what a command printed by a report has to repeat about the

@@ -56,6 +56,9 @@ plan flags (they narrow the authorization, never widen it):
   --path P           endpoint probes are placed against (default "/api/search")
   --query-param, --body-field, --header-name, --cookie-name, --media-type
                      the slot names a probe is placed into
+  --sensitive-header NAME
+                     withhold this response header's value from the evidence; repeatable,
+                     and it only adds to the base cookie/credential list
 
 where the evidence lives, and who signs it:
   --run ID           the run a command writes or reads

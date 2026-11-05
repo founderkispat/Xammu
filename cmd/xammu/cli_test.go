@@ -214,8 +214,8 @@ func TestRunTakesEveryFlagTheUsageAdvertises(t *testing.T) {
 		"--authorize",
 		"--corpus", "--partition", "--controls", "--target", "--budget", "--class", "--vector",
 		"--encoding", "--path", "--query-param", "--body-field", "--header-name", "--cookie-name",
-		"--media-type", "--run", "--round", "--runs-dir", "--store", "--signing-key",
-		"--generated-by", "--validation", "--parent-run", "--circuit-threshold", "--format",
+		"--media-type", "--sensitive-header", "--run", "--round", "--runs-dir", "--store",
+		"--signing-key", "--generated-by", "--validation", "--parent-run", "--circuit-threshold", "--format",
 		"--out", "--cell", "--finding", "--trust-key", "--rederive", "--lab-dir", "--scenario",
 		"--apply", "--teardown"} {
 		if !bytes.Contains([]byte(usageText), []byte(flagName)) {
@@ -227,7 +227,8 @@ func TestRunTakesEveryFlagTheUsageAdvertises(t *testing.T) {
 	f.register(fs)
 	for _, flagName := range []string{"authorization", "corpus", "partition", "target", "budget",
 		"class", "vector", "encoding", "path", "query-param", "body-field", "header-name",
-		"cookie-name", "media-type", "run", "runs-dir", "store", "issuer-keyring"} {
+		"cookie-name", "media-type", "sensitive-header", "run", "runs-dir", "store",
+		"issuer-keyring"} {
 		if fs.Lookup(flagName) == nil {
 			t.Errorf("planFlags does not declare --%s, which the usage text advertises", flagName)
 		}

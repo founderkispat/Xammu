@@ -89,7 +89,8 @@ declara lo que la corrida **no** prueba.
 
 | propiedad | cómo se comprueba | resultado esperado |
 | --- | --- | --- |
-| suite completa | `go test ./... -count=1` | 296 funciones de prueba en 15 paquetes, sin fallos |
+| suite completa | `go test ./... -count=1` | 306 funciones de prueba en 15 paquetes, sin fallos |
+| cabeceras sensibles | `go test ./cmd/xammu/ ./internal/httpclient/ ./internal/contracts/` | el valor literal no aparece en ningún artefacto; digests salados estables dentro del run y distintos entre runs; `Server` y `Content-Type` intactos |
 | firmas de autorización | `go test ./cmd/xammu/ ./internal/integrity/` | sidecar válido aceptado; campo, firma, contrato, clave o emisor alterados rechazados; `run` no abre socket con una C-09 inválida |
 | criterios del handoff | [`acceptance.md`](acceptance.md) §2 | 29 criterios clasificados; ninguno ⚠ contado como cumplido |
 | inertez del corpus | `xammu corpus check --corpus corpus` | tres particiones cargadas, sin fugas entre particiones |
@@ -99,7 +100,7 @@ declara lo que la corrida **no** prueba.
 | no hay escalas numéricas | `internal/contracts/forbidden_source_test.go` | ninguna puntuación ni confianza numérica en contratos y código |
 | un solo egress | `internal/httpclient/egress_test.go` | ninguna otra ruta de red en el árbol |
 
-El conteo «296 funciones» cuenta funciones `Test*`, no subcasos; los subcasos se ejecutan dentro de
+El conteo «306 funciones» cuenta funciones `Test*`, no subcasos; los subcasos se ejecutan dentro de
 cada función y su fallo tumba la suite igual.
 
 ---
@@ -123,6 +124,7 @@ tiene una prueba o una comprobación de aceptación; ninguna depende de que algu
 | El informe declara lo que no evalúa | los seis `RequiredOutOfScope` son obligatorios en C-15 | `internal/contracts/report.go` |
 | El anexo no mide ni parafrasea la evidencia | comparte un solo recorrido para Markdown y HTML; los campos C-16 se copian literales | `internal/annex/annex_test.go` |
 | Nada se envía fuera DEL alcance autorizado | política de destino y refusal de rutas no cubiertas | `internal/httpclient/policy.go`; el rechazo de `/..%2F..%2F` es intencional |
+| Un valor sensible no llega a la evidencia | lista base de cabeceras, `--sensitive-header` sólo amplía, marcador y digest salado por run, salt no serializado (`internal/contracts/redaction.go`, `internal/httpclient/client.go`) | `TestSensitiveResponseHeadersNeverReachTheBundle`, `TestSensitiveHeadersAreRedactedAtCapture`, `TestRawObservationEnforcesTheRedactionClaim` |
 
 La sonda `/..%2F..%2F` se rechaza porque su ruta queda fuera de los prefijos autorizados. Es
 comportamiento correcto y no se relajó para que el laboratorio midiera «más»: medir fuera del
@@ -137,7 +139,7 @@ permiso no es una capacidad, es un incidente.
 | alcance autorizado | una bandera o un comando reproducido envía fuera del permiso | C-09 obligatoria, banderas que solo recortan, comandos atados a autorización/run | una C-09 mal emitida por un humano no se detecta; el permiso es la autoridad |
 | disponibilidad del objetivo | sondas que dañan o saturan | sondas inertes verificadas, presupuesto, rate limit, circuit breaker | el corpus no puede probar que un tercero no modificó el binario |
 | evidencia | edición posterior del bundle | cadena de hashes, Merkle, firma Ed25519, re-derivación | sin ancla de confianza externa, la firma no prueba identidad |
-| datos del cliente | fuga de capturas o del nombre del cliente | retención digest-only por defecto; el anexo no se guarda en el bundle | el operador decide qué metadatos escribe en `--client` |
+| datos del cliente | fuga de capturas o del nombre del cliente | retención digest-only por defecto; cookies y credenciales de respuesta sustituidas por marcador y digest salado; el anexo no se guarda en el bundle | el operador decide qué metadatos escribe en `--client`; un valor marcado no se puede recuperar del digest |
 | clave de firma | robo del seed | el seed vive fuera del árbol y se ignora por `.gitignore` | la custodia del archivo es responsabilidad del operador |
 | lectura del informe | un documento que exagera lo medido | C-16 exige cuatro campos de honestidad; C-15 exige los disclaimers; sin puntuaciones | la redacción sigue siendo responsabilidad del revisor humano |
 
@@ -183,6 +185,9 @@ Reglas de entrega:
 - **Autorizaciones de demostración vencidas.** `AUTH-SMOKE-LOCAL-001` y `AUTH-SMOKE-ORIGIN-001`
   caducaron el 2026-10-29. `run` rechaza ejecuciones nuevas; `report`, `verify` y `validate`
   siguen funcionando sobre la evidencia sellada.
+- **El salt de redacción no se conserva.** Los digests de cabeceras sensibles correlacionan el mismo
+  valor dentro de un run y no se pueden recalcular después. Es la propiedad de privacidad buscada,
+  no una carencia: recalcular exigiría guardar el salt y el valor.
 - **La semilla del emisor de demostración no se conserva.** Los sidecars de `authorizations/`
   verifican contra `trust/issuers/demo-issuer.pub`, pero no se pueden regenerar ni firmar permisos
   nuevos con esa identidad. Es deliberado: una semilla versionada habría convertido el anillo en

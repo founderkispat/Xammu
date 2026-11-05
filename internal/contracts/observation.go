@@ -101,10 +101,16 @@ type RawObservation struct {
 
 // HeaderEntry is a single response header as received. Names are kept in the
 // case they arrived because header casing is itself a signature datum.
+//
+// Redacted marks an entry whose value policy withheld: Value then holds the
+// marker and Digest holds a salted digest that is stable inside one run and
+// useless outside it. The field is optional so bundles written before redaction
+// existed still validate.
 type HeaderEntry struct {
-	Name   string `json:"name"`
-	Value  string `json:"value"`
-	Digest string `json:"value_digest,omitempty"`
+	Name     string `json:"name"`
+	Value    string `json:"value"`
+	Digest   string `json:"value_digest,omitempty"`
+	Redacted bool   `json:"redacted,omitempty"`
 }
 
 func (RawObservation) Contract() ID { return IDRawObservation }
@@ -201,6 +207,19 @@ func registerObservationContracts() {
 		}
 		c.nonNegative("response_body_bytes", o.ResponseBodyBytes)
 		digestField(c, "response_body_digest", o.ResponseBodyDigest)
+		for i, h := range o.ResponseHeaders {
+			field := fmt.Sprintf("response_headers[%d]", i)
+			c.required(field+".name", h.Name)
+			if h.Redacted {
+				// A redacted entry proves its own claim: the marker must be the
+				// value, and the digest must be present and well-formed. Anything
+				// else would let a withheld value travel under a redacted flag.
+				if h.Value != RedactedValueMarker {
+					c.add(field+".value", "a redacted header must carry "+RedactedValueMarker)
+				}
+				digestField(c, field+".value_digest", h.Digest)
+			}
+		}
 		c.nonNegative("transport.redirect_count", o.Transport.RedirectCount)
 		if o.ObserverConfigHash == "" {
 			c.add("observer_config_hash", "required")

@@ -98,6 +98,9 @@ type Client struct {
 	mu       sync.Mutex
 	refusals []Refusal
 	socket   Dialer
+	// redactor decides which response headers may keep their value. It is set
+	// before the first request and holds the run's salt, which is never written.
+	redactor *contracts.HeaderRedactor
 }
 
 // New builds a client from a scope and a request budget.
@@ -131,6 +134,11 @@ func New(scope *Scope, budget int) *Client {
 	}
 	return c
 }
+
+// SetHeaderRedactor installs the capture-time header policy. A nil redactor
+// keeps every value, which is only correct for a client that never writes
+// evidence; the run path always supplies one.
+func (c *Client) SetHeaderRedactor(r *contracts.HeaderRedactor) { c.redactor = r }
 
 // SetDialer replaces the socket layer beneath the address check. Tests use it to
 // count connections, proving a host which resolves outside the authorized ranges
@@ -284,7 +292,7 @@ func (c *Client) Do(ctx context.Context, req Request) (*Response, error) {
 	// InsecureSkipVerify is never enabled, so a completed TLS handshake is a
 	// verified one.
 	resp.TLSVerified = httpResp.TLS != nil
-	resp.Headers = collectHeaders(httpResp.Header)
+	resp.Headers = collectHeaders(httpResp.Header, c.redactor)
 
 	if httpResp.StatusCode == 429 {
 		resp.RateLimited = true
@@ -368,13 +376,13 @@ func hopStateFrom(ctx context.Context) *hopState {
 	return state
 }
 
-func collectHeaders(h http.Header) []contracts.HeaderEntry {
+func collectHeaders(h http.Header, redactor *contracts.HeaderRedactor) []contracts.HeaderEntry {
 	out := make([]contracts.HeaderEntry, 0, len(h))
 	for name, values := range h {
 		for _, v := range values {
-			out = append(out, contracts.HeaderEntry{
-				Name: name, Value: v, Digest: contracts.NewDigest([]byte(v)),
-			})
+			// The redactor decides here, before the entry exists, so a sensitive
+			// value has no representation that could be written by accident.
+			out = append(out, redactor.Entry(name, v))
 		}
 	}
 	contracts.SortHeaders(out)

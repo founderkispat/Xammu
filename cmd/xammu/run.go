@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -83,6 +84,7 @@ func cmdRun(ctx context.Context, c *cli, args []string) error {
 	}
 
 	summarizeAuth(c.out, auth)
+	printRedactionPolicy(c.out, f.sensitiveHeaders)
 	req, err := buildPlan(auth, f)
 	if err != nil {
 		return err
@@ -102,6 +104,7 @@ func cmdRun(ctx context.Context, c *cli, args []string) error {
 		RunID: f.runID, RoundID: f.round, StoreDir: dir,
 		Partition: string(req.sc.partition), TargetOrigin: req.sc.origin, Budget: req.sc.budget,
 		ParentRunID: parent, CircuitThreshold: circuit,
+		SensitiveHeaders: f.sensitiveHeaders,
 	})
 	if err != nil {
 		return fmt.Errorf("run %s could not begin: %w", f.runID, err)
@@ -218,6 +221,16 @@ func cmdRun(ctx context.Context, c *cli, args []string) error {
 	}
 	fmt.Fprintf(c.out, "\nnext: %s\n", opts.VerifyCmd)
 	return nil
+}
+
+// printRedactionPolicy states what will not be written before the run starts, so
+// an operator who is about to spend requests knows what the evidence will omit.
+func printRedactionPolicy(out io.Writer, extra []string) {
+	fmt.Fprintf(out, "response header redaction: %s\n",
+		strings.Join(contracts.SensitiveResponseHeaderNames(), "|"))
+	if len(extra) > 0 {
+		fmt.Fprintf(out, "  plus %s\n", strings.Join(extra, "|"))
+	}
 }
 
 // verifyCommandOf builds the reproducibility command the report publishes from the

@@ -7,7 +7,7 @@ cada fila nombra el test o el artefacto que la sostiene, y el comando para repet
 Estado global a 2026-11-05: **23 criterios verificados por test, 3 verificados con vocabulario o
 comando distinto al del handoff, 1 verificado por revisión documental y 2 que este repositorio no
 puede cerrar por sí solo** (CI limpio y prueba con ingeniero externo). Los dos últimos están
-declarados como brechas en §9, no contados como cumplidos. La suite local: 296 funciones de prueba
+declarados como brechas en §9, no contados como cumplidos. La suite local: 306 funciones de prueba
 en 15 paquetes, sin fallos.
 
 ---
@@ -108,7 +108,7 @@ cd /d/Xammu
 gofmt -l cmd internal          # debe imprimir nada
 go vet ./...
 go build ./...
-go test ./...                  # 296 funciones de prueba, 15 paquetes
+go test ./...                  # 306 funciones de prueba, 15 paquetes
 
 go run ./cmd/xammu corpus check --corpus corpus
 go run ./cmd/xammu lab scenarios

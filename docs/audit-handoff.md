@@ -220,7 +220,7 @@ benchmark. Son restricciones de alcance, no carencias accidentales.
 ### 4.4 Estado de aceptación
 
 `docs/acceptance.md` declara 23 criterios verificados por test, 3 con vocabulario equivalente, 1 por revisión
-documental y **2 no reclamados** (CI limpio y prueba con ingeniero externo). La suite local es de 296 funciones
+documental y **2 no reclamados** (CI limpio y prueba con ingeniero externo). La suite local es de 306 funciones
 en 15 paquetes, sin fallos.
 
 ---
@@ -275,9 +275,13 @@ equivalente a root en el host. El laboratorio debe correr en un host dedicado o 
 
 - El cuerpo de respuesta se retiene según `retention_policy`; por defecto `digest_only`. El cuerpo en memoria
   nunca se serializa (`contracts/observation.go:128`).
-- Las **cabeceras de respuesta sí se guardan completas** (nombre y valor), con digest adicional
-  (`internal/httpclient/client.go:371-382`).
-- Los bundles pueden contener rutas, cabeceras, estados y digests del target; no contienen la clave privada.
+- Las cabeceras de respuesta se guardan con su valor **salvo las sensibles** (`set-cookie`, `cookie`,
+  `authorization`, `proxy-authorization`, `x-api-key`, `x-auth-token` y las añadidas con
+  `--sensitive-header`): para ellas se conserva el nombre, el valor se sustituye por `[redacted]` y
+  se guarda un digest salado por run (`internal/contracts/redaction.go`,
+  `internal/httpclient/client.go`).
+- Los bundles pueden contener rutas, cabeceras no sensibles, estados y digests del target; no contienen
+  la clave privada ni el valor de una cabecera sensible.
 
 ---
 
@@ -521,12 +525,12 @@ idénticos byte a byte.
 
 ---
 
-## 10. Plan de Fase 0 (P0) — aprobado; 0.1 cerrado
+## 10. Plan de Fase 0 (P0) — aprobado; 0.1 y 0.2 cerrados
 
-> **Estado (2026-11-05):** las cinco decisiones recomendadas se confirmaron y **0.1 está cerrado**
-> con la evidencia de §10.1.1. 0.2 y 0.3 siguen pendientes; no se inicia Fase 1 hasta que este
-> documento diga **P0 cerrado**. La regla de trabajo sigue siendo una fase por commit, con tests
-> verdes, README y handoff actualizados.
+> **Estado (2026-11-05):** las cinco decisiones recomendadas se confirmaron y **0.1 y 0.2 están
+> cerrados** con la evidencia de §10.1.1 y §10.2.1. 0.3 sigue pendiente; no se inicia Fase 1 hasta
+> que este documento diga **P0 cerrado**. La regla de trabajo sigue siendo una fase por commit, con
+> tests verdes, README y handoff actualizados.
 
 ### 10.0 Regla de ejecución
 
@@ -609,7 +613,7 @@ fuera del anillo, `run` sin socket con C-09 inválida (canario), y `verify` con 
 - El keyring no crea el canal independiente: fija la confianza que el operador ya obtuvo. Para un
   engagement, el `.pub` se registra en el acta o en un repositorio de claves externo.
 
-### 10.2 Retención de cabeceras sensibles (H-02)
+### 10.2 Retención de cabeceras sensibles (H-02) — cerrado (0.2)
 
 **Problema confirmado.** `collectHeaders` persiste nombre y valor de todas las cabeceras de respuesta; la
 retención sólo gobierna el cuerpo.
@@ -641,6 +645,39 @@ retención sólo gobierna el cuerpo.
 - `Server` y `Content-Type` conservan su valor; la clasificación no cambia.
 - `--sensitive-header` amplía la lista y queda registrado.
 
+#### 10.2.1 Cierre de 0.2 — decisiones y evidencia
+
+**Implementado.** `internal/contracts/redaction.go` (lista base, `HeaderRedactor`, salt de 32 bytes,
+digest `sha256(salt || lower(name) || 0x00 || value)`, nombres normalizados y validados);
+`HeaderEntry.Redacted` opcional con validación que exige marcador y digest bien formado
+(`internal/contracts/observation.go`); captura redactada en `collectHeaders`
+(`internal/httpclient/client.go`), de modo que el valor no llega a existir como entrada;
+`orchestrator.Config.SensitiveHeaders` y un redactor creado una vez por run en `newClient`;
+`--sensitive-header` repetible en `planFlags` (por tanto aceptado por `run`, `playbook`, `report`,
+`verify` y `validate`) y publicado en `engagementFlags`; línea de política al inicio de `run`.
+
+**Pruebas.** `internal/contracts/redaction_test.go` cubre las seis cabeceras base en cualquier
+capitalización, la lista ampliada, la estabilidad intra-run y la divergencia entre runs, nombres
+inválidos y la validación del campo `redacted`. `internal/httpclient/redaction_test.go` cubre la
+captura, el valor repetido, la extensión por nombre y el salt por cliente.
+`cmd/xammu/redaction_test.go` ejecuta un run real: recorre todos los archivos del bundle y no
+encuentra `secreto`; comprueba en las observaciones que `Set-Cookie` y la cabecera añadida llevan
+marcador y que `Server` conserva `lab-edge`; y verifica que el comando de reproducción del informe
+publica `--sensitive-header`. Suites: **306 funciones, 15 paquetes, todas verdes**.
+
+**Límites aceptados y declarados.**
+
+- El salt no se serializa, así que los digests no se pueden recalcular después del run. Correlacionan
+  dentro del run y no entre runs; se documenta como propiedad, no como carencia.
+- Un run reanudado recibe un salt nuevo, de modo que la correlación se corta en la reanudación. No
+  hay comando de reanudación en la CLI, pero `orchestrator.Load` acepta la misma política por
+  `ResumeOptions.SensitiveHeaders`.
+- Redactar por CLI una cabecera que un detector consume (`server`, `content-type`, `retry-after`)
+  elimina ese dato de la evidencia registrada y puede cambiar la clasificación re-derivada. La lista
+  base no incluye ninguna de las tres; la consecuencia se declara aquí en vez de prohibir la bandera.
+- Los bundles anteriores a 0.2 siguen validando porque `redacted` es opcional; en ellos un
+  `Set-Cookie` puede seguir en claro y `verify` no lo oculta.
+
 ### 10.3 CI mínimo, release firmada y SBOM (H-04/H-10)
 
 **Diseño propuesto.**
@@ -665,7 +702,7 @@ retención sólo gobierna el cuerpo.
 | punto | evidencia exigida |
 | --- | --- |
 | 0.1 | ✅ suite nueva en verde (296 funciones); `verify` con autorización manipulada sale 1 con mensaje explícito; `run` rechaza antes del socket; demos firmados con sidecars y anillo publicado. **Salvedad:** los comandos dentro de los bundles son anteriores a 0.1 y no citan el anillo; regenerarlos exige el fixture Docker (§10.1.1) |
-| 0.2 | test que recorre el bundle y no encuentra el valor literal; detectores intactos; política documentada |
+| 0.2 | ✅ `TestSensitiveResponseHeadersNeverReachTheBundle` recorre el bundle y no encuentra el valor; `TestSensitiveHeadersAreRedactedAtCapture` prueba el marcador, el digest salado y que `Server`/`Content-Type` conservan valor; la política se publica en el comando de reproducción y en el handoff §10.2.1 |
 | 0.3 | CI o `ci-local.sh` en verde; dos builds idénticos; `.sig`, `.sha256` y SBOM publicados; comandos de verificación documentados |
 | handoff | este documento actualizado con estado **P0 cerrado** y evidencia enlazada |
 
@@ -703,6 +740,7 @@ retención sólo gobierna el cuerpo.
 | Manifiesto detecta daño | `TestVerifyCatchesEvidenceDamage`, `TestVerifyStatesWhatTheSignatureDoesNotCover` |
 | Anexo no inventa cifras ni confianza | `TestAnnexNumbersComeFromTheReport`, `TestNoForbiddenIdentifierInTheShippedTree` |
 | HTML del anexo escapado | `TestAnnexHTMLIsEscaped` |
+| Un valor sensible no llega a la evidencia | `TestSensitiveResponseHeadersNeverReachTheBundle`, `TestSensitiveHeadersAreRedactedAtCapture`, `TestRawObservationEnforcesTheRedactionClaim` |
 | Sin secretos versionados | gitleaks (árbol e historial) |
 | Build reproducible | `scripts/release.sh`, `scripts/certify.sh` |
 

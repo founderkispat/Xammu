@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"xammu/internal/contracts"
-	"xammu/internal/httpclient"
 	"xammu/internal/integrity"
 )
 
@@ -29,6 +28,11 @@ type ResumeOptions struct {
 	// CircuitThreshold is the new process's own breaker setting; it is not read
 	// from the checkpoint because it governs only the requests about to be sent.
 	CircuitThreshold int
+	// SensitiveHeaders repeats the redaction policy the run was started with.
+	// It can only add names to the base list, and a resumed process gets a fresh
+	// salt, so a value seen before and after the resume correlates only within
+	// each segment.
+	SensitiveHeaders []string
 	// Now supplies the clock, so the window check on resume is testable.
 	Now func() time.Time
 }
@@ -129,7 +133,10 @@ func Load(opts ResumeOptions) (*Run, error) {
 		}
 	}
 
-	client := httpclient.New(scope, cfg.Budget)
+	client, err := newClient(scope, cfg.Budget, opts.SensitiveHeaders)
+	if err != nil {
+		return nil, err
+	}
 	// The budget is a total for the run, not a per-process allowance. Restoring the
 	// spent count is what stops a resume from buying traffic the operator never
 	// approved.
