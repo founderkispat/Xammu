@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -12,6 +13,7 @@ import (
 	"strings"
 
 	"xammu/internal/contracts"
+	"xammu/internal/integrity"
 )
 
 // newFlagSet builds a command's flags with its own usage text. Nothing is parsed
@@ -56,7 +58,11 @@ func requireNoStrayArgs(fs *flag.FlagSet) error {
 // readContractFile loads one JSON document and validates it as the contract it
 // claims to be, before any code above this point gets to act on it. A file that does
 // not satisfy its contract is not an authorization, whatever it is called.
-func readContractFile(path string, dst any, id contracts.ID, what string) error {
+//
+// An authorization is decoded strictly: a field this tool does not understand is a
+// field the signature would not cover, so accepting the document would verify less
+// than it appears to.
+func readContractFile(path string, dst any, id contracts.ID, what string, strict bool) error {
 	if path == "" {
 		return fmt.Errorf("no %s file supplied", what)
 	}
@@ -64,7 +70,16 @@ func readContractFile(path string, dst any, id contracts.ID, what string) error 
 	if err != nil {
 		return fmt.Errorf("cannot read the %s %s: %w", what, path, err)
 	}
-	if err := json.Unmarshal(raw, dst); err != nil {
+	if strict {
+		dec := json.NewDecoder(bytes.NewReader(raw))
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(dst); err != nil {
+			return fmt.Errorf("the %s %s is not the JSON of a %s: %w", what, path, id, err)
+		}
+		if err := dec.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+			return fmt.Errorf("the %s %s carries more than one JSON value", what, path)
+		}
+	} else if err := json.Unmarshal(raw, dst); err != nil {
 		return fmt.Errorf("the %s %s is not JSON: %w", what, path, err)
 	}
 	if err := contracts.Validate(id, dst); err != nil {
@@ -73,20 +88,98 @@ func readContractFile(path string, dst any, id contracts.ID, what string) error 
 	return nil
 }
 
-func loadProfiling(path string) (*contracts.ProfilingAuthorization, error) {
+// decodeProfiling reads a C-09 and validates it, without deciding whether it is
+// signed. Reference lookup needs that split: an unsigned file may sit beside the
+// signed one and must not break the search, but the file the reference resolves to
+// is verified before it is returned.
+func decodeProfiling(path string) (*contracts.ProfilingAuthorization, error) {
 	var a contracts.ProfilingAuthorization
-	if err := readContractFile(path, &a, contracts.IDProfilingAuthorization, "authorization"); err != nil {
+	if err := readContractFile(path, &a, contracts.IDProfilingAuthorization, "authorization", true); err != nil {
 		return nil, err
 	}
 	return &a, nil
 }
 
-func loadValidation(path string) (*contracts.ValidationAuthorization, error) {
+func loadProfiling(path string, ring integrity.Keyring) (*contracts.ProfilingAuthorization, error) {
+	a, err := decodeProfiling(path)
+	if err != nil {
+		return nil, err
+	}
+	if err := verifyProfilingSignature(a, path, ring); err != nil {
+		return nil, err
+	}
+	return a, nil
+}
+
+// verifyAuthorizationSignature checks the detached sidecar against the issuer
+// keyring. The key is looked up by the identifier the sidecar names; a keyring
+// that does not carry it is a refusal, not a fallback to the document's own claim.
+// It returns the key that verified, because the C-09 fingerprint has to be derived
+// from that key rather than from a second lookup.
+func verifyAuthorizationSignature(kind contracts.ID, canonical []byte, path string,
+	ring integrity.Keyring) (integrity.IssuerKey, error) {
+	sig, err := integrity.ReadAuthSignature(path)
+	if err != nil {
+		return integrity.IssuerKey{}, err
+	}
+	key, ok := ring.Find(sig.KeyID)
+	if !ok {
+		return integrity.IssuerKey{}, fmt.Errorf("%s %s is signed by issuer key %s, which is not in the "+
+			"keyring %s (it holds %s): a signature is only evidence when the key was obtained "+
+			"independently of the document", kind.Label(), path, sig.KeyID, ring.Dir,
+			strings.Join(ring.IDs(), ", "))
+	}
+	if err := integrity.VerifyAuthorization(kind, canonical, sig, key.Public); err != nil {
+		return integrity.IssuerKey{}, fmt.Errorf("%s %s: %w", kind.Label(), path, err)
+	}
+	return key, nil
+}
+
+func verifyProfilingSignature(a *contracts.ProfilingAuthorization, path string,
+	ring integrity.Keyring) error {
+	canonical, err := contracts.Canonical(a)
+	if err != nil {
+		return fmt.Errorf("cannot canonicalize authorization %s: %w", path, err)
+	}
+	key, err := verifyAuthorizationSignature(contracts.IDProfilingAuthorization, canonical, path, ring)
+	if err != nil {
+		return err
+	}
+	want := integrity.KeyFingerprint(key.Public)
+	if a.IssuerKeyFingerprint != want {
+		return fmt.Errorf("authorization %s states issuer_key_fingerprint %q but the key that signed it "+
+			"derives %q: the fingerprint is derived from the key, not text written beside it", path,
+			a.IssuerKeyFingerprint, want)
+	}
+	return nil
+}
+
+func loadValidation(path, keyring string) (*contracts.ValidationAuthorization, error) {
 	if path == "" {
 		return nil, nil
 	}
 	var v contracts.ValidationAuthorization
-	if err := readContractFile(path, &v, contracts.IDValidationAuthorization, "validation authorization"); err != nil {
+	if err := readContractFile(path, &v, contracts.IDValidationAuthorization, "validation authorization", true); err != nil {
+		return nil, err
+	}
+	ring, err := integrity.LoadIssuerKeyring(keyring)
+	if err != nil {
+		return nil, err
+	}
+	want, err := v.RecomputeImmutabilityDigest()
+	if err != nil {
+		return nil, fmt.Errorf("cannot recompute the immutability digest of %s: %w", path, err)
+	}
+	if v.ImmutabilityDigest != want {
+		return nil, fmt.Errorf("validation authorization %s states immutability_digest %s but its fields "+
+			"derive %s: the declaration changed after the digest was written", path,
+			v.ImmutabilityDigest, want)
+	}
+	canonical, err := contracts.Canonical(v)
+	if err != nil {
+		return nil, fmt.Errorf("cannot canonicalize validation authorization %s: %w", path, err)
+	}
+	if _, err := verifyAuthorizationSignature(contracts.IDValidationAuthorization, canonical, path, ring); err != nil {
 		return nil, err
 	}
 	return &v, nil
@@ -97,6 +190,11 @@ func loadValidation(path string) (*contracts.ValidationAuthorization, error) {
 // reference is looked up in the authorizations directory, where each file must itself
 // satisfy C-09.
 //
+// The resolved file is then verified against the issuer keyring: a detached
+// signature, the key it names, and the fingerprint the key derives. An unsigned
+// permission is refused before any of these commands reaches a plan, and nothing
+// above this point ever sees the authorization as if it were approved.
+//
 // The lookup is deliberately narrow: exactly one file must carry the reference. Two
 // files with the same ref would mean the operator is holding one of two permissions
 // and the tool cannot tell which, so it asks instead of guessing.
@@ -106,14 +204,18 @@ func loadValidation(path string) (*contracts.ValidationAuthorization, error) {
 // only paste-able together with the place it was found. Returning it here keeps that
 // statement about what this process actually read rather than about what a later
 // renderer guesses from the shape of the value.
-func loadAuthorization(value, dir string) (*contracts.ProfilingAuthorization, string, error) {
+func loadAuthorization(value, dir, keyring string) (*contracts.ProfilingAuthorization, string, error) {
 	if value == "" {
 		return nil, "", fmt.Errorf("%w: no authorization supplied. Every command that touches a target "+
 			"names the C-09 permission it is running under", errUsage)
 	}
 	if strings.HasSuffix(value, ".json") {
 		if _, err := os.Stat(value); err == nil {
-			a, err := loadProfiling(value)
+			ring, err := integrity.LoadIssuerKeyring(keyring)
+			if err != nil {
+				return nil, "", err
+			}
+			a, err := loadProfiling(value, ring)
 			if err != nil {
 				return nil, "", err
 			}
@@ -123,17 +225,26 @@ func loadAuthorization(value, dir string) (*contracts.ProfilingAuthorization, st
 	if dir == "" {
 		return nil, "", fmt.Errorf("authorization %q is not a file and no --authorizations dir was given", value)
 	}
+	ring, err := integrity.LoadIssuerKeyring(keyring)
+	if err != nil {
+		return nil, "", err
+	}
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, "", fmt.Errorf("cannot look for authorization %q in %s: %w", value, dir, err)
 	}
-	var matches []*contracts.ProfilingAuthorization
+	type candidate struct {
+		auth *contracts.ProfilingAuthorization
+		path string
+	}
+	var matches []candidate
 	var checked, rejected int
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
 			continue
 		}
-		a, err := loadProfiling(filepath.Join(dir, e.Name()))
+		path := filepath.Join(dir, e.Name())
+		a, err := decodeProfiling(path)
 		if err != nil {
 			// A file that is not a valid C-09 cannot be a candidate, but it is counted:
 			// the refusal below has to say how many files were unreadable, or an
@@ -144,12 +255,18 @@ func loadAuthorization(value, dir string) (*contracts.ProfilingAuthorization, st
 		}
 		checked++
 		if a.Ref == value {
-			matches = append(matches, a)
+			matches = append(matches, candidate{auth: a, path: path})
 		}
 	}
 	switch len(matches) {
 	case 1:
-		return matches[0], dir, nil
+		// Verification happens only for the file the reference resolves to: an
+		// unsigned neighbour is not this permission, and failing the whole search
+		// on it would hide the one the operator asked for.
+		if err := verifyProfilingSignature(matches[0].auth, matches[0].path, ring); err != nil {
+			return nil, "", err
+		}
+		return matches[0].auth, dir, nil
 	case 0:
 		return nil, "", fmt.Errorf("authorization %q was not found in %s (%d valid C-09 file(s) checked, "+
 			"%d file(s) in that directory are not valid C-09 documents); pass the file path instead",

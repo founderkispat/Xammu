@@ -1,6 +1,7 @@
-# Compiled binaries
+# Compiled binaries and certification evidence are produced, never committed
 /xammu
 /xammu.exe
+/dist/
 
 # Private signing material never enters the tree
 *.ed25519

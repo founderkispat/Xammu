@@ -1,0 +1,10 @@
+# Go sources and documents are stored and checked out with LF on every platform,
+# so a Windows checkout does not read as a modification of every file.
+* text=auto eol=lf
+
+# Shell scripts used by the laboratory and the release process keep LF as well.
+*.sh text eol=lf
+
+# Sealed evidence is hashed over the bytes on disk. Git must never convert these
+# files on checkout: a CRLF rewrite would break every signature in the bundle.
+runs/** -text

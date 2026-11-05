@@ -33,6 +33,7 @@ const defaultPlacementPath = "/api/search"
 type planFlags struct {
 	authorization string
 	authDir       string
+	issuerKeyring string
 	corpusRoot    string
 	partition     string
 	controls      string
@@ -69,7 +70,7 @@ type planFlags struct {
 // re-derives a report gets these from here, so nothing renders a reference it never
 // resolved.
 func (p *planFlags) bindAuthorization() (*contracts.ProfilingAuthorization, error) {
-	auth, foundIn, err := loadAuthorization(p.authorization, p.authDir)
+	auth, foundIn, err := loadAuthorization(p.authorization, p.authDir, p.issuerKeyring)
 	if err != nil {
 		return nil, err
 	}
@@ -85,6 +86,9 @@ func (p *planFlags) register(fs *flag.FlagSet) {
 		"C-09 profiling authorization: a file path or the reference it carries")
 	fs.StringVar(&p.authDir, "authorizations", defaultAuthDir,
 		"directory searched when --authorization names a reference rather than a file")
+	fs.StringVar(&p.issuerKeyring, "issuer-keyring", "",
+		"directory of *.pub hex ed25519 keys that sign authorizations; required, and never "+
+			"discovered from the document or the bundle")
 	fs.StringVar(&p.corpusRoot, "corpus", "corpus", "corpus tree loaded through the inertness gate")
 	fs.StringVar(&p.partition, "partition", string(contracts.PartitionDevelopment),
 		"partition the probes come from")
@@ -158,6 +162,12 @@ func (p planFlags) engagementFlags() string {
 		}
 		if dir != "" && dir != defaultAuthDir {
 			add("--authorizations", filepath.ToSlash(dir))
+		}
+		// The keyring is a trust input rather than a scope, but a published command
+		// that loads a permission cannot run without it. It is recorded beside the
+		// permission so the command the finding prints verifies the document it cites.
+		if p.issuerKeyring != "" {
+			add("--issuer-keyring", filepath.ToSlash(p.issuerKeyring))
 		}
 	}
 	out = append(out, "--corpus", shellArg(filepath.ToSlash(p.corpusRoot)))

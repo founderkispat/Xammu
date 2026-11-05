@@ -77,7 +77,7 @@ func cmdRun(ctx context.Context, c *cli, args []string) error {
 	if f.runID == "" {
 		return fmt.Errorf("%w: run needs --run: evidence without an owner cannot be cited by a finding", errUsage)
 	}
-	val, err := loadValidation(valPath)
+	val, err := loadValidation(valPath, f.issuerKeyring)
 	if err != nil {
 		return err
 	}
@@ -194,7 +194,8 @@ func cmdRun(ctx context.Context, c *cli, args []string) error {
 	// in-process result.
 	opts := deriveOptions{
 		ManifestIn: manifestPath, By: generatedBy(f.generatedBy), Generated: time.Now().UTC(),
-		VerifyCmd: verifyCommandOf(fin.RunID, flags), CommandFlags: flags,
+		VerifyCmd:       verifyCommandOf(fin.RunID, flags),
+		CommandFlags:    flags,
 		EngagementFlags: f.engagementFlags(),
 	}
 	d, err := derive(run.Store(), fin, auth, req.set, req.sc, req.sel, opts)
@@ -288,6 +289,9 @@ func journalFindings(run *orchestrator.Run, in []contracts.DiscoveryFinding) err
 // whoever copies it, which is not the property a manifest is supposed to have.
 func seal(dir string, fin contracts.RunProfile, store *integrity.Store,
 	auth *contracts.ProfilingAuthorization, keyPath string) (string, *integrity.Key, error) {
+	if err := checkKeyOutsideBundle(dir, keyPath); err != nil {
+		return "", nil, err
+	}
 	manifest, err := integrity.BuildManifest(dir, fin.RunID, auth.Ref, fin.ValidationRef,
 		fin.Counters.Observations, store.Head(integrity.StreamObservations))
 	if err != nil {
@@ -304,6 +308,32 @@ func seal(dir string, fin contracts.RunProfile, store *integrity.Store,
 		return "", nil, fmt.Errorf("cannot write the manifest: %w", err)
 	}
 	return filepath.Join(dir, "manifest.json"), key, nil
+}
+
+// checkKeyOutsideBundle keeps the promise seal makes: a copy of the evidence must
+// not carry the key that signs it. The comparison is on absolute paths, so a key
+// beside the run directory is accepted and one inside it is refused whichever
+// spelling of the path reached this process.
+func checkKeyOutsideBundle(dir, keyPath string) error {
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		return fmt.Errorf("cannot resolve the bundle directory %s: %w", dir, err)
+	}
+	absKey, err := filepath.Abs(keyPath)
+	if err != nil {
+		return fmt.Errorf("cannot resolve the signing key %s: %w", keyPath, err)
+	}
+	rel, err := filepath.Rel(absDir, absKey)
+	if err != nil {
+		// Different volumes: the key cannot be under this directory.
+		return nil
+	}
+	if rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))) {
+		return fmt.Errorf("the signing key %s is inside the bundle %s: a copy of the evidence would "+
+			"carry the key that signs it, so pass --signing-key with a path outside the run directory",
+			keyPath, dir)
+	}
+	return nil
 }
 
 func joinComma(in []string) string {

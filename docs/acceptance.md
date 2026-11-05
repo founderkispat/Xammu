@@ -4,11 +4,11 @@ Este documento responde a una sola pregunta: **¿cuáles de los 29 criterios de 
 handoff están verificados, con qué prueba, y cuáles no se reclaman?** No sustituye a la prueba:
 cada fila nombra el test o el artefacto que la sostiene, y el comando para repetirla está en §4.
 
-Estado global a 2026-10-28: **23 criterios verificados por test, 3 verificados con vocabulario o
+Estado global a 2026-11-05: **23 criterios verificados por test, 3 verificados con vocabulario o
 comando distinto al del handoff, 1 verificado por revisión documental y 2 que este repositorio no
 puede cerrar por sí solo** (CI limpio y prueba con ingeniero externo). Los dos últimos están
-declarados como brechas en §9, no contados como cumplidos. La suite local: 279 tests en 14
-paquetes, sin fallos.
+declarados como brechas en §9, no contados como cumplidos. La suite local: 296 funciones de prueba
+en 15 paquetes, sin fallos.
 
 ---
 
@@ -108,16 +108,18 @@ cd /d/Xammu
 gofmt -l cmd internal          # debe imprimir nada
 go vet ./...
 go build ./...
-go test ./...                  # 279 tests, 14 paquetes
+go test ./...                  # 296 funciones de prueba, 15 paquetes
 
 go run ./cmd/xammu corpus check --corpus corpus
 go run ./cmd/xammu lab scenarios
 
 go run ./cmd/xammu verify --run demo-lab \
   --authorization AUTH-SMOKE-LOCAL-001 --authorizations authorizations \
+  --issuer-keyring trust/issuers \
   --corpus corpus --class sqli --vector query,body_json,cookie
 go run ./cmd/xammu verify --run demo-origin \
   --authorization AUTH-SMOKE-ORIGIN-001 --authorizations authorizations \
+  --issuer-keyring trust/issuers \
   --corpus corpus --class sqli --vector query
 
 # Requiere Docker con daemon: no forma parte de la secuencia local de arriba.
@@ -158,7 +160,8 @@ impresos o en terminal. Nada de README, matrices ni explicación oral.
    sobre ella.
 3. Decir qué haría el lunes con dos de los hallazgos.
 4. Ejecutar un `reproduction_command` publicado tal cual y comprobar que devuelve la misma
-   afirmación.
+   afirmación. En los bundles de demostración, sellados antes de 0.1, hay que añadir
+   `--issuer-keyring trust/issuers` al comando; el material entregado lo indica.
 
 **Criterio de éxito.** El participante nombra correctamente los tres tipos, distingue observación
 de inferencia en al menos dos, identifica el motivo tipado de la zona no evaluada y propone una
@@ -196,8 +199,9 @@ criterio 16; hasta entonces, la entrega lo declara abierto.
 - **quién firmó**, salvo con `--trust-key` obtenida por un canal independiente. El propio comando
   lo dice al terminar y hay tests que lo fijan (`TestVerifyStatesWhatTheSignatureDoesNotCover`,
   `TestVerifyAnchorednessIsNotFailure`);
-- **que el permiso fuera válido al ejecutar.** El manifiesto cita `authorization_ref`, pero la
-  caducidad y el alcance se comprueban en `run`, no al verificar;
+- **que el permiso fuera válido al ejecutar**, salvo la firma: al pasar `--authorization` junto a
+  `--issuer-keyring`, `verify` comprueba el sidecar y el fingerprint del permiso, pero la caducidad
+  y el alcance se comprueban en `run`, no al verificar;
 - **nada sobre `report.md` / `report.json`.** Se generan después del sellado y quedan fuera del
   inventario firmado: la firma compromete la evidencia, no el documento. `report --rederive` vuelve
   a emitirlo y compara; una diferencia es un defecto de la cadena, no una lectura.

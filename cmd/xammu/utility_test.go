@@ -252,6 +252,7 @@ func readDemoReport(t *testing.T, root string) contracts.Report {
 		"--run", demoRun,
 		"--authorization", "AUTH-SMOKE-LOCAL-001",
 		"--authorizations", filepath.Join(root, "authorizations"),
+		"--issuer-keyring", filepath.Join(root, "trust", "issuers"),
 		"--corpus", filepath.Join(root, "corpus"),
 		"--runs-dir", filepath.Join(root, "runs"),
 		"--format", "json",

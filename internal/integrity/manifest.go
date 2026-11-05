@@ -43,6 +43,26 @@ type Key struct {
 	Private ed25519.PrivateKey
 }
 
+// LoadKey reads an existing ed25519 seed. It never creates one: a signing
+// command that silently minted a key would produce a signature under an identity
+// nobody registered.
+func LoadKey(path string) (*Key, error) {
+	if path == "" {
+		return nil, errors.New("integrity: no key path configured")
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("integrity: cannot read signing key %s: %w", path, err)
+	}
+	seed, decErr := hex.DecodeString(strings.TrimSpace(string(raw)))
+	if decErr != nil || len(seed) != ed25519.SeedSize {
+		return nil, fmt.Errorf("integrity: %s is not an ed25519 seed file", path)
+	}
+	priv := ed25519.NewKeyFromSeed(seed)
+	pub := priv.Public().(ed25519.PublicKey)
+	return &Key{Path: path, KeyID: keyID(pub), Public: pub, Private: priv}, nil
+}
+
 // LoadOrCreateKey reads a seed from path, creating one with 0600 when absent.
 // The file is the only place the private key exists; nothing about it is passed
 // through argv or the environment.
@@ -50,18 +70,12 @@ func LoadOrCreateKey(path string) (*Key, error) {
 	if path == "" {
 		return nil, errors.New("integrity: no key path configured")
 	}
-	raw, err := os.ReadFile(path)
+	key, err := LoadKey(path)
 	if err == nil {
-		seed, decErr := hex.DecodeString(strings.TrimSpace(string(raw)))
-		if decErr != nil || len(seed) != ed25519.SeedSize {
-			return nil, fmt.Errorf("integrity: %s is not an ed25519 seed file", path)
-		}
-		priv := ed25519.NewKeyFromSeed(seed)
-		pub := priv.Public().(ed25519.PublicKey)
-		return &Key{Path: path, KeyID: keyID(pub), Public: pub, Private: priv}, nil
+		return key, nil
 	}
 	if !errors.Is(err, os.ErrNotExist) {
-		return nil, fmt.Errorf("integrity: cannot read signing key: %w", err)
+		return nil, err
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return nil, fmt.Errorf("integrity: cannot create key directory: %w", err)

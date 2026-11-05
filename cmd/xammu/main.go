@@ -30,13 +30,19 @@ const usageText = `xammu -- defensive-behaviour discovery through one authorized
 
 usage:
   xammu version
+  xammu authorization sign --authorization FILE --signing-key FILE
   xammu corpus  check    --corpus DIR [--partition NAME]
-  xammu playbook         --authorization FILE --corpus DIR [plan flags]
-  xammu run              --authorization FILE --authorize REF --run ID [plan flags]
-  xammu report           --run ID | --store DIR --authorization FILE --corpus DIR [--format F]
-  xammu verify           --run ID | --store DIR [--trust-key FILE] [--rederive]
-  xammu validate         --finding REF --run ID --authorization FILE --corpus DIR
+  xammu playbook         --authorization FILE --issuer-keyring DIR --corpus DIR [plan flags]
+  xammu run              --authorization FILE --authorize REF --issuer-keyring DIR --run ID [plan flags]
+  xammu report           --run ID | --store DIR --authorization FILE --issuer-keyring DIR --corpus DIR [--format F]
+  xammu verify           --run ID | --store DIR [--trust-key FILE] [--authorization FILE --issuer-keyring DIR] [--rederive]
+  xammu validate         --finding REF --run ID --authorization FILE --issuer-keyring DIR --corpus DIR
   xammu lab              scenarios | test --scenario NAME [--apply]
+
+trust flags (an authorization is refused until one of these verifies it):
+  --issuer-keyring DIR  directory of *.pub files, each one hex ed25519 public key;
+                        required by every command that loads a C-09 or C-10, and never
+                        discovered from the authorization or from a bundle
 
 plan flags (they narrow the authorization, never widen it):
   --corpus DIR       corpus tree to load through the inertness gate (default "corpus")
@@ -69,8 +75,12 @@ run only (nothing is sent until all of these are satisfied):
   --circuit-threshold N  consecutive transport failures that pause the run
 
 read flags:
-  --format F         report rendering: human (markdown), json or both
-  --out DIR          write the documents instead of printing them
+  --format F         human (markdown), json, both, annex (Markdown) or annex-html
+  --out DIR          write the document instead of printing it; an annex is named annex-LANG.md|.html
+  --lang es|en       annex language (default en); evidence fields stay verbatim from C-16
+  --client NAME      annex only: client named in the engagement block
+  --engagement NAME  annex only: engagement label
+  --prepared-by NAME annex only: who prepared the annex
   --cell REF         print one measured cell instead of the document
   --finding REF      finding to re-derive; repeatable
   --trust-key FILE   hex ed25519 public key this operator trusts
@@ -121,6 +131,8 @@ func dispatch(argv []string, stdout, stderr io.Writer) int {
 		return 0
 	case "version":
 		err = cmdVersion(c, rest)
+	case "authorization":
+		err = cmdAuthorization(c, rest)
 	case "corpus":
 		err = cmdCorpus(c, rest)
 	case "playbook":

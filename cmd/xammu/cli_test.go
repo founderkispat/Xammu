@@ -105,10 +105,36 @@ func testAuth(t *testing.T, port int) *contracts.ProfilingAuthorization {
 	return a
 }
 
-// writeAuthFile puts an authorization on disk and returns its path, which is also the
-// form a finding publishes in a reproduction command.
+// testIssuer creates (once per directory) the issuer identity the test
+// authorizations are signed with, and publishes its public key in a keyring
+// beside them. Reusing the seed inside one directory is what lets two copies of
+// one permission verify against one key.
+func testIssuer(t *testing.T, dir string) (*integrity.Key, string) {
+	t.Helper()
+	key, err := integrity.LoadOrCreateKey(filepath.Join(dir, "issuer.ed25519"))
+	if err != nil {
+		t.Fatalf("cannot create the test issuer key: %v", err)
+	}
+	ring := testKeyring(dir)
+	if err := os.MkdirAll(ring, 0o700); err != nil {
+		t.Fatalf("cannot create the test issuer keyring: %v", err)
+	}
+	pub := []byte(hex.EncodeToString(key.Public) + "\n")
+	if err := os.WriteFile(filepath.Join(ring, "test-issuer.pub"), pub, 0o600); err != nil {
+		t.Fatalf("cannot publish the test issuer key: %v", err)
+	}
+	return key, ring
+}
+
+func testKeyring(dir string) string { return filepath.Join(dir, "issuers") }
+
+// writeAuthFile puts a signed authorization on disk and returns its path, which is
+// also the form a finding publishes in a reproduction command. The fingerprint is
+// derived from the key rather than typed, exactly as the loader demands.
 func writeAuthFile(t *testing.T, dir string, a *contracts.ProfilingAuthorization, name string) string {
 	t.Helper()
+	key, _ := testIssuer(t, dir)
+	a.IssuerKeyFingerprint = integrity.KeyFingerprint(key.Public)
 	raw, err := json.MarshalIndent(a, "", "  ")
 	if err != nil {
 		t.Fatalf("cannot encode the test authorization: %v", err)
@@ -116,6 +142,17 @@ func writeAuthFile(t *testing.T, dir string, a *contracts.ProfilingAuthorization
 	path := filepath.Join(dir, name)
 	if err := os.WriteFile(path, raw, 0o600); err != nil {
 		t.Fatalf("cannot write %s: %v", path, err)
+	}
+	canonical, err := contracts.Canonical(*a)
+	if err != nil {
+		t.Fatalf("cannot canonicalize the test authorization: %v", err)
+	}
+	sig, err := integrity.SignAuthorization(contracts.IDProfilingAuthorization, canonical, key)
+	if err != nil {
+		t.Fatalf("cannot sign the test authorization: %v", err)
+	}
+	if err := integrity.WriteAuthSignature(path, sig); err != nil {
+		t.Fatalf("cannot write the signature of %s: %v", path, err)
 	}
 	return path
 }
@@ -173,7 +210,8 @@ func TestDispatchExitCodes(t *testing.T) {
 // TestRunTakesEveryFlagTheUsageAdvertises keeps the help screen honest: usage that names
 // a flag the parser rejects is worse than no usage, because the operator follows it.
 func TestRunTakesEveryFlagTheUsageAdvertises(t *testing.T) {
-	for _, flagName := range []string{"--authorization", "--authorizations", "--authorize",
+	for _, flagName := range []string{"--authorization", "--authorizations", "--issuer-keyring",
+		"--authorize",
 		"--corpus", "--partition", "--controls", "--target", "--budget", "--class", "--vector",
 		"--encoding", "--path", "--query-param", "--body-field", "--header-name", "--cookie-name",
 		"--media-type", "--run", "--round", "--runs-dir", "--store", "--signing-key",
@@ -189,7 +227,7 @@ func TestRunTakesEveryFlagTheUsageAdvertises(t *testing.T) {
 	f.register(fs)
 	for _, flagName := range []string{"authorization", "corpus", "partition", "target", "budget",
 		"class", "vector", "encoding", "path", "query-param", "body-field", "header-name",
-		"cookie-name", "media-type", "run", "runs-dir", "store"} {
+		"cookie-name", "media-type", "run", "runs-dir", "store", "issuer-keyring"} {
 		if fs.Lookup(flagName) == nil {
 			t.Errorf("planFlags does not declare --%s, which the usage text advertises", flagName)
 		}
@@ -229,7 +267,7 @@ func TestLoadAuthorizationResolvesExactlyOnePermission(t *testing.T) {
 	single := t.TempDir()
 	path := writeAuthFile(t, single, auth, "one.json")
 
-	got, foundIn, err := loadAuthorization(path, "")
+	got, foundIn, err := loadAuthorization(path, "", testKeyring(single))
 	if err != nil {
 		t.Fatalf("loading by file path: %v", err)
 	}
@@ -243,7 +281,7 @@ func TestLoadAuthorizationResolvesExactlyOnePermission(t *testing.T) {
 		t.Fatalf("found in %q, want %q", foundIn, filepath.Dir(path))
 	}
 
-	got, foundIn, err = loadAuthorization(auth.Ref, single)
+	got, foundIn, err = loadAuthorization(auth.Ref, single, testKeyring(single))
 	if err != nil {
 		t.Fatalf("loading by reference from %s: %v", single, err)
 	}
@@ -261,7 +299,7 @@ func TestLoadAuthorizationResolvesExactlyOnePermission(t *testing.T) {
 	second := *auth
 	second.AuthorizationID = contracts.NewUUID()
 	writeAuthFile(t, dual, &second, "copy-b.json")
-	if _, _, err := loadAuthorization(auth.Ref, dual); err == nil {
+	if _, _, err := loadAuthorization(auth.Ref, dual, testKeyring(dual)); err == nil {
 		t.Fatal("a reference that appears in two files must be refused")
 	} else if !bytes.Contains([]byte(err.Error()), []byte("appears in 2 files")) {
 		t.Fatalf("unexpected refusal: %v", err)
@@ -277,7 +315,7 @@ func TestLoadAuthorizationResolvesExactlyOnePermission(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(mixed, "notes.txt"), []byte("ignored"), 0o600); err != nil {
 		t.Fatalf("seeding the non-json file: %v", err)
 	}
-	if _, _, err := loadAuthorization("auth-not-here", mixed); err == nil {
+	if _, _, err := loadAuthorization("auth-not-here", mixed, testKeyring(mixed)); err == nil {
 		t.Fatal("an unknown reference must be refused")
 	} else {
 		msg := err.Error()
@@ -291,15 +329,15 @@ func TestLoadAuthorizationResolvesExactlyOnePermission(t *testing.T) {
 
 	// A .json path that does not exist falls through to the reference lookup, and a bare
 	// reference with no directory to search has to say so rather than claim absence.
-	if _, _, err := loadAuthorization(filepath.Join(t.TempDir(), "gone.json"), ""); err == nil {
+	if _, _, err := loadAuthorization(filepath.Join(t.TempDir(), "gone.json"), "", ""); err == nil {
 		t.Fatal("a path that does not exist must be refused")
 	}
-	if _, _, err := loadAuthorization("any-ref", ""); err == nil ||
+	if _, _, err := loadAuthorization("any-ref", "", ""); err == nil ||
 		!bytes.Contains([]byte(err.Error()), []byte("no --authorizations dir")) {
 		t.Fatalf("a bare reference with no directory must name it, got: %v", err)
 	}
 
-	if _, _, err := loadAuthorization("", single); !errors.Is(err, errUsage) {
+	if _, _, err := loadAuthorization("", single, testKeyring(single)); !errors.Is(err, errUsage) {
 		t.Fatalf("an empty authorization must be a usage failure, got: %v", err)
 	}
 }
@@ -314,6 +352,7 @@ func TestRunRefusesBeforeTouchingAnything(t *testing.T) {
 	authPath := writeAuthFile(t, dir, a, "auth.json")
 	runsDir := filepath.Join(dir, "runs")
 	base := []string{"run", "--authorization", authPath,
+		"--issuer-keyring", testKeyring(dir),
 		"--corpus", testCorpusRoot, "--runs-dir", runsDir,
 		"--class", "sqli", "--vector", "query", "--budget", "8"}
 
@@ -373,6 +412,7 @@ func TestRunRefusesAnExpiredAuthorization(t *testing.T) {
 	authPath := writeAuthFile(t, dir, expired, "expired.json")
 
 	code, out, errs := run(t, "run", "--authorization", authPath,
+		"--issuer-keyring", testKeyring(dir),
 		"--authorize", expired.Ref, "--run", "cli-test-expired",
 		"--corpus", testCorpusRoot, "--runs-dir", filepath.Join(dir, "runs"))
 	if code != 1 {
@@ -421,6 +461,7 @@ func TestPlaybookPlansAndSendsNothing(t *testing.T) {
 	authPath := writeAuthFile(t, dir, a, "auth.json")
 
 	code, out, errs := run(t, "playbook", "--authorization", authPath,
+		"--issuer-keyring", testKeyring(dir),
 		"--corpus", testCorpusRoot, "--class", "sqli", "--vector", "query", "--budget", "24")
 	if code != 0 {
 		t.Fatalf("playbook must plan the repository corpus: exit %d\n%s\n%s", code, out, errs)
@@ -439,6 +480,7 @@ func TestPlaybookPlansAndSendsNothing(t *testing.T) {
 	// compare, so it is refused while it still costs nothing. Requests are somebody
 	// else's resource; discovering this after spending them is the worst time to learn it.
 	code, out, errs = run(t, "playbook", "--authorization", authPath,
+		"--issuer-keyring", testKeyring(dir),
 		"--corpus", testCorpusRoot, "--class", "sqli", "--vector", "query", "--budget", "8")
 	if code != 1 || !bytes.Contains([]byte(errs), []byte("the plan holds none")) ||
 		!bytes.Contains([]byte(errs), []byte("raise --budget")) {
@@ -449,6 +491,7 @@ func TestPlaybookPlansAndSendsNothing(t *testing.T) {
 	// A class the permission does not name is refused rather than quietly dropped, or the
 	// operator would believe they asked for it.
 	code, out, errs = run(t, "playbook", "--authorization", authPath,
+		"--issuer-keyring", testKeyring(dir),
 		"--corpus", testCorpusRoot, "--class", "sqli,xxe", "--budget", "8")
 	if code != 1 {
 		t.Fatalf("an unauthorized class must fail (exit 1), got %d\n%s\n%s", code, out, errs)
@@ -1128,12 +1171,13 @@ func TestReadCommandsNeverConnect(t *testing.T) {
 	commands := [][]string{
 		{"version"},
 		{"corpus", "check", "--corpus", testCorpusRoot},
-		{"playbook", "--authorization", authPath, "--corpus", testCorpusRoot,
-			"--class", "sqli", "--vector", "query", "--budget", "8"},
+		{"playbook", "--authorization", authPath, "--issuer-keyring", testKeyring(dir),
+			"--corpus", testCorpusRoot, "--class", "sqli", "--vector", "query", "--budget", "8"},
 		{"verify", "--store", bundle},
-		{"report", "--store", bundle, "--authorization", authPath, "--corpus", testCorpusRoot},
+		{"report", "--store", bundle, "--authorization", authPath,
+			"--issuer-keyring", testKeyring(dir), "--corpus", testCorpusRoot},
 		{"validate", "--finding", "GAP-001", "--store", bundle, "--authorization", authPath,
-			"--corpus", testCorpusRoot},
+			"--issuer-keyring", testKeyring(dir), "--corpus", testCorpusRoot},
 		{"lab", "scenarios", "--lab-dir", dir},
 		{"report", "--store", filepath.Join(dir, "absent-bundle")},
 		{"validate", "--finding", "GAP-001", "--store", filepath.Join(dir, "absent-bundle")},
@@ -1539,6 +1583,8 @@ func TestReportFormatNamesTheHumanDocument(t *testing.T) {
 		{"markdown", "markdown"},
 		{"json", "json"},
 		{"both", "both"},
+		{"annex", "annex"},
+		{"annex-html", "annex-html"},
 	} {
 		got, err := asReportFormat(tc.asked)
 		if err != nil {
@@ -1548,7 +1594,7 @@ func TestReportFormatNamesTheHumanDocument(t *testing.T) {
 			t.Errorf("--format %q resolved to %q, want %q", tc.asked, got, tc.want)
 		}
 	}
-	for _, bad := range []string{"", "text", "JSON", "Human", "markdown,json"} {
+	for _, bad := range []string{"", "text", "JSON", "Human", "markdown,json", "annex-json", "html"} {
 		if _, err := asReportFormat(bad); err == nil {
 			t.Errorf("--format %q was accepted; an unrecognised rendering must be refused, not guessed",
 				bad)

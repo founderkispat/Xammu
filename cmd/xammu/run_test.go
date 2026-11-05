@@ -193,6 +193,7 @@ func TestEndToEndRunSealsSignsAndPublishesCommandsThatWork(t *testing.T) {
 	keyPath := filepath.Join(dir, "outside-the-bundle.ed25519")
 
 	code, out, errs := run(t, "run", "--authorization", authPath, "--authorize", auth.Ref,
+		"--issuer-keyring", testKeyring(dir),
 		"--run", "cli-e2e", "--corpus", testCorpusRoot, "--runs-dir", runsDir,
 		"--class", "sqli", "--vector", "query", "--budget", "24", "--signing-key", keyPath)
 	if code != 0 {
@@ -433,6 +434,7 @@ func TestEndToEndAReaderWithoutThePlanFlagsReDerivesTheSameDocument(t *testing.T
 	bundle := filepath.Join(runsDir, "cli-replan")
 
 	code, out, errs := run(t, "run", "--authorization", authPath, "--authorize", auth.Ref,
+		"--issuer-keyring", testKeyring(dir),
 		"--run", "cli-replan", "--corpus", testCorpusRoot, "--runs-dir", runsDir,
 		"--class", "sqli", "--vector", "query", "--budget", "24",
 		"--signing-key", filepath.Join(dir, "signing.ed25519"))
@@ -452,6 +454,7 @@ func TestEndToEndAReaderWithoutThePlanFlagsReDerivesTheSameDocument(t *testing.T
 	for _, f := range rep.Findings {
 		code, out, errs := run(t, "validate", "--finding", f.Ref, "--run", "cli-replan",
 			"--authorization", auth.Ref, "--authorizations", dir,
+			"--issuer-keyring", testKeyring(dir),
 			"--corpus", testCorpusRoot, "--runs-dir", runsDir)
 		if code != 0 {
 			t.Fatalf("finding %s did not re-derive from the bundle that published it: exit %d\n"+
@@ -463,7 +466,8 @@ func TestEndToEndAReaderWithoutThePlanFlagsReDerivesTheSameDocument(t *testing.T
 	}
 
 	code, out, errs = run(t, "verify", "--run", "cli-replan", "--authorization", auth.Ref,
-		"--authorizations", dir, "--corpus", testCorpusRoot, "--runs-dir", runsDir, "--rederive")
+		"--authorizations", dir, "--issuer-keyring", testKeyring(dir),
+		"--corpus", testCorpusRoot, "--runs-dir", runsDir, "--rederive")
 	if code != 0 {
 		t.Fatalf("the whole document must re-derive without the plan flags: exit %d\n"+
 			"stdout: %s\nstderr: %s", code, out, errs)
@@ -476,6 +480,7 @@ func TestEndToEndAReaderWithoutThePlanFlagsReDerivesTheSameDocument(t *testing.T
 	// about a plan they did not name: a flag is not evidence.
 	code, out, errs = run(t, "validate", "--finding", rep.Findings[0].Ref,
 		"--run", "cli-replan", "--authorization", auth.Ref, "--authorizations", dir,
+		"--issuer-keyring", testKeyring(dir),
 		"--corpus", testCorpusRoot, "--runs-dir", runsDir, "--class", "xss")
 	if code == 0 {
 		t.Fatalf("a re-read that names another class must be refused, not answered:\n%s", out)
@@ -498,13 +503,15 @@ func TestEndToEndRederiveCatchesAEditedReport(t *testing.T) {
 	bundle := filepath.Join(runsDir, "cli-rederive")
 
 	code, out, errs := run(t, "run", "--authorization", authPath, "--authorize", auth.Ref,
+		"--issuer-keyring", testKeyring(dir),
 		"--run", "cli-rederive", "--corpus", testCorpusRoot, "--runs-dir", runsDir,
 		"--class", "sqli", "--vector", "query", "--budget", "24",
 		"--signing-key", filepath.Join(dir, "signing.ed25519"))
 	if code != 0 {
 		t.Fatalf("the run must complete: exit %d\n%s\n%s", code, out, errs)
 	}
-	readArgs := []string{"--authorization", authPath, "--corpus", testCorpusRoot,
+	readArgs := []string{"--authorization", authPath, "--issuer-keyring", testKeyring(dir),
+		"--corpus", testCorpusRoot,
 		"--runs-dir", runsDir, "--class", "sqli", "--vector", "query", "--budget", "24"}
 
 	// First, as published: the document re-derives from its own evidence.
@@ -615,5 +622,118 @@ func assertNoPrivateKeys(t *testing.T, bundle, keyPath string) {
 	})
 	if err != nil {
 		t.Fatalf("walking the bundle: %v", err)
+	}
+}
+
+// TestEndToEndAnnexIsAClientViewOfTheSameReport: the annex is the first artifact a
+// client sees, and it must be a view of the signed report rather than a new
+// measurement. The test produces a real bundle, renders both formats and both
+// languages, and checks that the engagement metadata reaches the document while
+// the evidence still comes from the run.
+func TestEndToEndAnnexIsAClientViewOfTheSameReport(t *testing.T) {
+	srv := fakePerimeter(t)
+	dir := t.TempDir()
+	auth := testAuth(t, perimeterPort(t, srv))
+	authPath := writeAuthFile(t, dir, auth, "auth.json")
+	runsDir := filepath.Join(dir, "runs")
+	bundle := filepath.Join(runsDir, "cli-annex")
+
+	code, out, errs := run(t, "run", "--authorization", authPath, "--authorize", auth.Ref,
+		"--issuer-keyring", testKeyring(dir),
+		"--run", "cli-annex", "--corpus", testCorpusRoot, "--runs-dir", runsDir,
+		"--class", "sqli", "--vector", "query", "--budget", "24",
+		"--signing-key", filepath.Join(dir, "signing.ed25519"))
+	if code != 0 {
+		t.Fatalf("the run must complete: exit %d\n%s\n%s", code, out, errs)
+	}
+	readArgs := []string{"--authorization", authPath, "--issuer-keyring", testKeyring(dir),
+		"--corpus", testCorpusRoot,
+		"--runs-dir", runsDir, "--class", "sqli", "--vector", "query", "--budget", "24"}
+
+	code, out, errs = run(t, append([]string{"report", "--store", bundle,
+		"--format", "annex", "--lang", "es", "--client", "Cliente Demo",
+		"--engagement", "Auditoría WAF", "--prepared-by", "Izkuna"}, readArgs...)...)
+	if code != 0 {
+		t.Fatalf("the Spanish annex must render: exit %d\n%s\n%s", code, out, errs)
+	}
+	for _, want := range []string{
+		"# Anexo técnico", "Cliente Demo", "Auditoría WAF", "Izkuna",
+		"## 3. Resultado en una vista", "## 5. Hallazgos", "## 8. Evidencia y reproducibilidad",
+		"cli-annex",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("the Spanish annex is missing %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, `"report_id"`) {
+		t.Fatal("the annex must not dump the raw C-15 payload")
+	}
+
+	outDir := filepath.Join(dir, "annex")
+	code, out, errs = run(t, append([]string{"report", "--store", bundle,
+		"--format", "annex-html", "--lang", "en", "--client", "Demo Client",
+		"--out", outDir}, readArgs...)...)
+	if code != 0 {
+		t.Fatalf("the English HTML annex must be written: exit %d\n%s\n%s", code, out, errs)
+	}
+	path := filepath.Join(outDir, "annex-en.html")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("the annex file was not written: %v", err)
+	}
+	doc := string(raw)
+	for _, want := range []string{
+		`<html lang="en">`, "Technical annex", "Demo Client",
+		"3. Result at a glance", "5. Findings", "8. Evidence and reproducibility",
+	} {
+		if !strings.Contains(doc, want) {
+			t.Fatalf("the HTML annex is missing %q", want)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(outDir, reportJSONFile)); err == nil {
+		t.Fatal("an annex write must not publish report.json: the annex is not a sealed document")
+	}
+}
+
+// TestReportAnnexFlagsAreRefusedOutsideAnnex: a flag that does not reach the
+// rendering must be refused, because an operator who passes --client to a JSON
+// report would otherwise believe the client name was recorded somewhere.
+func TestReportAnnexFlagsAreRefusedOutsideAnnex(t *testing.T) {
+	for _, argv := range [][]string{
+		{"report", "--format", "markdown", "--lang", "es"},
+		{"report", "--format", "json", "--client", "Demo"},
+		{"report", "--format", "both", "--prepared-by", "Izkuna"},
+	} {
+		code, _, errs := run(t, argv...)
+		if code != 2 || !strings.Contains(errs, "only apply to --format annex") {
+			t.Fatalf("%v: exit %d, errs %q; an annex-only flag outside the annex must be a usage error",
+				argv, code, errs)
+		}
+	}
+	code, _, errs := run(t, "report", "--format", "annex", "--lang", "fr")
+	if code != 2 || !strings.Contains(errs, "not es or en") {
+		t.Fatalf("an unknown annex language must be refused as usage: exit %d, errs %q", code, errs)
+	}
+	code, _, errs = run(t, "report", "--format", "annex", "--store", "x", "--cell", "sqli/query")
+	if code != 2 || !strings.Contains(errs, "ask for one or the other") {
+		t.Fatalf("--cell and the annex are two documents, not one: exit %d, errs %q", code, errs)
+	}
+}
+
+// TestSigningKeyMustLiveOutsideTheBundle: a bundle that carries its own private
+// key can be re-signed by whoever copies it, which destroys the only property the
+// manifest provides. The refusal is checked directly because it has to hold before
+// any file is written, not only for the key path a test happens to pass.
+func TestSigningKeyMustLiveOutsideTheBundle(t *testing.T) {
+	dir := t.TempDir()
+	runDir := filepath.Join(dir, "runs", "run-1")
+	if err := checkKeyOutsideBundle(runDir, filepath.Join(runDir, "signing.ed25519")); err == nil {
+		t.Fatal("a signing key inside the bundle was accepted")
+	}
+	if err := checkKeyOutsideBundle(runDir, filepath.Join(dir, "runs", "signing.ed25519")); err != nil {
+		t.Fatalf("a signing key beside the bundle was refused: %v", err)
+	}
+	if err := checkKeyOutsideBundle(runDir, filepath.Join("..", "runs", "run-1", "..", "key.ed25519")); err != nil {
+		t.Fatalf("a path that resolves beside the bundle was refused: %v", err)
 	}
 }

@@ -195,7 +195,7 @@ func publishReport(dir string, rep *contracts.Report, out io.Writer) error {
 func readPublishedReport(dir string) (contracts.Report, error) {
 	var rep contracts.Report
 	path := filepath.Join(dir, reportJSONFile)
-	if err := readContractFile(path, &rep, contracts.IDReport, "report"); err != nil {
+	if err := readContractFile(path, &rep, contracts.IDReport, "report", false); err != nil {
 		return rep, err
 	}
 	return rep, nil

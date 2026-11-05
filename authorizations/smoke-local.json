@@ -71,7 +71,7 @@
     "no requests outside the listed path prefixes"
   ],
   "contact_for_halt": "oncall@example.internal",
-  "issuer_key_fingerprint": "ed25519:7f3a...c1",
+  "issuer_key_fingerprint": "ed25519:1b0181da5dab0590d20de4f0bfdbfd39262a290c07d664cc0b9e80978e39355c",
   "notes": [
     "budget raised to 48 and the laboratory corpus classes added for the reproducible scenarios in lab/scenarios.json"
   ]

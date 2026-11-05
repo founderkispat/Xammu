@@ -60,37 +60,94 @@ go run ./cmd/xammu corpus check --corpus corpus
 go run ./cmd/xammu lab scenarios
 
 # verificar el bundle del WAF (13 artefactos firmados, 23 observaciones)
+# --trust-key fija el firmante del bundle; --issuer-keyring fija al emisor del permiso
 go run ./cmd/xammu verify --run demo-lab \
   --authorization AUTH-SMOKE-LOCAL-001 --authorizations authorizations \
-  --corpus corpus --class sqli --vector query,body_json,cookie
+  --issuer-keyring trust/issuers \
+  --corpus corpus --class sqli --vector query,body_json,cookie \
+  --trust-key trust/demo-lab.pub
 
 # el informe humano del mismo bundle
 go run ./cmd/xammu report --run demo-lab \
   --authorization AUTH-SMOKE-LOCAL-001 --authorizations authorizations \
+  --issuer-keyring trust/issuers \
   --corpus corpus --format human
 
-# reproducir un hallazgo concreto: el comando que el propio informe publica
-go run ./cmd/xammu validate --finding BYP-G-DEV-SQLI-Q-TAUTO --run demo-lab \
-  --authorization AUTH-SMOKE-LOCAL-001 --corpus corpus
+# leer una celda concreta: sus ensayos, su lectura y sus atribuciones
+go run ./cmd/xammu report --run demo-lab \
+  --authorization AUTH-SMOKE-LOCAL-001 --authorizations authorizations \
+  --issuer-keyring trust/issuers --corpus corpus \
+  --cell 'sqli|query|canonical|/api/search'
 ```
 
-Salida esperada del último comando:
+Salida esperada del último comando (extracto):
 
 ```
-BYP-G-DEV-SQLI-Q-TAUTO       agrees: type encoding_bypass_pattern, descriptive, evidence single_observation
-
-every named finding came back from the sealed evidence with the same claim, the same grade and
-the same missing evidence.
+cell cell:sqli|query|canonical|/api/search on http://127.0.0.1:8099
+  3 trial(s): 3 valid, 0 inconclusive, 0 invalid
+  readings: signal_block=3
+  rounds: round-1 | runs: demo-lab
 ```
+
+Cada hallazgo del informe publica su `reproduction_command`, ejecutable tal cual. En los bundles
+sellados antes de 0.1 ese comando no incluye `--issuer-keyring`; al pegarlo, añade
+`--issuer-keyring trust/issuers`. `validate` compara el comando publicado con el re-derivado y
+señala esa diferencia de texto, no una lectura distinta.
 
 `verify` termina explicitando lo que **no** demuestra: la firma se comprobó contra la clave
 pública del propio manifiesto, así que la identidad no está anclada salvo que se pase
 `--trust-key`; y la verificación no dice si las lecturas son correctas, sólo que la evidencia se
 compromete a sí misma. Los detalles, en [`docs/acceptance.md`](docs/acceptance.md#6-qué-garantiza-verify-y-qué-no).
 
+Toda C-09 y C-10 se verifica contra un anillo de claves públicas que el operador nombra con
+`--issuer-keyring DIR`; no hay valor por defecto ni descubrimiento desde el documento. Una
+autorización sin su sidecar `<archivo>.sig` se rechaza antes de planificar. Para firmar un permiso
+que ya escribiste, con la clave privada del emisor fuera del árbol:
+
+```bash
+go run ./cmd/xammu authorization sign \
+  --authorization authorizations/mi-permiso.json \
+  --signing-key /ruta/fuera/del/arbol/emisor.ed25519
+```
+
+El comando imprime la huella derivada de la clave; ese valor es el que debe llevar
+`issuer_key_fingerprint` en la C-09. La clave privada del emisor de demostración no se conserva:
+los sidecars de `authorizations/` se firmaron con una semilla efímera y sólo se publicó
+`trust/issuers/demo-issuer.pub`.
+
 Las autorizaciones de demostración caducan el **2026-10-29**. Después de esa fecha `run` rechaza
 una ejecución nueva; `report`, `validate` y `verify` siguen re-derivando del bundle sellado y el
-informe declara que el permiso venció.
+informe declara que el permiso venció. Los bundles sellados antes de 0.1 publican comandos de
+reproducción sin `--issuer-keyring`; al pegarlos, añade `--issuer-keyring trust/issuers`.
+
+### Anexo para el cliente (ES/EN)
+
+`report` también produce el anexo técnico que se adjunta al informe de auditoría, en Markdown o
+en HTML autocontenido:
+
+```bash
+# anexo en español, con los datos del engagement
+go run ./cmd/xammu report --run demo-lab \
+  --authorization AUTH-SMOKE-LOCAL-001 --authorizations authorizations \
+  --issuer-keyring trust/issuers \
+  --corpus corpus --format annex --lang es \
+  --client "Cliente de ejemplo" --engagement "Auditoría WAF" \
+  --prepared-by "Izkuna" --out salida/
+
+# el mismo anexo en inglés, como página HTML
+go run ./cmd/xammu report --run demo-lab \
+  --authorization AUTH-SMOKE-LOCAL-001 --authorizations authorizations \
+  --issuer-keyring trust/issuers \
+  --corpus corpus --format annex-html --lang en --out salida/
+```
+
+`--out` escribe `annex-es.md` o `annex-en.html` y **no** publica `report.json`: el anexo es una
+vista, no un documento sellado. Traduce la estructura, las etiquetas y las indicaciones; los
+campos de evidencia de cada hallazgo (`what_was_observed`, `what_is_inferred`,
+`what_evidence_is_missing`, limitaciones, recomendaciones y comandos) se citan verbatim del
+registro C-16 para que una traducción no altere lo observado. Todas las cifras salen del C-15
+re-derivado. `--lang`, `--client`, `--engagement` y `--prepared-by` sólo se aceptan con
+`annex` o `annex-html`; con cualquier otro formato `report` los rechaza como error de uso.
 
 ---
 
@@ -145,16 +202,22 @@ efímeras y no se versionan):
 ```bash
 MSYS_NO_PATHCONV=1 go run ./cmd/xammu run \
   --authorization authorizations/smoke-local.json --authorize AUTH-SMOKE-LOCAL-001 \
+  --issuer-keyring trust/issuers \
   --corpus corpus --runs-dir runs --run demo-lab --budget 48 \
   --path /api/search --class sqli --vector query,body_json,cookie \
   --signing-key "$TEMP/xammu-demo-lab.ed25519"
 
 MSYS_NO_PATHCONV=1 go run ./cmd/xammu run \
   --authorization AUTH-SMOKE-ORIGIN-001 --authorize AUTH-SMOKE-ORIGIN-001 \
-  --authorizations authorizations --corpus corpus --runs-dir runs --run demo-origin \
+  --authorizations authorizations --issuer-keyring trust/issuers \
+  --corpus corpus --runs-dir runs --run demo-origin \
   --class sqli --vector query --target http://127.0.0.1:8081 \
   --signing-key "$TEMP/xammu-demo-origin.ed25519"
 ```
+
+Las dos C-09 están firmadas y sus sidecars se versionan; la semilla del emisor de demostración no
+se conserva, así que los comandos se pueden repetir con el anillo publicado, pero no volver a
+firmar cambiando el permiso.
 
 ### Por qué son dos informes y no uno
 
@@ -286,6 +349,7 @@ también: `TestVerifyStatesWhatTheSignatureDoesNotCover` y `TestVerifyAnchoredne
 | --- | --- | --- |
 | `xammu profile` | `xammu run --authorization FILE --authorize REF` | perfilar es la única acción que envía; la segunda bandera obliga a nombrar el permiso que se tiene en la mano |
 | `xammu report --format human` | idéntico | `human` y `markdown` son el mismo documento; aceptar ambos mantiene el comando del handoff ejecutable |
+| anexo de cliente | `xammu report --format annex\|annex-html --lang es\|en` | no está en el handoff: es el primer entregable de Izkuna, derivado del mismo C-15 y con los campos de evidencia verbatim |
 | `xammu validate --hypothesis REF` | `xammu validate --finding REF` (re-derivación de sólo lectura) + `xammu run --validation FILE --parent-run ID` (ejecuta una ronda C-10) | `validate` nunca envía; una ronda de hipótesis es un `run` y necesita su propia autorización |
 | `xammu lab up/down/test` | `lab/build.sh`, `verify.sh`, `teardown.sh`; `xammu lab scenarios`; `xammu lab test --scenario [--apply]` | `lab test` sin `--apply` describe; sólo `--apply` toca Docker |
 
@@ -303,6 +367,9 @@ La equivalencia completa y el estado de cada criterio están en
   de la clasificación; el journal conserva digest y, como máximo, los bytes autorizados.
 - **La autorización manda.** Presupuesto, métodos, clases, vectores, codificaciones, rutas,
   CIDRs y caducidad salen de la C-09; las banderas sólo recortan.
+- **El anillo de emisores es tuyo.** `--issuer-keyring` no tiene valor por defecto: la clave
+  pública debe llegar por un canal independiente del permiso. La semilla del emisor de
+  demostración no se conserva, así que esos sidecars no se pueden regenerar.
 - **La sonda `/..%2F..%2F` se rechaza en planificación** porque su ruta queda fuera de los
   prefijos autorizados. Es comportamiento correcto de la política de destino y no se relaja; un
   plan de matriz completa que incluya esa sonda se rechaza en `CAL-POS-P-01` y debe estrecharse.
@@ -314,11 +381,14 @@ La equivalencia completa y el estado de cada criterio están en
 
 ## 12. Auditar este repositorio en 10 minutos
 
-1. `go test ./...` — 279 tests en 14 paquetes; ninguna suite roja.
+1. `bash scripts/certify.sh` — formato, vet, build, suite completa, `corpus check`, `verify` de los
+   dos bundles, anexos ES/EN, build reproducible byte a byte y hash del árbol; escribe la evidencia
+   en `dist/certification-<UTC>.txt`. Solo `go test ./...` son 296 funciones en 15 paquetes.
 2. `sed -n '1,80p' docs/acceptance.md` — los 29 criterios con su prueba y lo que falta.
-3. `go run ./cmd/xammu verify --run demo-lab --authorization AUTH-SMOKE-LOCAL-001 --authorizations authorizations --corpus corpus --class sqli --vector query,body_json,cookie`
-4. `go run ./cmd/xammu report --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --authorizations authorizations --corpus corpus --format human` — los tres `coverage_gap`.
-5. Abre un finding de `runs/demo-lab/report.md` y ejecuta su `reproduction_command` tal cual.
+3. `go run ./cmd/xammu verify --run demo-lab --authorization AUTH-SMOKE-LOCAL-001 --authorizations authorizations --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query,body_json,cookie --trust-key trust/demo-lab.pub`
+4. `go run ./cmd/xammu report --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --authorizations authorizations --issuer-keyring trust/issuers --corpus corpus --format human` — los tres `coverage_gap`.
+5. Abre un finding de `runs/demo-lab/report.md` y ejecuta su `reproduction_command`; si el bundle
+   se selló antes de 0.1, añade `--issuer-keyring trust/issuers` al comando publicado.
 6. Lee `internal/httpclient/egress_test.go` y `internal/contracts/forbidden_source_test.go`: los
    invariantes de «un solo egress» y «ninguna escala numérica» son tests, no prosa.
 
@@ -326,6 +396,11 @@ La equivalencia completa y el estado de cada criterio están en
 
 ## 13. Documentos
 
+- [`docs/audit-handoff.md`](docs/audit-handoff.md) — handoff de auditoría: qué hace XAMMU, cómo y por qué,
+  alcance incluido y excluido, análisis de seguridad de la infraestructura, hallazgos priorizados y mejoras.
+- [`docs/certification.md`](docs/certification.md) — expediente de aceptación interna de Izkuna:
+  artefacto y anclaje por hash, cómo reproducirla, invariantes de seguridad, modelo de amenaza,
+  límites, brechas abiertas y tabla de firma.
 - [`docs/acceptance.md`](docs/acceptance.md) — matriz de los 29 criterios, definición de
   terminado, desviación de §9.3, protocolo de la prueba de utilidad y qué garantiza `verify`.
 - [`lab/README.md`](lab/README.md) — reconstrucción del fixture, comportamientos, límites y

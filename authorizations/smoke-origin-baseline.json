@@ -72,5 +72,5 @@
     "this authorization covers the origin only; it is not permission to profile any other host"
   ],
   "contact_for_halt": "oncall@example.internal",
-  "issuer_key_fingerprint": "ed25519:7f3a...c1"
+  "issuer_key_fingerprint": "ed25519:1b0181da5dab0590d20de4f0bfdbfd39262a290c07d664cc0b9e80978e39355c"
 }

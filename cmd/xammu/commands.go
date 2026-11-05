@@ -24,7 +24,7 @@ func cmdVersion(c *cli, args []string) error {
 		return err
 	}
 	set := observer.DefaultSet()
-	fmt.Fprintf(c.out, "xammu %s (schema %s)\n", integrity.ToolVersion, contracts.SchemaVersion)
+	fmt.Fprintf(c.out, "%s (schema %s)\n", integrity.ToolVersion, contracts.SchemaVersion)
 	fmt.Fprintf(c.out, "contracts: %d registered (%s)\n", len(contracts.IDs()),
 		strings.Join(idStrings(contracts.IDs()), ", "))
 	fmt.Fprintf(c.out, "detectors: %d in the default ensemble, set hash %s\n",

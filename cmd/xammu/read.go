@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/hex"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"xammu/internal/annex"
 	"xammu/internal/contracts"
 	"xammu/internal/corpus"
 	"xammu/internal/integrity"
@@ -23,19 +25,31 @@ import (
 // asking about when they say "reproduce it".
 func cmdReport(c *cli, args []string) error {
 	var (
-		f       planFlags
-		format  string
-		out     string
-		cellRef string
+		f        planFlags
+		format   string
+		out      string
+		cellRef  string
+		langName string
+		meta     annex.Meta
 	)
 	fs := newFlagSet("report", c.err)
 	f.register(fs)
-	fs.StringVar(&format, "format", "markdown", "human (markdown), json or both")
+	fs.StringVar(&format, "format", "markdown",
+		"human (markdown), json, both, annex (Markdown annex) or annex-html")
 	fs.StringVar(&cellRef, "cell", "",
 		"print one cell instead of the whole document: its trials, its reading, what it is "+
 			"attributed to and which findings cite it")
 	fs.StringVar(&out, "out", "",
-		"directory to write the documents into; without it they are printed and the bundle is untouched")
+		"directory to write the document into: report.json and report.md, or the annex as "+
+			"annex-<lang>.md or annex-<lang>.html. Without it the document is printed")
+	fs.StringVar(&langName, "lang", "",
+		"annex language: es or en (default en)")
+	fs.StringVar(&meta.Client, "client", "",
+		"annex only: client name printed in the engagement block; the bundle stays anonymous")
+	fs.StringVar(&meta.Engagement, "engagement", "",
+		"annex only: engagement label printed in the engagement block")
+	fs.StringVar(&meta.PreparedBy, "prepared-by", "",
+		"annex only: person or team that prepared the annex")
 	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
@@ -47,6 +61,24 @@ func cmdReport(c *cli, args []string) error {
 		return err
 	}
 	format = resolved
+	isAnnex := isAnnexFormat(format)
+	if !isAnnex {
+		if used := annexOnlyFlags(fs); len(used) > 0 {
+			return fmt.Errorf("%w: %s only apply to --format annex or annex-html",
+				errUsage, strings.Join(used, ", "))
+		}
+	}
+	if cellRef != "" && isAnnex {
+		return fmt.Errorf("%w: --cell prints one cell and --format %s produces a client "+
+			"document; ask for one or the other", errUsage, format)
+	}
+	lang := annex.English
+	if isAnnex {
+		lang, err = annex.ParseLang(langName)
+		if err != nil {
+			return fmt.Errorf("%w: %v", errUsage, err)
+		}
+	}
 
 	rd, err := openForReading(f)
 	if err != nil {
@@ -78,6 +110,25 @@ func cmdReport(c *cli, args []string) error {
 		for _, dv := range d.Pass.Divergences {
 			fmt.Fprintf(c.err, "  divergence: %s\n", dv)
 		}
+	}
+	if isAnnex {
+		doc := annex.Markdown(rep, lang, meta)
+		if format == "annex-html" {
+			doc = annex.HTML(rep, lang, meta)
+		}
+		if out != "" {
+			if err := os.MkdirAll(out, 0o755); err != nil {
+				return fmt.Errorf("cannot create %s: %w", out, err)
+			}
+			path := filepath.Join(out, annexFileName(format, lang))
+			if err := os.WriteFile(path, []byte(doc), 0o640); err != nil {
+				return fmt.Errorf("cannot write %s: %w", path, err)
+			}
+			fmt.Fprintf(c.out, "annex for run %s written to %s\n", rep.RunID, filepath.ToSlash(path))
+			return nil
+		}
+		fmt.Fprint(c.out, doc)
+		return nil
 	}
 	if out != "" {
 		if err := os.MkdirAll(out, 0o755); err != nil {
@@ -113,8 +164,37 @@ func asReportFormat(name string) (string, error) {
 		return "markdown", nil
 	case "json", "both":
 		return name, nil
+	case "annex", "annex-html":
+		return name, nil
 	}
-	return "", fmt.Errorf("--format %q is not human (markdown), json or both", name)
+	return "", fmt.Errorf("--format %q is not human (markdown), json, both, annex or annex-html", name)
+}
+
+func isAnnexFormat(format string) bool {
+	return format == "annex" || format == "annex-html"
+}
+
+// annexOnlyFlags lists the flags an operator typed that only the annex reads. A
+// non-annex rendering that silently ignored them would let someone believe a
+// client name or language reached the document.
+func annexOnlyFlags(fs *flag.FlagSet) []string {
+	only := map[string]bool{"lang": true, "client": true, "engagement": true, "prepared-by": true}
+	var used []string
+	fs.Visit(func(fl *flag.Flag) {
+		if only[fl.Name] {
+			used = append(used, "-"+fl.Name)
+		}
+	})
+	sort.Strings(used)
+	return used
+}
+
+func annexFileName(format string, lang annex.Lang) string {
+	ext := ".md"
+	if format == "annex-html" {
+		ext = ".html"
+	}
+	return "annex-" + string(lang) + ext
 }
 
 // reading is everything a re-derivation reads from disk, gathered once so the three
@@ -572,6 +652,25 @@ func cmdVerify(c *cli, args []string) error {
 	_, profile, err := readBundle(dir)
 	if err != nil {
 		return err
+	}
+	if f.authorization == "" && f.issuerKeyring != "" {
+		return fmt.Errorf("%w: --issuer-keyring verifies a permission, and no --authorization was named", errUsage)
+	}
+	if f.authorization != "" {
+		// A permission named beside a bundle is verified here even without
+		// --rederive: if the signature does not hold, the answer is a failed
+		// verification, not a note. The bundle itself never holds the C-09, so this
+		// is the only place a reader can check the document the run cites.
+		auth, err := f.bindAuthorization()
+		if err != nil {
+			return err
+		}
+		if auth.Ref != profile.AuthorizationRef {
+			return fmt.Errorf("run %s was executed under authorization %s, not %s: the permission "+
+				"supplied does not describe this evidence", profile.RunID, profile.AuthorizationRef, auth.Ref)
+		}
+		fmt.Fprintf(c.out, "%-4s %-28s %s verified against issuer keyring %s\n", "ok",
+			"authorization_signature", auth.Ref, f.issuerKeyring)
 	}
 	manifest, err := integrity.ReadManifest(dir)
 	if err != nil {
