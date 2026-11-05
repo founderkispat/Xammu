@@ -283,6 +283,29 @@ func TestAuthorizationAddressBoundsMustParse(t *testing.T) {
 	}
 }
 
+// The tamper vocabulary is closed. A C-09 that names a primitive outside it, or
+// the chunked framing that is deliberately absent, is a permission this tool
+// cannot exercise exactly as written and must fail at load.
+func TestAuthorizationTamperVocabularyIsClosed(t *testing.T) {
+	a := contracts.ValidProfilingAuthorization()
+	a.AllowedTampers = []contracts.Tamper{contracts.TamperURLEncodeDouble, contracts.TamperSQLComment}
+	if err := contracts.Validate(contracts.IDProfilingAuthorization, a); err != nil {
+		t.Fatalf("a declared tamper must be accepted: %v", err)
+	}
+
+	a2 := contracts.ValidProfilingAuthorization()
+	a2.AllowedTampers = []contracts.Tamper{contracts.Tamper("chunked")}
+	expectInvalid(t, contracts.IDProfilingAuthorization, a2, "allowed_tampers")
+
+	a3 := contracts.ValidProfilingAuthorization()
+	if len(a3.AllowedTampers) != 0 {
+		t.Fatal("the fixture must leave the optional Phase 2 field empty")
+	}
+	if err := contracts.Validate(contracts.IDProfilingAuthorization, a3); err != nil {
+		t.Fatalf("a Phase 1 authorization without tampers must still validate: %v", err)
+	}
+}
+
 func TestProductionAuthorizationCannotRetainBodies(t *testing.T) {
 	a := contracts.ValidProfilingAuthorization()
 	a.Environment = contracts.EnvProduction

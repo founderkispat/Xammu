@@ -63,6 +63,10 @@ run go run ./cmd/xammu verify --store runs/waf-effectiveness-2026-11-05-r3 --red
 	--authorization authorizations/effectiveness-local.json \
 	--issuer-keyring trust/issuers \
 	--trust-key trust/waf-effectiveness.pub
+run go run ./cmd/xammu verify --store runs/waf-effectiveness-2026-11-05-r6 --rederive \
+	--authorization authorizations/effectiveness-local-002.json \
+	--issuer-keyring trust/issuers \
+	--trust-key trust/waf-effectiveness.pub
 
 log ""
 log "== 3. client annex renders in both languages and formats =="
@@ -106,7 +110,8 @@ log ""
 log "== 5. source anchor =="
 source_hash=$(
 	find cmd internal corpus lab docs scripts tools authorizations trust go.mod \
-		README.md LICENSE runs/demo-lab runs/demo-origin runs/waf-effectiveness-2026-11-05-r3 \
+		README.md LICENSE runs/demo-lab runs/demo-origin \
+		runs/waf-effectiveness-2026-11-05-r3 runs/waf-effectiveness-2026-11-05-r6 \
 		-type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1
 )
 log "source tree sha256: ${source_hash}"

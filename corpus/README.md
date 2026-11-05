@@ -403,6 +403,13 @@ prints the same numbers from the tree.
 The gates here are the same ones `xammu effectiveness run` applies; loading the tree through
 `effectiveness check` is the cheapest way to see that nothing executable entered it.
 
+**Phase 2 re-admission.** A tamper stack re-encodes a value the gate already admitted, and the
+transformed value is passed through the gate again before it is sent. The only finding tolerated is
+`inert.marker_absent`, and only in the two situations where the gate tolerates it at load: a benign
+case (which is markerless by design) and a stack that moves the marker to the `X-Xammu-Probe` header
+(`base64`). Any other finding excludes the case as `tamper_gate_refused`; it is never counted as a
+block. The corpus itself does not change in Phase 2 and its digest stays fixed.
+
 ## Adding an item
 
 1. Give it a fresh UUID `item_id`, a unique `ref`, and a `group_id` — join an existing

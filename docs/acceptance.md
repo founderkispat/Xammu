@@ -98,6 +98,27 @@ TPR 8,33 %, FPR 2,67 %, Precision 75,76 %, F1 15,02 %, MCC 0,124; latencia globa
 0/0/1 ms. Las tasas describen acuerdo con este corpus en este target y esta ventana, no eficacia
 absoluta; el detalle por clase está en `runs/waf-effectiveness-2026-11-05-r3/effectiveness-report.md`.
 
+## 2.6 Fase 2 — evasión y fingerprinting
+
+La Fase 2 tampoco añade criterios a los 29 del handoff. Su tabla de aceptación está en
+`docs/audit-handoff.md` §14.8; aquí se repite con la evidencia ejecutada.
+
+| punto | criterio | prueba / evidencia | estado |
+| --- | --- | --- | --- |
+| 2.1 | pilas de 1–3 primitivas, `auto` y forzada, autorización por primitiva, ida y vuelta y marcador; `chunked` excluido con motivo | `internal/tamper/tamper_test.go`; `internal/contracts/contracts_test.go: TestAuthorizationTamperVocabularyIsClosed`; `cmd/xammu/effectiveness_test.go: TestEffectivenessRunRefusesAnUnauthorizedTamper`; `effectiveness tampers` | ✅ |
+| 2.1 medición | corrida con línea base y brazo tamper; TPR base vs tamper por clase y global, con denominadores y exclusiones | `runs/waf-effectiveness-2026-11-05-r6`: 600 + 600 solicitudes, 0 excluidos; `internal/effectiveness/metrics_test.go`, `run_test.go` | ✅ |
+| 2.2 | fingerprint con vendor, apoyo categórico y evidencia enumerada; multi-vendor y `unknown` contemplados | `internal/fingerprint/fingerprint_test.go`; `r6` identifica `xammu-lab-waf` con apoyo `high` y 33 outcomes con evidencia | ✅ |
+| 2.2 recomendación | pilas candidatas adjuntas a la identificación, con base declarada y sin afirmaciones de bypass | `internal/fingerprint/signatures.go: CandidateStacks`; `docs/waf-signatures.md`; sección «WAF fingerprint» del informe de `r6` | ✅ |
+| informe | Markdown y JSON muestran fingerprint y tabla comparativa; `verify --rederive` en verde | `cmd/xammu/effectiveness_phase2_test.go: TestEffectivenessRunSelectsTheLabStackAndPublishesTheComparison`; `verify --store runs/waf-effectiveness-2026-11-05-r6 --rederive --trust-key trust/waf-effectiveness.pub` | ✅ |
+| regresión | `go test ./...` en verde y el bundle de Fase 1 sigue re-derivando sin discrepancias | suite completa; `internal/effectiveness/read_test.go: TestPhase1BundleStillRederives`; `verify --store runs/waf-effectiveness-2026-11-05-r3 --rederive` | ✅ |
+
+Resultado de aceptación (loopback, 2026-11-05): línea base **TP 25 / FN 275 / FP 8 / TN 292** y
+brazo tamper **TP 0 / FN 300 / FP 0 / TN 300**, 0 excluidos en ambos. El TPR baja de 8,33 % a
+0,00 % y el FPR de 2,67 % a 0,00 % con `url_encode_double → sql_comment`: la pila evita tanto las
+detecciones como los falsos positivos, que es un resultado de ceguera, no de mejora. El fingerprint
+identifica el WAF del laboratorio con apoyo `high`; las pilas se publican como candidatas a medir.
+El detalle está en `runs/waf-effectiveness-2026-11-05-r6/effectiveness-report.md`.
+
 ---
 
 ## 3. Equivalencia de vocabulario

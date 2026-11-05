@@ -956,3 +956,236 @@ manifiesto firmado, y la firma cubre los journals de casos y resultados más el 
 El bundle de aceptación se incluye en el repositorio con la misma excepción de `.gitignore` que los
 dos bundles de demostración, para que un auditor pueda repetir `verify --rederive` sin volver a
 levantar el laboratorio.
+
+## 14. Fase 2 — Evasión y fingerprinting (P1)
+
+**Estado:** implementada y aceptada en local el 2026-11-05. El operador confirmó el plan el
+2026-11-05 y el código se escribió después de esa confirmación. La evidencia de aceptación está en
+§14.11; el bundle sellado es `runs/waf-effectiveness-2026-11-05-r6`.
+
+### 14.0 Regla de ejecución
+
+Una fase por commit. Este plan no modifica lo cerrado en §13: el corpus, la puerta de inertitud, el
+motor de ejecución y las métricas de Fase 1 siguen siendo la línea base. La Fase 2 añade una segunda
+medición sobre la misma evidencia, no un producto nuevo.
+
+### 14.1 Objetivo y límites
+
+Cuantificar dos cosas con evidencia sellada y reproducible:
+
+1. **Evasión (2.1):** qué cambia el TPR de cada clase cuando el mismo payload declarado atraviesa una
+   pila de transformaciones de representación, frente a la línea base sin pila.
+2. **Fingerprinting (2.2):** qué capa defensiva se observa, con qué evidencia y con qué confianza
+   categórica, y qué pilas de tamper son candidatas a medir contra ese vendor.
+
+Límites que no cambian: un origen por corrida, un solo egress, DNS anti-rebinding, redirecciones
+revalidadas, rechazo de travesía, puerta de inertitud no omitible, autorización verificada antes del
+primer socket, clave privada fuera del bundle, cuerpo de respuesta no serializado, cero
+dependencias Go externas. No se introduce explotación real: toda transformación es una re-codificación
+de un payload que la puerta ya admitió. No se inventan puntuaciones de confianza ni de severidad: la
+confianza es categórica y la evidencia se enumera.
+
+### 14.2 Motor de tamper (2.1)
+
+- **Primitivas implementadas** (vocabulario nuevo `contracts.Tamper`, sin id de contrato nuevo):
+  `url_encode`, `url_encode_double`, `base64`, `unicode_escape`, `case_switch`, `sql_comment`,
+  `whitespace_variant`, `html_entity`.
+- **Apilado:** una pila es una lista ordenada de 1 a 3 primitivas, sin repeticiones; se aplica de
+  izquierda a derecha sobre el valor ya codificado por el caso (`Transform` de Fase 1). Una pila
+  inválida se rechaza antes del primer socket; no se aproxima ni se ignora en silencio.
+- **La puerta sigue juzgando la forma canónica.** Cada primitiva es una re-codificación demostrada
+  por test (ida y vuelta), no una capacidad nueva. Además, el valor transformado se vuelve a pasar
+  por la puerta antes de enviarse: cualquier regla distinta de `inert.marker_absent` lo rechaza y el
+  caso se registra como excluido con motivo `tamper_gate_refused`, nunca como «bloqueado».
+- **Marcador y `base64`:** las primitivas salvo `base64` conservan el token `xammu-probe` (URL-encode
+  y doble no tocan sus caracteres; `case_switch` ya lo preserva; comentarios y espacios sólo cambian
+  separadores; unicode/HTML sólo escapan metacaracteres). `base64` lo destruiría, así que un ensayo
+  con `base64` lleva la cabecera diagnóstica `X-Xammu-Probe: <case-id>` y se registra con
+  `marker_header: true`; el bundle declara ese confundidor. `auto` nunca selecciona `base64`.
+- **`chunked` queda fuera y se documenta.** No es una codificación de valor sino el encuadre
+  hop-by-hop de la petición; implementarlo desde el payload sería request smuggling y choca con la
+  regla anti-smuggling del cliente HTTP. Se rechaza como primitiva desconocida y la exclusión se
+  explica en README y handoff.
+- **Autorización:** C-09 gana un campo opcional `allowed_tampers` (lista de primitivas). Sin el campo,
+  la corrida es sólo línea base; una pila forzada o automática que no esté cubierta se rechaza antes
+  del primer socket. El campo es aditivo y opcional, así que las C-09 antiguas siguen validando y los
+  bundles antiguos siguen verificando.
+
+### 14.3 Brazos, selección y medición (2.1)
+
+- **Unidad de evidencia:** un ensayo = (caso, brazo). El brazo `baseline` es exactamente la Fase 1; el
+  brazo `tamper` aplica la pila. E-02 gana `arm`, `tamper_stack`, `tamper_digest`, `selection_basis` y
+  `marker_header`. E-01 no cambia: el corpus sigue siendo la verdad declarada y su digest no se mueve.
+- **Orden:** primero la línea base completa (600 casos). Con esos resultados se agrega el fingerprint
+  y se elige la pila; después corre el brazo tamper. Si la línea base se corta por presupuesto, 429 o
+  ventana, el brazo tamper no corre y el informe lo declara.
+- **Selección:** `--tampers auto|none|LIST`.
+  - `auto` (por defecto cuando la C-09 autoriza primitivas): usa la primera pila candidata del vendor
+    identificado con confianza `medium` o `high`, filtrada por `allowed_tampers`. Si el fingerprint es
+    `unknown` o la pila queda vacía, no hay brazo tamper y el informe explica por qué.
+  - `none`: sólo línea base.
+  - `LIST`: pila forzada, validada contra el vocabulario y la C-09 antes de abrir presupuesto.
+- **Benignos bajo tamper:** por defecto el brazo tamper también envía los 300 benignos, para que la
+  comparación no recomiende una evasión sin medir su coste en falsos positivos. `--tamper-benign=false`
+  lo reduce a los ataques y el informe resta ese denominador con una nota.
+- **Presupuesto:** 600 (línea base) + 300 (ataques tamper) + 300 (benignos tamper) = 1.200
+  solicitudes. La C-09 de aceptación se emite con máximo 1.300. Si el presupuesto autorizado es menor
+  que los ensayos planificados, `run` se niega antes de enviar: no se publica un brazo a medias.
+- **Métricas:** E-03 conserva el bloque de Fase 1 como **brazo baseline** y añade `arms` (por brazo:
+  matriz, tasas, clases, latencia, exclusiones) y `comparison` por clase de ataque con TPR base, TPR
+  tamper, diferencia en puntos porcentuales y denominadores. Una tasa sin denominador es `null` con
+  nota; una diferencia sólo existe si ambos brazos tienen casos concluyentes.
+
+### 14.4 Fingerprinting (2.2)
+
+- **Fuente de evidencia:** los outcomes de la línea base. No hay sondas extra: el fingerprint se
+  agrega de E-02. Cada outcome guarda evidencia atribuida en el momento de la captura —
+  `{vendor, signature_id, kind, detail}` — donde `kind` es `header`, `cookie`, `error_page` o
+  `behavior`. El cuerpo nunca se serializa: de una página de error sólo se guarda el id de la firma
+  que coincidió. De una cookie sólo el nombre; el valor no se conserva.
+- **Firmas:** tabla en `internal/fingerprint`, con `signature_id`, `vendor`, `kind`, patrón y fuerza
+  (`identifying` o `supporting`). Inicialmente: el WAF del laboratorio (cabecera `Server`, cabecera
+  `X-Lab-Waf-Action`, marcador de bloqueo) y un conjunto corto de cabeceras/cookies públicas de
+  vendors conocidos. Cada firma lleva una referencia a `docs/waf-signatures.md`, donde se explica su
+  base observacional; no se afirma capacidad de bypass.
+- **Confianza categórica, sin números:** `high` si hay dos clases de evidencia distintas del mismo
+  vendor (p. ej. cabecera + comportamiento o página de error), `medium` si hay una sola evidencia
+  identificadora, `low` si la firma sólo aparece en outcomes excluidos, `none` si no hay firma de
+  vendor. Un comportamiento genérico (403, cierre de conexión) no atribuye vendor por sí solo.
+- **Multi-vendor:** un CDN delante de un WAF puede dejar dos identificaciones. Se publican ambas con
+  su evidencia y confianza; no se colapsan en una.
+- **Recomendación por vendor:** el informe adjunta pilas candidatas y su base. Sólo el laboratorio
+  tiene una recomendación ajustada con fuente verificable (su propio código y comportamiento); para
+  vendors externos la recomendación es la pila genérica de re-codificación y se etiqueta como
+  candidata a medir, no como inteligencia específica. No se inventa conocimiento de bypass que no
+  esté citado.
+
+### 14.5 CLI, informe y reproducción
+
+- `effectiveness run`: nuevos flags `--tampers` y `--tamper-benign`; imprime fingerprint (vendor,
+  confianza, evidencia), pila elegida y el plan de solicitudes antes de enviar.
+- `effectiveness report`: añade secciones **WAF fingerprint** y **Línea base vs tamper** (por clase y
+  global). Todo número sale de E-03; el renderer no calcula nada.
+- `effectiveness report --rederive` y `verify --rederive`: recomputan E-03 desde E-01/E-02 incluyendo
+  brazos, comparación y fingerprint, y comparan con lo journalizado y lo publicado. Una discrepancia
+  sigue siendo fallo, no nota.
+- `effectiveness tampers`: verbo de sólo lectura que lista el vocabulario, qué primitivas conservan el
+  marcador y cuáles son candidatas por vendor. No envía ni escribe.
+
+### 14.6 Compatibilidad
+
+- Los bundles de Fase 1 no tienen `arm` ni evidencia de fingerprint. Se leen como brazo `baseline`
+  único y E-03 no emite `arms`, `comparison` ni `fingerprint`; por tanto `--rederive` sigue en verde
+  sobre `runs/waf-effectiveness-2026-11-05-r3`, que se usará como prueba de regresión.
+- Los campos nuevos de E-02 y E-03 son opcionales (`omitempty`). No hay stream nuevo: los tres
+  streams de Fase 1 bastan y `AllStreams` no cambia.
+- La firma del bundle y el ancla `trust/waf-effectiveness.pub` se reutilizan; la semilla local
+  `.xammu-signing.ed25519` no entra al repositorio.
+
+### 14.7 Ficheros y artefactos previstos
+
+| área | cambio |
+| --- | --- |
+| `internal/contracts` | tipo `Tamper`, vocabulario y `allowed_tampers` opcional en C-09 |
+| `internal/tamper` | primitivas, validación de pilas, propiedades de re-codificación y marcador |
+| `internal/fingerprint` | tabla de firmas, atribución por outcome, agregación y confianza |
+| `internal/effectiveness` | E-02 con brazo/pila/evidencia, E-03 con `arms`/`comparison`/`fingerprint`, brazos en `Run` |
+| `cmd/xammu/effectiveness.go` | flags, composición de brazos, sección de fingerprint, verbo `tampers` |
+| `authorizations/` | C-09 `AUTH-EFFECTIVENESS-LOCAL-002` firmada con emisor nuevo; sólo la pública en `trust/issuers` |
+| `runs/` | bundle de aceptación de Fase 2, sellado y anclado |
+| docs | README, `docs/acceptance.md`, `docs/certification.md`, `docs/waf-signatures.md`, este apartado |
+
+### 14.8 Criterio de aceptación de Fase 2
+
+| punto | evidencia exigida |
+| --- | --- |
+| 2.1 | pilas de 1–3 primitivas, `auto` y forzada, autorización por primitiva, tests de ida y vuelta y de marcador; `chunked` excluido con motivo |
+| 2.1 medición | corrida con línea base y brazo tamper; TPR base vs TPR tamper por clase y global, con denominadores y exclusiones |
+| 2.2 | fingerprint con vendor, confianza categórica y evidencia enumerada; multi-vendor y `unknown` contemplados |
+| 2.2 recomendación | pilas candidatas adjuntas a la identificación, con base declarada y sin afirmaciones de bypass |
+| informe | el Markdown y el JSON muestran fingerprint y tabla comparativa; `verify --rederive` en verde |
+| regresión | `go test ./...` en verde y el bundle de Fase 1 sigue re-derivando sin discrepancias |
+
+### 14.9 Riesgos y decisiones abiertas
+
+- **Confundidor de `base64`:** la cabecera diagnóstica es visible para el objetivo. Se registra por
+  ensayo y `auto` no la usa; si el operador la fuerza, el informe lo declara.
+- **Confundidor de pilas:** transformar el valor puede cambiar el tamaño o los separadores y disparar
+  reglas distintas de las de la línea base. Es exactamente lo que la comparación mide; no se corrige
+  ni se normaliza a posteriori.
+- **Firmas de vendors externos:** se limitan a marcadores públicos y se revisan antes de publicarse;
+  una firma dudosa se deja fuera antes que atribuir un vendor por parecido.
+- **Presupuesto:** la corrida de aceptación duplica el tráfico de Fase 1 (1.200 solicitudes). Es
+  local y está autorizado; no se ejecuta contra otro origen.
+- **Recomendación específica:** sólo se publica una pila ajustada cuando existe una fuente
+  verificable. Para el resto se publica la candidata genérica y se dice que lo es.
+
+### 14.10 Confirmación
+
+Este apartado es el contrato de la Fase 2. No se escribe código hasta que el operador lo confirme o
+pida cambios en el alcance. El operador confirmó el plan el 2026-11-05; el código se escribió
+después de esa confirmación y la evidencia está en §14.11.
+
+### 14.11 Resultados
+
+Corrida de aceptación `runs/waf-effectiveness-2026-11-05-r6`, el 2026-11-05, contra el mismo fixture
+(`lab/origin` en `127.0.0.1:8081`, `lab/waf` en `127.0.0.1:8099`) bajo
+`AUTH-EFFECTIVENESS-LOCAL-002` (origen `http://127.0.0.1:8099`, 1.300 solicitudes autorizadas, 1.200
+usadas). La C-09 se firmó con un emisor nuevo; sólo la clave pública vive en
+`trust/issuers/effectiveness-issuer-002.pub` y la semilla se destruyó fuera del repositorio.
+
+```powershell
+go run ./cmd/xammu effectiveness run `
+  --authorization authorizations/effectiveness-local-002.json `
+  --issuer-keyring trust/issuers --authorize AUTH-EFFECTIVENESS-LOCAL-002 `
+  --target http://127.0.0.1:8099 --run waf-effectiveness-2026-11-05-r6 --budget 1200
+go run ./cmd/xammu verify --store runs/waf-effectiveness-2026-11-05-r6 --rederive `
+  --authorization authorizations/effectiveness-local-002.json `
+  --issuer-keyring trust/issuers --trust-key trust/waf-effectiveness.pub
+go run ./cmd/xammu effectiveness report --store runs/waf-effectiveness-2026-11-05-r6 `
+  --format both --rederive
+```
+
+- **Brazos:** 600 solicitudes de línea base y 600 de tamper, **0 rechazos, 0 fallos, 0 excluidos** en
+  ambos. La línea base reproduce exactamente la matriz de `r3`: TP 25, FN 275, FP 8, TN 292.
+- **Tamper:** pila elegida automáticamente `url_encode_double` → `sql_comment` a partir del
+  fingerprint del laboratorio. Matriz TP 0, FN 300, FP 0, TN 300.
+- **Comparación:** TPR global 8,33 % → 0,00 % (Δ −8,33 pp); FPR 2,67 % → 0,00 %. Las diez clases
+  están en el informe con su denominador; la tabla por clase no inventa una tasa cuando `n=0`.
+- **Lectura correcta:** que el brazo tamper bloquee cero ataques y cero benignos **no es una mejora**.
+  El WAF del laboratorio deja de reconocer ambos lados cuando el valor va codificado: la caída del
+  TPR y la del FPR describen ceguera, no selectividad. El informe imprime la línea de coste de falsos
+  positivos precisamente para que nadie lea el 0 % como un resultado favorable.
+- **Fingerprint:** `xammu-lab-waf`, confianza `high`, 33 outcomes con evidencia en tres clases —
+  `header:server`, `header:x-lab-waf-action` y `error_page:lab-block-marker`. Las pilas candidatas se
+  publican con su base; ninguna se presenta como bypass demostrado. La recomendación específica sólo
+  existe para el fixture, cuyas reglas son visibles en `lab/waf/proxy.go`; para vendors externos la
+  pila es la genérica y se etiqueta como candidata a medir.
+- **Verificación:** `verify --rederive` sale 0 con `no_modified_files`, `merkle_root_matches`,
+  `hash_chain_intact`, `metrics_rederive` y `metrics_document` en verde. La prueba
+  `TestEffectivenessEndToEndRunVerifyReport` sigue editando el JSON publicado y exigiendo fallo.
+- **Regresión de Fase 1:** `runs/waf-effectiveness-2026-11-05-r3` verifica y re-deriva sin
+  discrepancias; un bundle sin `arm` se lee como línea base única y E-03 no emite `arms`,
+  `comparison` ni `fingerprint`. `TestEffectivenessReportDeclaresAPhase1BundleLegacy` lo fija.
+
+**Decisiones tomadas durante la implementación**
+
+- **`support` en lugar de `confidence`.** El guardarraíl `TestNoNumericScaleIsDeclaredAnywhere`
+  prohíbe cualquier identificador o clave JSON `confidence`, reservada para una escala numérica que
+  este repositorio no admite. La fuerza de la atribución es un vocabulario cerrado sobre clases de
+  evidencia, así que el campo se llama `support` (`high`/`medium`/`low`/`none`) y el informe lo
+  rotula «confidence» para el lector. El guardarraíl no se relajó; ver `docs/waf-signatures.md`.
+- **Re-admisión de benignos sin marcador.** Los benignos se cargan sin marcador a propósito
+  (`dropMarkerForBenignTraffic`). La primera corrida de aceptación excluyó los 300 benignos tamper
+  con `tamper_gate_refused` porque la comprobación posterior a la transformación exigía el marcador.
+  El brazo tamper ahora espeja la misma indulgencia que la puerta aplica en carga: un benigno sin
+  marcador se admite, un ataque sin marcador se excluye. `TestRunArmTreatsAMarkerlessBenignCaseAsTheGateDoes`
+  cubre ambos lados.
+- **Presupuesto antes del primer socket.** El plan suma línea base y brazo tamper; si excede el
+  máximo de la C-09, `run` se niega sin abrir socket
+  (`TestEffectivenessRunRefusesABudgetThatCannotPayBothArms`).
+- **`chunked` fuera, `base64` sólo forzado.** Se mantiene lo declarado en §14.2: `chunked` es
+  encuadre de petición y su implementación desde el payload sería smuggling; `auto` nunca elige
+  `base64` porque destruye el marcador y obliga a la cabecera diagnóstica.
+- **Resultado de la suite:** 384 funciones `Test*` en 19 paquetes; `scripts/certify.sh` incluye la
+  corrida `r6` en su ancla de fuentes y en su verificación.

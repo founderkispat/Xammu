@@ -275,6 +275,43 @@ func AllEncodings() []Encoding {
 	}
 }
 
+// Tamper names a representation-shifting transform stacked on top of a case's
+// declared encoding. A tamper changes how the same bytes are written; it does
+// not add capability, so the inertness gate still judges the canonical payload.
+// The vocabulary is closed: a stack naming anything else is refused before the
+// first request. Chunked transfer framing is deliberately absent: it is request
+// framing, not a value transform, and implementing it from a payload would be
+// smuggling rather than evasion measurement.
+type Tamper string
+
+const (
+	TamperURLEncode       Tamper = "url_encode"
+	TamperURLEncodeDouble Tamper = "url_encode_double"
+	TamperBase64          Tamper = "base64"
+	TamperUnicodeEscape   Tamper = "unicode_escape"
+	TamperCaseSwitch      Tamper = "case_switch"
+	TamperSQLComment      Tamper = "sql_comment"
+	TamperWhitespace      Tamper = "whitespace_variant"
+	TamperHTMLEntity      Tamper = "html_entity"
+)
+
+func AllTampers() []Tamper {
+	return []Tamper{
+		TamperURLEncode, TamperURLEncodeDouble, TamperBase64, TamperUnicodeEscape,
+		TamperCaseSwitch, TamperSQLComment, TamperWhitespace, TamperHTMLEntity,
+	}
+}
+
+// TamperKnown reports whether a string is declared by this vocabulary.
+func TamperKnown(t Tamper) bool {
+	for _, k := range AllTampers() {
+		if k == t {
+			return true
+		}
+	}
+	return false
+}
+
 // FindingType categorises a discovery finding.
 type FindingType string
 

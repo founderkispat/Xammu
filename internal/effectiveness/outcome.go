@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"xammu/internal/contracts"
+	"xammu/internal/fingerprint"
 	"xammu/internal/httpclient"
 )
 
@@ -32,6 +33,31 @@ type Outcome struct {
 	SecurityHeaders map[string]bool `json:"security_headers"`
 	WAFMarker       bool            `json:"waf_marker"`
 	BlockHeader     bool            `json:"block_header"`
+
+	// Phase 2. An empty Arm is a Phase 1 record and reads as the baseline arm.
+	Arm               Arm                    `json:"arm,omitempty"`
+	TamperStack       []contracts.Tamper     `json:"tamper_stack,omitempty"`
+	TamperDigest      string                 `json:"tamper_digest,omitempty"`
+	SelectionBasis    string                 `json:"selection_basis,omitempty"`
+	MarkerHeader      bool                   `json:"marker_header,omitempty"`
+	Fingerprint       []fingerprint.Evidence `json:"fingerprint,omitempty"`
+	FingerprintPolicy string                 `json:"fingerprint_policy,omitempty"`
+}
+
+// Arm names the measurement a trial belongs to.
+type Arm string
+
+const (
+	ArmBaseline Arm = "baseline"
+	ArmTamper   Arm = "tamper"
+)
+
+// NormalizeArm reads a Phase 1 record, which carries no arm, as baseline.
+func NormalizeArm(a Arm) Arm {
+	if a == "" {
+		return ArmBaseline
+	}
+	return a
 }
 
 // Classify turns one client response into a verdict. A response the metrics
@@ -42,10 +68,12 @@ func Classify(runID string, c Case, resp *httpclient.Response, now time.Time) Ou
 	o := Outcome{
 		CaseID: c.ID, RunID: runID, ObservedAt: now.UTC(),
 		StatusCode: resp.Status, LatencyMS: resp.TotalMS,
-		TransportError:  resp.TransportError,
-		SecurityHeaders: SecurityHeaders(resp.Headers),
-		ServerHeader:    serverOf(resp.Headers),
-		BlockHeader:     blockHeader(resp.Headers),
+		TransportError:    resp.TransportError,
+		SecurityHeaders:   SecurityHeaders(resp.Headers),
+		ServerHeader:      serverOf(resp.Headers),
+		BlockHeader:       blockHeader(resp.Headers),
+		Fingerprint:       fingerprint.Attribute(resp.Headers, resp.Body),
+		FingerprintPolicy: fingerprint.Policy,
 	}
 	o.WAFMarker = strings.HasPrefix(strings.ToLower(o.ServerHeader), "xammu-lab-waf") ||
 		o.BlockHeader || bytes.Contains(resp.Body, []byte(LabBlockMarker))

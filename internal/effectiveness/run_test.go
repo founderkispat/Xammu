@@ -6,12 +6,15 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"xammu/internal/contracts"
+	"xammu/internal/corpus"
 	"xammu/internal/httpclient"
 	"xammu/internal/integrity"
+	"xammu/internal/tamper"
 )
 
 func testAuthorization(t *testing.T, origin string) *contracts.ProfilingAuthorization {
@@ -108,6 +111,138 @@ func TestRunObservesBlockedAndAllowed(t *testing.T) {
 	m := Compute("run-test", auth.Ref, cases, res.Outcomes, time.Now())
 	if m.Counts.TP != 1 || m.Counts.TN != 1 {
 		t.Fatalf("counts = %+v", m.Counts)
+	}
+}
+
+func TestRunArmRecordsTheStackAndTheDiagnosticHeader(t *testing.T) {
+	var sawMarkerHeader []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sawMarkerHeader = append(sawMarkerHeader, r.Header.Get("X-Xammu-Probe"))
+		if strings.Contains(strings.ToLower(r.URL.Query().Get("q")), "block me") {
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(LabBlockMarker))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	auth := testAuthorization(t, srv.URL)
+	store, err := integrity.Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := Case{ID: "attack-1", Kind: KindAttack, Class: "sqli", Payload: "BLOCK ME xammu-probe",
+		Vector: contracts.VectorQuery, Encoding: contracts.EncodingCanonical,
+		Parameter: "q", Method: "GET", Path: "/api/search", Expect: ExpectBlocked}
+	if err := JournalCases(store, []Case{c}); err != nil {
+		t.Fatal(err)
+	}
+	client := testClient(t, auth, 10)
+	base, err := RunArm(context.Background(), client, store, auth, "run-test", srv.URL, "",
+		[]Trial{{Case: c, Arm: ArmBaseline}}, corpus.DefaultPolicy(), time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stack := tamper.Stack{contracts.TamperBase64}
+	tampered, err := RunArm(context.Background(), client, store, auth, "run-test", srv.URL, "",
+		[]Trial{{Case: c, Arm: ArmTamper, Stack: stack, SelectionBasis: "forced"}},
+		corpus.DefaultPolicy(), time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(base.Outcomes) != 1 || base.Outcomes[0].Verdict != VerdictBlocked {
+		t.Fatalf("baseline = %+v", base.Outcomes)
+	}
+	if len(tampered.Outcomes) != 1 {
+		t.Fatalf("tamper = %+v", tampered.Outcomes)
+	}
+	o := tampered.Outcomes[0]
+	if o.Arm != ArmTamper || len(o.TamperStack) != 1 || o.TamperDigest == "" ||
+		o.SelectionBasis != "forced" || !o.MarkerHeader {
+		t.Fatalf("tamper outcome lost its provenance: %+v", o)
+	}
+	if len(sawMarkerHeader) != 2 || sawMarkerHeader[0] != "" || sawMarkerHeader[1] != c.ID {
+		t.Fatalf("marker header sequence = %q", sawMarkerHeader)
+	}
+	if tampered.RequestsSent != 1 {
+		t.Fatalf("tamper arm spent %d requests", tampered.RequestsSent)
+	}
+}
+
+func TestRunArmRefusesATransformedValueTheGateWouldNotAdmit(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("a transformed value that fails the gate reached the origin")
+	}))
+	defer srv.Close()
+
+	auth := testAuthorization(t, srv.URL)
+	store, err := integrity.Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := Case{ID: "long-1", Kind: KindAttack, Class: "sqli",
+		Payload: strings.Repeat("<", 400) + " xammu-probe",
+		Vector:  contracts.VectorQuery, Encoding: contracts.EncodingCanonical,
+		Parameter: "q", Method: "GET", Path: "/api/search", Expect: ExpectBlocked}
+	if err := JournalCases(store, []Case{c}); err != nil {
+		t.Fatal(err)
+	}
+	res, err := RunArm(context.Background(), testClient(t, auth, 5), store, auth,
+		"run-test", srv.URL, "",
+		[]Trial{{Case: c, Arm: ArmTamper, Stack: tamper.Stack{contracts.TamperURLEncode}}},
+		corpus.DefaultPolicy(), time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.RequestsSent != 0 || res.Refusals != 1 || len(res.Outcomes) != 1 {
+		t.Fatalf("result = %+v", res)
+	}
+	if res.Outcomes[0].Verdict != VerdictExcluded ||
+		res.Outcomes[0].ExclusionReason != "tamper_gate_refused" {
+		t.Fatalf("outcome = %+v", res.Outcomes[0])
+	}
+}
+
+func TestRunArmTreatsAMarkerlessBenignCaseAsTheGateDoes(t *testing.T) {
+	var sent []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sent = append(sent, r.URL.Query().Get("q"))
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	auth := testAuthorization(t, srv.URL)
+	store, err := integrity.Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	benign := Case{ID: "benign-1", Kind: KindBenign, Class: "benign_text", Payload: "hello there",
+		Vector: contracts.VectorQuery, Encoding: contracts.EncodingCanonical,
+		Parameter: "q", Method: "GET", Path: "/api/search", Expect: ExpectAllowed}
+	attack := Case{ID: "attack-1", Kind: KindAttack, Class: "sqli", Payload: "block me",
+		Vector: contracts.VectorQuery, Encoding: contracts.EncodingCanonical,
+		Parameter: "q", Method: "GET", Path: "/api/search", Expect: ExpectBlocked}
+	if err := JournalCases(store, []Case{benign, attack}); err != nil {
+		t.Fatal(err)
+	}
+	stack := tamper.Stack{contracts.TamperCaseSwitch}
+	res, err := RunArm(context.Background(), testClient(t, auth, 5), store, auth,
+		"run-test", srv.URL, "", []Trial{
+			{Case: benign, Arm: ArmTamper, Stack: stack},
+			{Case: attack, Arm: ArmTamper, Stack: stack},
+		}, corpus.DefaultPolicy(), time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.RequestsSent != 1 || len(sent) != 1 {
+		t.Fatalf("sent %d request(s), want only the benign trial: %+v", res.RequestsSent, res)
+	}
+	if res.Outcomes[0].Verdict != VerdictAllowed {
+		t.Fatalf("benign outcome = %+v", res.Outcomes[0])
+	}
+	if res.Outcomes[1].Verdict != VerdictExcluded || res.Outcomes[1].ExclusionReason != "tamper_gate_refused" {
+		t.Fatalf("an attack without the marker was admitted: %+v", res.Outcomes[1])
 	}
 }
 

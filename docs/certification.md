@@ -13,6 +13,8 @@ cumplimiento y no convierte a XAMMU en un escáner de vulnerabilidades.
   `dist/certification-<UTC>.txt` y termina con `RESULT: PASSED`.
 - Fase 1 (medición de eficacia): aceptada en local el 2026-11-05; evidencia en
   `runs/waf-effectiveness-2026-11-05-r3` y §13.6 de [`docs/audit-handoff.md`](audit-handoff.md).
+- Fase 2 (evasión y fingerprinting): aceptada en local el 2026-11-05; evidencia en
+  `runs/waf-effectiveness-2026-11-05-r6` y §14.11 de [`docs/audit-handoff.md`](audit-handoff.md).
 
 ---
 
@@ -43,9 +45,8 @@ La unidad certificada es el **árbol fuente más el binario**:
 
 1. El árbol se identifica con un `sha256` calculado sobre `cmd/`, `internal/`, `corpus/`, `lab/`,
    `docs/`, `scripts/`, `tools/`, `authorizations/` (permisos y sus `.sig`), `trust/`, `go.mod`,
-   `README.md`, `LICENSE`, los dos bundles de demostración y el bundle de eficacia. Lo imprime
-   `scripts/certify.sh` como
-   `source tree sha256`.
+   `README.md`, `LICENSE`, los dos bundles de demostración y los bundles de eficacia `r3` y `r6`. Lo
+   imprime `scripts/certify.sh` como `source tree sha256`.
 2. El binario se construye con `scripts/release.sh`: `CGO_ENABLED=0`, `-trimpath`,
    `-buildvcs=false`, `-ldflags "-s -w -buildid="`, dos compilaciones comparadas byte a byte, y
    `dist/xammu-1.0.0-<os>-<arch>[.exe].sha256`. La ruta de release del workflow añade SBOM
@@ -98,20 +99,21 @@ declara lo que la corrida **no** prueba.
 
 | propiedad | cómo se comprueba | resultado esperado |
 | --- | --- | --- |
-| suite completa | `go test ./... -count=1` | 346 funciones de prueba en 19 paquetes, sin fallos |
+| suite completa | `go test ./... -count=1` | 384 funciones de prueba en 19 paquetes, sin fallos |
 | cabeceras sensibles | `go test ./cmd/xammu/ ./internal/httpclient/ ./internal/contracts/` | el valor literal no aparece en ningún artefacto; digests salados estables dentro del run y distintos entre runs; `Server` y `Content-Type` intactos |
 | firmas de autorización | `go test ./cmd/xammu/ ./internal/integrity/` | sidecar válido aceptado; campo, firma, contrato, clave o emisor alterados rechazados; `run` no abre socket con una C-09 inválida |
 | criterios del handoff | [`acceptance.md`](acceptance.md) §2 | 29 criterios clasificados; ninguno ⚠ contado como cumplido |
 | inertez del corpus | `xammu corpus check --corpus corpus` | tres particiones cargadas, sin fugas entre particiones |
 | integridad de evidencias | `xammu verify --run demo-lab` y `demo-origin` | `no_modified_files`, `merkle_root_matches`, `hash_chain_intact` en verde |
 | re-derivación | `xammu verify --rederive` con la autorización del run | los hallazgos publicados se re-derivan sin divergencias |
+| brazos y fingerprint | `go test ./internal/effectiveness/ ./internal/fingerprint/ ./internal/tamper/` | E-03 con `arms`, `comparison` y `fingerprint` re-deriva; bundles de Fase 1 siguen sin esos campos; pilas y marcador cubiertos |
 | anexo de cliente | `go test ./internal/annex/` y `./cmd/xammu/` | estructura ES/EN, escape HTML, cifras del informe y evidencia verbatim |
 | no hay escalas numéricas | `internal/contracts/forbidden_source_test.go` | ninguna puntuación ni confianza numérica en contratos y código |
 | un solo egress | `internal/httpclient/egress_test.go` | ninguna otra ruta de red en el árbol |
 | cadena de CI fijada | revisión de `.github/workflows/ci.yml`; `scripts/ci-local.sh` | acciones de terceros por SHA, herramientas por versión, `go.mod` sin dependencias externas; gitleaks y `govulncheck` se ejecutan si están disponibles |
 | vulnerabilidades de la stdlib | `govulncheck` 1.9.0 con Go 1.27.3 | `No vulnerabilities found`; con 1.27.0 el mismo escaneo encontraba 9 vulnerabilidades que afectaban al cliente HTTP |
 
-El conteo «346 funciones» cuenta funciones `Test*`, no subcasos; los subcasos se ejecutan dentro de
+El conteo «384 funciones» cuenta funciones `Test*`, no subcasos; los subcasos se ejecutan dentro de
 cada función y su fallo tumba la suite igual.
 
 ---
@@ -124,6 +126,9 @@ tiene una prueba o una comprobación de aceptación; ninguna depende de que algu
 | invariante | implementación | evidencia |
 | --- | --- | --- |
 | La puerta de inertez es precondición de carga y ninguna bandera la salta | `internal/corpus/corpus.go:128` (`Load` corre la puerta antes de devolver el corpus) | `go test ./internal/corpus/`; `corpus check` |
+| Una pila tamper no envía un valor que la puerta rechazaría | `internal/effectiveness/run.go: transformedRefusal` re-admite el valor transformado; solo tolera el marcador ausente en un caso benigno o cuando la pila añade `X-Xammu-Probe` | `TestRunArmRefusesATransformedValueTheGateWouldNotAdmit`, `TestRunArmTreatsAMarkerlessBenignCaseAsTheGateDoes` |
+| Un fingerprint no atribuye un vendor sin una firma que le pertenezca | `internal/fingerprint: Attribute` y `Aggregate`; un 403 genérico no atribuye | `internal/fingerprint/fingerprint_test.go` |
+| No se introduce una escala numérica de confianza | el campo es `support`, una categoría cerrada; la clave `confidence` sigue prohibida en todo el árbol | `internal/contracts/forbidden_source_test.go`; `docs/waf-signatures.md` |
 | Solo hay un cliente de red autorizado | `internal/httpclient` es el único paquete que abre conexiones | `internal/httpclient/egress_test.go` |
 | Las banderas recortan, nunca amplían | el plan se construye contra la C-09 y se rechaza si excede presupuesto, clases, vectores, rutas, CIDRs o métodos | `internal/orchestrator/plan.go` y sus tests |
 | `run` exige `--authorization` y `--authorize`, y una C-09 vigente | pre-check en `cmd/xammu/run.go:70`; re-check durante la ejecución en `internal/orchestrator/run.go:230` | tests de CLI y de orquestador |

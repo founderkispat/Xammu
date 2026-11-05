@@ -52,27 +52,32 @@ type OperationalLimits struct {
 // an authorization file that is valid forever, for any host, is not an
 // authorization.
 type ProfilingAuthorization struct {
-	AuthorizationID      string            `json:"authorization_id"`
-	Ref                  string            `json:"ref"`
-	IssuedAt             time.Time         `json:"issued_at"`
-	ExpiresAt            time.Time         `json:"expires_at"`
-	Issuer               string            `json:"issuer"`
-	ApprovedBy           string            `json:"approved_by"`
-	Environment          Environment       `json:"environment"`
-	Origins              []Origin          `json:"origins"`
-	ExcludedPaths        []string          `json:"excluded_paths,omitempty"`
-	Methods              []string          `json:"methods"`
-	Limits               OperationalLimits `json:"limits"`
-	Retention            RetentionPolicy   `json:"retention_policy"`
-	AllowedClasses       []AttackClass     `json:"allowed_attack_classes"`
-	AllowedVectors       []Vector          `json:"allowed_vectors"`
-	AllowedEncodings     []Encoding        `json:"allowed_encodings"`
-	CorpusPartitions     []string          `json:"corpus_partitions"`
-	StatementOfScope     string            `json:"statement_of_scope"`
-	RulesOfEngagement    []string          `json:"rules_of_engagement"`
-	ContactForHalt       string            `json:"contact_for_halt"`
-	IssuerKeyFingerprint string            `json:"issuer_key_fingerprint"`
-	Notes                []string          `json:"notes,omitempty"`
+	AuthorizationID  string            `json:"authorization_id"`
+	Ref              string            `json:"ref"`
+	IssuedAt         time.Time         `json:"issued_at"`
+	ExpiresAt        time.Time         `json:"expires_at"`
+	Issuer           string            `json:"issuer"`
+	ApprovedBy       string            `json:"approved_by"`
+	Environment      Environment       `json:"environment"`
+	Origins          []Origin          `json:"origins"`
+	ExcludedPaths    []string          `json:"excluded_paths,omitempty"`
+	Methods          []string          `json:"methods"`
+	Limits           OperationalLimits `json:"limits"`
+	Retention        RetentionPolicy   `json:"retention_policy"`
+	AllowedClasses   []AttackClass     `json:"allowed_attack_classes"`
+	AllowedVectors   []Vector          `json:"allowed_vectors"`
+	AllowedEncodings []Encoding        `json:"allowed_encodings"`
+	// AllowedTampers is the Phase 2 vocabulary the permission covers. It is
+	// optional: an authorization written before Phase 2 carries no tampers and
+	// still validates, and a run under it stays on the baseline arm. A tamper
+	// not named here is refused before the first socket, never skipped silently.
+	AllowedTampers       []Tamper `json:"allowed_tampers,omitempty"`
+	CorpusPartitions     []string `json:"corpus_partitions"`
+	StatementOfScope     string   `json:"statement_of_scope"`
+	RulesOfEngagement    []string `json:"rules_of_engagement"`
+	ContactForHalt       string   `json:"contact_for_halt"`
+	IssuerKeyFingerprint string   `json:"issuer_key_fingerprint"`
+	Notes                []string `json:"notes,omitempty"`
 }
 
 func (ProfilingAuthorization) Contract() ID { return IDProfilingAuthorization }
@@ -154,6 +159,9 @@ func registerAuthorizationContracts() {
 		}
 		for _, e := range a.AllowedEncodings {
 			oneofT(c, "allowed_encodings[]", e, AllEncodings()...)
+		}
+		for _, t := range a.AllowedTampers {
+			oneofT(c, "allowed_tampers[]", t, AllTampers()...)
 		}
 		c.nonEmpty("corpus_partitions", len(a.CorpusPartitions))
 		c.required("statement_of_scope", a.StatementOfScope)

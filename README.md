@@ -8,9 +8,9 @@ canal autorizado, y no afirma nada que la medición no sostenga: cada hallazgo d
 observó, qué se infiere, qué falta y qué no puede saberse.
 
 > Estado a 2026-11-05: **entrega funcional en revisión**, no un producto aprobado. La suite
-> local está verde, los dos bundles de demostración verifican y la Fase 1 de eficacia (§8) se
-> aceptó en local; quedan declarados dos criterios que este repositorio no puede cerrar por sí
-> solo (CI y prueba con ingeniero externo) en [`docs/acceptance.md`](docs/acceptance.md).
+> local está verde, los dos bundles de demostración verifican y las fases 1 y 2 de eficacia (§8)
+> se aceptaron en local; quedan declarados dos criterios que este repositorio no puede cerrar por
+> sí solo (CI y prueba con ingeniero externo) en [`docs/acceptance.md`](docs/acceptance.md).
 
 ---
 
@@ -310,11 +310,16 @@ manifest.json
 
 ---
 
-## 8. Eficacia del WAF (Fase 1)
+## 8. Eficacia del WAF (fases 1 y 2)
 
 La Fase 1 añade la pregunta que el perfilado no respondía: **¿en qué grado la defensa coincide con
 las etiquetas del corpus?** No es una puntuación de eficacia absoluta; es acuerdo medido sobre un
 corpus, un target y una ventana, publicado con su incertidumbre y reproducible desde el bundle.
+
+La Fase 2 añade dos preguntas sobre la misma evidencia: **¿qué cambia el TPR cuando el payload
+atraviesa una pila de re-codificaciones?** y **¿qué capa defensiva se observa, con qué evidencia y
+con qué apoyo categórico?** No introduce explotación: cada tamper es una re-codificación de un
+valor que la puerta ya admitió, y el valor transformado se vuelve a pasar por la puerta.
 
 - **Corpus:** 300 casos de ataque (10 clases × 30) y 300 benignos con procedencia citada. Cada
   ataque pasa la misma puerta de inertitud y lleva el marcador `xammu-probe`; los benignos pasan la
@@ -326,6 +331,16 @@ corpus, un target y una ventana, publicado con su incertidumbre y reproducible d
   globales con `n` y aviso de muestra insuficiente. Un denominador cero produce `null`, nunca un
   número inventado. 429 se excluye como *pacing* (criterio 24); 5xx, otros 4xx, redirecciones y
   errores de transporte también se excluyen y se cuentan por motivo.
+- **Brazos:** un ensayo es (caso, brazo). `baseline` es exactamente la Fase 1; `tamper` aplica una
+  pila de 1 a 3 primitivas (`url_encode`, `url_encode_double`, `base64`, `unicode_escape`,
+  `case_switch`, `sql_comment`, `whitespace_variant`, `html_entity`). `auto` elige la primera pila
+  candidata del vendor identificado con apoyo `medium` o `high`, filtrada por `allowed_tampers` de
+  la C-09; `none` corre solo la línea base. `chunked` no existe como primitiva: cambiar el encuadre
+  sería smuggling, no evasión.
+- **Fingerprinting:** la evidencia se atribuye en la captura (cabecera, cookie, página de error o
+  comportamiento) y E-03 la agrega por vendor con apoyo categórico `high`/`medium`/`low`/`none`.
+  El cuerpo no se serializa y de las cookies solo se guarda el nombre. La tabla y sus bases están
+  en [`docs/waf-signatures.md`](docs/waf-signatures.md).
 - **Reproducción:** `--rederive` recalcula E-03 desde los journals E-01/E-02 y compara con el E-03
   journalizado y con el documento publicado. Una diferencia es un fallo.
 
@@ -333,7 +348,10 @@ corpus, un target y una ventana, publicado con su incertidumbre y reproducible d
 # auditar el corpus sin enviar nada
 go run ./cmd/xammu effectiveness check --corpus corpus/effectiveness
 
-# corrida de aceptación local (requiere el laboratorio y una C-09 firmada)
+# ver el vocabulario de tamper y las pilas candidatas (solo lectura)
+go run ./cmd/xammu effectiveness tampers
+
+# corrida de aceptación de Fase 1 (regresión, solo línea base)
 go run ./cmd/xammu effectiveness run `
   --authorization authorizations/effectiveness-local.json `
   --issuer-keyring trust/issuers `
@@ -341,22 +359,48 @@ go run ./cmd/xammu effectiveness run `
   --target http://127.0.0.1:8099 `
   --run waf-effectiveness-2026-11-05-r3
 
+# corrida de aceptación de Fase 2 (línea base + brazo tamper, 1200 solicitudes)
+go run ./cmd/xammu effectiveness run `
+  --authorization authorizations/effectiveness-local-002.json `
+  --issuer-keyring trust/issuers `
+  --authorize AUTH-EFFECTIVENESS-LOCAL-002 `
+  --target http://127.0.0.1:8099 `
+  --run waf-effectiveness-2026-11-05-r6 `
+  --budget 1200
+
 # verificar la evidencia y reproducir las métricas
-go run ./cmd/xammu verify --store runs/waf-effectiveness-2026-11-05-r3 --rederive --trust-key trust/waf-effectiveness.pub
-go run ./cmd/xammu effectiveness report --store runs/waf-effectiveness-2026-11-05-r3 `
+go run ./cmd/xammu verify --store runs/waf-effectiveness-2026-11-05-r6 --rederive `
+  --trust-key trust/waf-effectiveness.pub `
+  --authorization authorizations/effectiveness-local-002.json --issuer-keyring trust/issuers
+go run ./cmd/xammu effectiveness report --store runs/waf-effectiveness-2026-11-05-r6 `
   --format both --rederive
 ```
 
-Aceptación local del 2026-11-05, sobre el fixture del repositorio: 600 casos, 600 solicitudes,
-**TP 25 / FN 275 / FP 8 / TN 292, 0 excluidos**; TPR 8,33 %, FPR 2,67 %, Precision 75,76 %,
-F1 15,02 %, MCC 0,124; latencia global p50/p95/p99 de 0/0/1 ms en loopback. Las cifras bajas de
-detección describen este WAF de laboratorio y esta ventana, no una afirmación sobre WAF reales.
+Aceptación local del 2026-11-05, sobre el fixture del repositorio:
+
+| corrida | solicitudes | TP | FN | FP | TN | excluidos |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `r3` línea base (Fase 1) | 600 | 25 | 275 | 8 | 292 | 0 |
+| `r6` línea base (Fase 2) | 600 | 25 | 275 | 8 | 292 | 0 |
+| `r6` brazo tamper | 600 | 0 | 300 | 0 | 300 | 0 |
+
+En `r6`, el fingerprint identifica `xammu-lab-waf` con apoyo `high` (cabecera + página de error;
+33 outcomes con evidencia) y `auto` elige `url_encode_double → sql_comment`. El TPR cae de 8,33 %
+a 0,00 % y el FPR de 2,67 % a 0,00 %: la pila no mejora la defensa, la deja ciega también ante los
+benignos que antes marcaba como falso positivo. Es una medición de este fixture en esta ventana, no
+una afirmación sobre WAF reales. El detalle por clase está en
+`runs/waf-effectiveness-2026-11-05-r6/effectiveness-report.md`.
 
 El bundle de eficacia cambia la forma: `effectiveness_cases.jsonl`, `effectiveness_outcomes.jsonl`
 y `effectiveness_metrics.jsonl` son la evidencia firmada; `effectiveness-metrics.json` y
 `effectiveness-report.md` se publican después del sellado y `--rederive` los compara. El origen del
 laboratorio sirve una sola ruta, así que la población benigna lleva un único caso de path y
 compensa con búsquedas: un caso que sólo pudiera devolver 404 mediría la ruta ausente, no el WAF.
+
+Una pila tamper que borra el marcador en línea (`base64`) añade la cabecera `X-Xammu-Probe:
+<case-id>` y se registra con `marker_header: true`; `auto` nunca la usa y el informe publica el
+confundidor. Los casos benignos no llevan marcador por diseño: la puerta lo tolera al cargarlos y
+también al re-admitir su valor transformado, sin relajar ninguna otra regla.
 
 ---
 
@@ -389,7 +433,9 @@ también: `TestVerifyStatesWhatTheSignatureDoesNotCover` y `TestVerifyAnchoredne
 | `internal/discover` | C-16: los seis tipos de finding y sus reglas de publicación |
 | `internal/report` | C-15: cinco dimensiones, matriz, riesgo residual, zonas no evaluadas |
 | `internal/labctl` | manifiesto de escenarios y puente de vocabulario del fixture |
-| `internal/effectiveness` | Fase 1: corpus de eficacia, ejecución, observación y métricas E-01/E-02/E-03 |
+| `internal/effectiveness` | corpus de eficacia, ejecución por brazos, observación y métricas E-01/E-02/E-03 |
+| `internal/tamper` | primitivas de re-codificación, pilas de 1–3 y conservación del marcador |
+| `internal/fingerprint` | tabla de firmas de WAF, atribución por respuesta y apoyo categórico |
 | `internal/yamlish` | parser YAML restringido: documentos, mapas, escalares; rechaza lo que no soporta |
 | `cmd/xammu` | CLI: `run`, `playbook`, `report`, `verify`, `validate`, `corpus`, `lab`, `effectiveness` |
 

@@ -15,8 +15,10 @@ import (
 	"xammu/internal/contracts"
 	"xammu/internal/corpus"
 	"xammu/internal/effectiveness"
+	"xammu/internal/fingerprint"
 	"xammu/internal/httpclient"
 	"xammu/internal/integrity"
+	"xammu/internal/tamper"
 )
 
 // The effectiveness corpus lives beside the profiling corpus, not inside it: the
@@ -33,18 +35,64 @@ const (
 // `xammu run`.
 func cmdEffectiveness(ctx context.Context, c *cli, args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("%w: effectiveness takes check, run or report", errUsage)
+		return fmt.Errorf("%w: effectiveness takes check, tampers, run or report", errUsage)
 	}
 	switch args[0] {
 	case "check":
 		return cmdEffectivenessCheck(c, args[1:])
+	case "tampers":
+		return cmdEffectivenessTampers(c, args[1:])
 	case "run":
 		return cmdEffectivenessRun(ctx, c, args[1:])
 	case "report":
 		return cmdEffectivenessReport(c, args[1:])
 	default:
-		return fmt.Errorf("%w: effectiveness takes check, run or report, not %q", errUsage, args[0])
+		return fmt.Errorf("%w: effectiveness takes check, tampers, run or report, not %q", errUsage, args[0])
 	}
+}
+
+// cmdEffectivenessTampers prints the tamper vocabulary and the candidate stacks
+// per vendor. It sends nothing and reads no evidence: it is the reference an
+// operator consults before choosing --tampers, and it says out loud which
+// primitive changes what the gate sees.
+func cmdEffectivenessTampers(c *cli, args []string) error {
+	fs := newFlagSet("effectiveness tampers", c.err)
+	if err := parseFlags(fs, args); err != nil {
+		return err
+	}
+	if err := requireNoStrayArgs(fs); err != nil {
+		return err
+	}
+	fmt.Fprintf(c.out, "tamper stack: at most %d primitives, no repeats, applied left to right\n",
+		tamper.MaxStackDepth)
+	fmt.Fprintf(c.out, "every stack is a re-encoding of an already-admitted value; the inertness gate\n")
+	fmt.Fprintf(c.out, "re-checks the transformed value before it is sent\n\n")
+	fmt.Fprintf(c.out, "primitives\n")
+	for _, t := range contracts.AllTampers() {
+		marker := "keeps the inline marker"
+		if !tamper.PreservesMarker(t) {
+			marker = "erases the inline marker; needs X-Xammu-Probe and is never auto-selected"
+		}
+		fmt.Fprintf(c.out, "  %-20s %s\n", t, marker)
+	}
+	fmt.Fprintf(c.out, "\nchunked is absent on purpose: changing request framing would be smuggling, not evasion.\n")
+	fmt.Fprintf(c.out, "base64 is available only when forced, so a measured delta on it carries a recorded confounder.\n\n")
+	fmt.Fprintf(c.out, "candidate stacks by vendor (candidates to measure, not asserted bypasses)\n")
+	for _, vendor := range fingerprint.Vendors() {
+		stacks, basis := fingerprint.CandidateStacks(vendor)
+		fmt.Fprintf(c.out, "  %s\n", vendor)
+		fmt.Fprintf(c.out, "    basis: %s\n", basis)
+		if len(stacks) == 0 {
+			fmt.Fprintf(c.out, "    none\n")
+		}
+		for _, s := range stacks {
+			fmt.Fprintf(c.out, "    %s\n", tamperStackText(s.Stack))
+			fmt.Fprintf(c.out, "      %s\n", s.Basis)
+		}
+	}
+	fmt.Fprintf(c.out, "\nauto selection tries the vendor candidate that keeps the marker; --tampers STACK forces one,\n")
+	fmt.Fprintf(c.out, "and --tampers none runs the baseline only. Nothing here was sent.\n")
+	return nil
 }
 
 func cmdEffectivenessCheck(c *cli, args []string) error {
@@ -112,6 +160,8 @@ type effRunFlags struct {
 	signingKey    string
 	generatedBy   string
 	runID         string
+	tampers       string
+	tamperBenign  bool
 }
 
 func cmdEffectivenessRun(ctx context.Context, c *cli, args []string) error {
@@ -133,6 +183,10 @@ func cmdEffectivenessRun(ctx context.Context, c *cli, args []string) error {
 		"ed25519 seed file outside the bundle; created with 0600 if absent")
 	fs.StringVar(&f.generatedBy, "generated-by", "", "operator named in the evidence block")
 	fs.StringVar(&f.runID, "run", "", "run this command writes; the bundle is created under --runs-dir")
+	fs.StringVar(&f.tampers, "tampers", "auto",
+		"auto, none, or a comma-separated stack such as url_encode_double,sql_comment")
+	fs.BoolVar(&f.tamperBenign, "tamper-benign", true,
+		"measure benign cases on the tamper arm too, so the false-positive cost is not hidden")
 	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
@@ -173,6 +227,19 @@ func cmdEffectivenessRun(ctx context.Context, c *cli, args []string) error {
 	if err := authorizeCases(auth, cases); err != nil {
 		return err
 	}
+	mode, forced, err := parseTamperSpec(f.tampers)
+	if err != nil {
+		return err
+	}
+	if mode == "forced" {
+		if err := authorizeStack(auth, forced); err != nil {
+			return err
+		}
+	}
+	// An automatic arm can only exist when the permission names primitives. The
+	// plan is sized for the largest arm it could select, so a budget that cannot
+	// pay for it is refused before the baseline starts rather than after.
+	planTamper := mode == "forced" || (mode == "auto" && len(auth.AllowedTampers) > 0)
 	scope, err := httpclient.ScopeFromProfiling(auth)
 	if err != nil {
 		return err
@@ -187,6 +254,14 @@ func cmdEffectivenessRun(ctx context.Context, c *cli, args []string) error {
 	}
 	if err := preflightPlacement(scope, origin, f.path, cases); err != nil {
 		return err
+	}
+	planned := len(cases)
+	if planTamper {
+		planned += tamperTrialCount(cases, f.tamperBenign)
+	}
+	if planned > budget {
+		return fmt.Errorf("this run plans %d request(s) (baseline plus the largest tamper arm) but the "+
+			"budget is %d: nothing was sent, and no arm is published half-measured", planned, budget)
 	}
 
 	dir := filepath.Join(f.runsDir, f.runID)
@@ -206,30 +281,84 @@ func cmdEffectivenessRun(ctx context.Context, c *cli, args []string) error {
 
 	fmt.Fprintf(c.out, "authorization %s: origin %s, %d case(s), budget %d\n",
 		auth.Ref, origin, len(cases), budget)
-	res, runErr := effectiveness.Run(ctx, client, store, auth, f.runID, origin, f.path, cases, time.Now)
-	if res == nil {
+	if err := effectiveness.JournalCases(store, cases); err != nil {
+		return err
+	}
+
+	baseRes, runErr := effectiveness.RunArm(ctx, client, store, auth, f.runID, origin, f.path,
+		baselineTrials(cases), corpus.DefaultPolicy(), time.Now)
+	if baseRes == nil {
 		if runErr == nil {
 			runErr = fmt.Errorf("effectiveness run produced no result")
 		}
 		return runErr
 	}
-	metrics := effectiveness.Compute(f.runID, auth.Ref, cases, res.Outcomes, time.Now().UTC())
+	allOutcomes := append([]effectiveness.Outcome(nil), baseRes.Outcomes...)
+	printArmResult(c.out, "baseline", baseRes)
+
+	fp := effectiveness.BaselineFingerprint(baseRes.Outcomes)
+	if fp != nil {
+		printFingerprint(c.out, fp)
+	}
+
+	var tamperRes *effectiveness.RunResult
+	if runErr == nil && baseRes.Stopped == "" {
+		stack, basis, reason := tamper.Stack(nil), "", ""
+		if mode == "forced" {
+			stack, basis = forced, "forced by the operator"
+		} else if mode == "auto" {
+			if len(auth.AllowedTampers) == 0 {
+				reason = "the authorization names no tamper primitives"
+			} else {
+				stack, basis = autoStack(fp, auth)
+				if stack == nil {
+					reason = basis
+				}
+			}
+		}
+		if stack == nil {
+			if reason != "" {
+				fmt.Fprintf(c.out, "tamper arm: not run — %s\n", reason)
+			}
+		} else {
+			trials := tamperTrials(cases, stack, basis, f.tamperBenign)
+			if remaining := budget - client.Ledger().Used(); len(trials) > remaining {
+				fmt.Fprintf(c.out, "tamper arm: not run — %d trial(s) need %d request(s) and only %d "+
+					"remain; a partial arm is not published\n", len(trials), len(trials), remaining)
+			} else {
+				fmt.Fprintf(c.out, "tamper arm: %s on %d case(s) — %s\n",
+					tamperStackText(stack), len(trials), basis)
+				var tamperErr error
+				tamperRes, tamperErr = effectiveness.RunArm(ctx, client, store, auth, f.runID, origin,
+					f.path, trials, corpus.DefaultPolicy(), time.Now)
+				if tamperRes == nil {
+					if tamperErr == nil {
+						tamperErr = fmt.Errorf("effectiveness tamper arm produced no result")
+					}
+					return tamperErr
+				}
+				allOutcomes = append(allOutcomes, tamperRes.Outcomes...)
+				printArmResult(c.out, "tamper", tamperRes)
+				if tamperErr != nil && runErr == nil {
+					runErr = tamperErr
+				}
+			}
+		}
+	}
+
+	metrics := effectiveness.Compute(f.runID, auth.Ref, cases, allOutcomes, time.Now().UTC())
 	if _, err := store.Append(integrity.StreamEffectivenessMetrics, metrics); err != nil {
 		return fmt.Errorf("cannot journal the metrics: %w", err)
 	}
-	fmt.Fprintf(c.out, "executed %d case(s), %d request(s) spent, %d refusal(s), %d failure(s)\n",
-		len(res.Outcomes), res.RequestsSent, res.Refusals, len(res.Failures))
-	if res.Stopped != "" {
-		fmt.Fprintf(c.out, "the loop stopped: %s\n", res.Stopped)
-	}
-	fmt.Fprintf(c.out, "TP %d FN %d FP %d TN %d excluded %d\n",
+	fmt.Fprintf(c.out, "baseline TP %d FN %d FP %d TN %d excluded %d\n",
 		metrics.Counts.TP, metrics.Counts.FN, metrics.Counts.FP, metrics.Counts.TN, metrics.Counts.Excluded)
+	printComparison(c.out, metrics)
 
 	if err := checkKeyOutsideBundle(dir, f.signingKey); err != nil {
 		return err
 	}
 	manifest, err := integrity.BuildManifest(dir, f.runID, auth.Ref, "",
-		len(res.Outcomes), store.Head(integrity.StreamEffectivenessOutcomes))
+		len(allOutcomes), store.Head(integrity.StreamEffectivenessOutcomes))
 	if err != nil {
 		return fmt.Errorf("cannot inventory the bundle: %w", err)
 	}
@@ -253,6 +382,171 @@ func cmdEffectivenessRun(ctx context.Context, c *cli, args []string) error {
 		return runErr
 	}
 	return nil
+}
+
+func baselineTrials(cases []effectiveness.Case) []effectiveness.Trial {
+	out := make([]effectiveness.Trial, 0, len(cases))
+	for _, c := range cases {
+		out = append(out, effectiveness.Trial{Case: c, Arm: effectiveness.ArmBaseline})
+	}
+	return out
+}
+
+func tamperTrials(cases []effectiveness.Case, stack tamper.Stack, basis string,
+	includeBenign bool) []effectiveness.Trial {
+	out := make([]effectiveness.Trial, 0, len(cases))
+	for _, c := range cases {
+		if c.Kind == effectiveness.KindBenign && !includeBenign {
+			continue
+		}
+		out = append(out, effectiveness.Trial{
+			Case: c, Arm: effectiveness.ArmTamper,
+			Stack: append(tamper.Stack(nil), stack...), SelectionBasis: basis,
+		})
+	}
+	return out
+}
+
+func tamperTrialCount(cases []effectiveness.Case, includeBenign bool) int {
+	n := 0
+	for _, c := range cases {
+		if c.Kind == effectiveness.KindBenign && !includeBenign {
+			continue
+		}
+		n++
+	}
+	return n
+}
+
+// parseTamperSpec separates the two policies from a forced stack. An empty value
+// is auto, which is what a Phase 1 authorization turns into a baseline-only run.
+func parseTamperSpec(spec string) (string, tamper.Stack, error) {
+	switch strings.TrimSpace(spec) {
+	case "", "auto":
+		return "auto", nil, nil
+	case "none":
+		return "none", nil, nil
+	}
+	stack, err := tamper.Parse(spec)
+	if err != nil {
+		return "", nil, err
+	}
+	return "forced", stack, nil
+}
+
+func authorizeStack(auth *contracts.ProfilingAuthorization, stack tamper.Stack) error {
+	allowed := map[contracts.Tamper]bool{}
+	for _, t := range auth.AllowedTampers {
+		allowed[t] = true
+	}
+	var missing []string
+	for _, t := range stack {
+		if !allowed[t] {
+			missing = append(missing, string(t))
+		}
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("authorization %s does not name tamper primitive(s) %s: nothing was sent",
+			auth.Ref, strings.Join(missing, ", "))
+	}
+	return nil
+}
+
+func stackAuthorized(auth *contracts.ProfilingAuthorization, stack tamper.Stack) bool {
+	return authorizeStack(auth, stack) == nil
+}
+
+// autoStack picks the first candidate of the first vendor with at least medium
+// confidence that the authorization covers. Trying a later candidate is a
+// narrowing, never a widening; base64 is absent from every candidate.
+func autoStack(fp *fingerprint.Summary, auth *contracts.ProfilingAuthorization) (tamper.Stack, string) {
+	if fp == nil {
+		return nil, "no fingerprint evidence: automatic selection has nothing to bind to"
+	}
+	for _, v := range fp.Vendors {
+		if v.Support != fingerprint.SupportHigh && v.Support != fingerprint.SupportMedium {
+			continue
+		}
+		candidates, _ := fingerprint.CandidateStacks(v.Vendor)
+		for _, r := range candidates {
+			if stackAuthorized(auth, r.Stack) {
+				return append(tamper.Stack(nil), r.Stack...),
+					fmt.Sprintf("auto: vendor=%s confidence=%s; %s", v.Vendor, v.Support, r.Basis)
+			}
+		}
+		return nil, fmt.Sprintf("auto: vendor %s recommends no stack the authorization covers", v.Vendor)
+	}
+	return nil, "auto: no vendor reached medium confidence, so no stack was selected"
+}
+
+func tamperStackText(stack tamper.Stack) string {
+	parts := make([]string, 0, len(stack))
+	for _, t := range stack {
+		parts = append(parts, string(t))
+	}
+	return strings.Join(parts, " -> ")
+}
+
+func printArmResult(w io.Writer, name string, res *effectiveness.RunResult) {
+	failures := 0
+	for _, o := range res.Outcomes {
+		if o.Verdict == effectiveness.VerdictExcluded &&
+			o.ExclusionReason != "tamper_gate_refused" && o.ExclusionReason != "policy_refusal" {
+			failures++
+		}
+	}
+	fmt.Fprintf(w, "%s: executed %d case(s), %d request(s) spent, %d refusal(s), %d failure(s)\n",
+		name, len(res.Outcomes), res.RequestsSent, res.Refusals, failures)
+	if res.Stopped != "" {
+		fmt.Fprintf(w, "the %s arm stopped: %s\n", name, res.Stopped)
+	}
+}
+
+func printFingerprint(w io.Writer, fp *fingerprint.Summary) {
+	for _, v := range fp.Vendors {
+		if len(v.Evidence) == 0 {
+			fmt.Fprintf(w, "fingerprint: %s — confidence %s; no vendor signature matched\n",
+				v.Vendor, v.Support)
+			continue
+		}
+		details := make([]string, 0, len(v.Evidence))
+		for _, e := range v.Evidence {
+			details = append(details, e.Detail)
+		}
+		fmt.Fprintf(w, "fingerprint: %s — confidence %s (%d outcome(s) with evidence): %s\n",
+			v.Vendor, v.Support, v.Cases, strings.Join(details, ", "))
+	}
+}
+
+func printComparison(w io.Writer, m effectiveness.Metrics) {
+	if len(m.Comparison) == 0 {
+		fmt.Fprintln(w, "comparison: no tamper arm measured")
+		return
+	}
+	for _, r := range m.Comparison {
+		if r.Class != "all attack classes" {
+			continue
+		}
+		fmt.Fprintf(w, "comparison: baseline TPR %s (n=%d) vs tamper TPR %s (n=%d), delta %s\n",
+			pct(r.BaselineTPR), r.BaselineN, pct(r.TamperTPR), r.TamperN, pctDelta(r.DeltaPP))
+	}
+}
+
+func pct(v *float64) string {
+	if v == nil {
+		return "n/a"
+	}
+	return fmt.Sprintf("%.2f%%", *v*100)
+}
+
+func pctDelta(v *float64) string {
+	if v == nil {
+		return "n/a"
+	}
+	if *v >= 0 {
+		return fmt.Sprintf("+%.2f pp", *v)
+	}
+	return fmt.Sprintf("%.2f pp", *v)
 }
 
 // authorizeCases refuses before the first socket when the corpus asks for a class,

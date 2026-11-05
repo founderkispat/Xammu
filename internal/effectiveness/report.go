@@ -6,6 +6,9 @@ import (
 	"io"
 	"sort"
 	"strings"
+
+	"xammu/internal/contracts"
+	"xammu/internal/fingerprint"
 )
 
 // Markdown renders the metrics as a human-readable document. Every number shown
@@ -29,6 +32,9 @@ func Markdown(m Metrics, w io.Writer) error {
 	fmt.Fprintf(w, "| Precision | %s |\n", percent(m.Rates.Precision))
 	fmt.Fprintf(w, "| F1 | %s |\n", percent(m.Rates.F1))
 	fmt.Fprintf(w, "| MCC | %s |\n\n", decimal(m.Rates.MCC))
+
+	renderFingerprint(m, w)
+	renderComparison(m, w)
 
 	fmt.Fprintf(w, "## By class\n\n")
 	fmt.Fprintf(w, "| class | kind | TP | FN | FP | TN | excl | TPR | FPR | Precision | F1 | MCC | n | p50 | p95 | p99 |\n")
@@ -89,6 +95,101 @@ func JSON(m Metrics) ([]byte, error) {
 		return nil, err
 	}
 	return append(raw, '\n'), nil
+}
+
+// renderFingerprint publishes the vendor, the categorical confidence and the
+// evidence that supports it. A bundle from Phase 1 has no evidence and says so
+// instead of implying that no defensive layer was present.
+func renderFingerprint(m Metrics, w io.Writer) {
+	fmt.Fprintf(w, "## WAF fingerprint\n\n")
+	if m.Fingerprint == nil {
+		fmt.Fprintf(w, "This bundle predates Phase 2 and carries no fingerprint evidence; absence of a "+
+			"fingerprint here is not evidence that no WAF was present.\n\n")
+		return
+	}
+	fmt.Fprintf(w, "- policy: `%s`\n", m.Fingerprint.Policy)
+	fmt.Fprintf(w, "- baseline outcomes observed: %d; with signature evidence: %d\n\n",
+		m.Fingerprint.Observed, m.Fingerprint.WithEvidence)
+	for _, v := range m.Fingerprint.Vendors {
+		fmt.Fprintf(w, "### `%s` — confidence `%s`\n\n", v.Vendor, v.Support)
+		fmt.Fprintf(w, "- conclusive outcomes with evidence: %d\n", v.Cases)
+		if len(v.Evidence) == 0 {
+			fmt.Fprintln(w, "- evidence: none matched")
+		} else {
+			fmt.Fprintf(w, "- evidence:\n")
+			for _, e := range v.Evidence {
+				fmt.Fprintf(w, "  - `%s` (%s, %s) — %s\n", e.Detail, e.Kind, e.Strength,
+					fingerprint.SignatureBasis(e.Signature))
+			}
+		}
+		if v.RecommendationBasis != "" {
+			fmt.Fprintf(w, "- recommendation basis: %s\n", v.RecommendationBasis)
+		}
+		for _, r := range v.RecommendedStacks {
+			fmt.Fprintf(w, "- candidate stack: %s — %s\n", stackText(r.Stack), r.Basis)
+		}
+		fmt.Fprintf(w, "\n")
+	}
+	fmt.Fprintf(w, "Support is categorical: `high` needs two evidence kinds and an identifying signature, "+
+		"`medium` one identifying kind, `low` supporting or excluded-only evidence, `none` no match. "+
+		"Candidate stacks are hypotheses to measure, not asserted bypasses.\n\n")
+}
+
+// renderComparison publishes the Phase 2 table. Every number is read from E-03;
+// the renderer formats, it does not compute.
+func renderComparison(m Metrics, w io.Writer) {
+	fmt.Fprintf(w, "## Baseline vs tamper\n\n")
+	if len(m.Comparison) == 0 {
+		fmt.Fprintf(w, "No tamper arm was measured in this run.\n\n")
+		return
+	}
+	if len(m.Arms) >= 2 {
+		fmt.Fprintf(w, "- tamper stack: %s\n", stackText(m.Arms[1].TamperStack))
+		if m.Arms[1].SelectionBasis != "" {
+			fmt.Fprintf(w, "- selection basis: %s\n", m.Arms[1].SelectionBasis)
+		}
+		fmt.Fprintf(w, "\n")
+	}
+	fmt.Fprintf(w, "| class | baseline TPR (n) | tamper TPR (n) | delta |\n")
+	fmt.Fprintf(w, "|---|---:|---:|---:|\n")
+	for _, r := range m.Comparison {
+		note := ""
+		if r.Note != "" {
+			note = " — " + r.Note
+		}
+		fmt.Fprintf(w, "| %s | %s (%d) | %s (%d) | %s%s |\n", r.Class,
+			percent(r.BaselineTPR), r.BaselineN, percent(r.TamperTPR), r.TamperN,
+			points(r.DeltaPP), note)
+	}
+	fmt.Fprintf(w, "\nTPR denominators are conclusive attack cases in each arm; excluded cases are not in "+
+		"them. Delta is tamper minus baseline in percentage points.\n\n")
+	if len(m.Arms) >= 2 {
+		base, tam := m.Arms[0], m.Arms[1]
+		fmt.Fprintf(w, "False-positive cost: baseline FPR %s (FP %d, TN %d) versus tamper FPR %s "+
+			"(FP %d, TN %d).\n\n", percent(base.Rates.FPR), base.Counts.FP, base.Counts.TN,
+			percent(tam.Rates.FPR), tam.Counts.FP, tam.Counts.TN)
+	}
+}
+
+func stackText(s []contracts.Tamper) string {
+	if len(s) == 0 {
+		return "(identity)"
+	}
+	parts := make([]string, 0, len(s))
+	for _, t := range s {
+		parts = append(parts, "`"+string(t)+"`")
+	}
+	return strings.Join(parts, " → ")
+}
+
+func points(v *float64) string {
+	if v == nil {
+		return "n/a"
+	}
+	if *v > 0 {
+		return fmt.Sprintf("+%.2f pp", *v)
+	}
+	return fmt.Sprintf("%.2f pp", *v)
 }
 
 func percent(v *float64) string {

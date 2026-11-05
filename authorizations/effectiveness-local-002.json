@@ -1,0 +1,99 @@
+{
+  "authorization_id": "5e425299-9583-407d-8ab0-1102c0905b00",
+  "ref": "AUTH-EFFECTIVENESS-LOCAL-002",
+  "issued_at": "2026-11-05T00:00:00Z",
+  "expires_at": "2026-12-05T23:59:59Z",
+  "issuer": "security-owner@example.internal",
+  "approved_by": "CISO delegate",
+  "environment": "laboratory",
+  "origins": [
+    {
+      "scheme": "http",
+      "host": "127.0.0.1",
+      "port": 8099,
+      "path_prefixes": [
+        "/api/",
+        "/search"
+      ],
+      "allowed_ips": [
+        "127.0.0.1",
+        "::1"
+      ]
+    }
+  ],
+  "methods": [
+    "GET",
+    "POST"
+  ],
+  "limits": {
+    "max_requests": 1300,
+    "rate_per_second": 100,
+    "max_redirects": 3,
+    "timeout_ms": 5000,
+    "max_concurrent": 2,
+    "max_body_retain_bytes": 4096,
+    "round_cooldown_ms": 1000
+  },
+  "retention_policy": "digest_only",
+  "allowed_attack_classes": [
+    "sqli",
+    "xss",
+    "path_traversal",
+    "command_injection",
+    "ssrf",
+    "crlf_injection",
+    "ldap_injection",
+    "xxe",
+    "nosql_injection",
+    "ssti"
+  ],
+  "allowed_vectors": [
+    "query",
+    "body_json",
+    "body_form",
+    "path",
+    "header",
+    "cookie"
+  ],
+  "allowed_encodings": [
+    "canonical",
+    "url_single",
+    "url_double",
+    "html_entity_named",
+    "html_entity_numeric",
+    "unicode_escape",
+    "case_variant",
+    "comment_insertion",
+    "whitespace_variant",
+    "mixed_nested"
+  ],
+  "allowed_tampers": [
+    "url_encode",
+    "url_encode_double",
+    "base64",
+    "unicode_escape",
+    "case_switch",
+    "sql_comment",
+    "whitespace_variant",
+    "html_entity"
+  ],
+  "corpus_partitions": [
+    "development",
+    "calibration"
+  ],
+  "statement_of_scope": "Phase 2 effectiveness measurement of the laboratory WAF in front of 127.0.0.1:8099: one baseline arm and one tamper arm over the inert Phase 1 corpus, plus fingerprint attribution; no exploitation.",
+  "rules_of_engagement": [
+    "no exploitation attempts",
+    "stop on any 429 and report",
+    "no requests outside the listed path prefixes",
+    "every attack payload must pass the inertness gate before it is sent",
+    "every tampered value is a re-encoding that is re-admitted by the gate before it is sent",
+    "no request framing changes: chunked is not a tamper primitive"
+  ],
+  "contact_for_halt": "oncall@example.internal",
+  "issuer_key_fingerprint": "ed25519:686ba64e18dd975287bcdd70e7b63cfd59bf359b8cf5ea51a03212767ba747c5",
+  "notes": [
+    "Phase 2 effectiveness fixture: 600-case baseline arm plus a 600-case tamper arm over the 300 attack and 300 benign cases, budget 1300, local laboratory only",
+    "The issuer seed was generated outside the tree for this fixture and is not retained; only the public key in trust/issuers is published"
+  ]
+}

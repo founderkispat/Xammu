@@ -35,6 +35,7 @@ usage:
   xammu playbook         --authorization FILE --issuer-keyring DIR --corpus DIR [plan flags]
   xammu run              --authorization FILE --authorize REF --issuer-keyring DIR --run ID [plan flags]
   xammu effectiveness check  --corpus DIR
+  xammu effectiveness tampers
   xammu effectiveness run    --authorization FILE --authorize REF --issuer-keyring DIR --run ID [--corpus DIR]
   xammu effectiveness report --run ID | --store DIR [--format F] [--rederive]
   xammu report           --run ID | --store DIR --authorization FILE --issuer-keyring DIR --corpus DIR [--format F]

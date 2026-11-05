@@ -10,6 +10,7 @@ import (
 
 	"xammu/internal/contracts"
 	"xammu/internal/httpclient"
+	"xammu/internal/tamper"
 )
 
 // ErrInvalidProbe marks a case that cannot be rendered onto its transport. The
@@ -21,6 +22,31 @@ var ErrInvalidProbe = errors.New("case cannot be rendered onto its transport")
 // a destination: the origin comes from the authorization and the path from the
 // case, and a case path must already be absolute.
 func BuildRequest(origin string, c Case, pathOverride string) (httpclient.Request, error) {
+	return BuildTrialRequest(origin, c, pathOverride, nil, "")
+}
+
+// RenderValue produces the exact value the transport will carry: the case's
+// declared encoding, then the tamper stack in order. The gate reads this value
+// again before the runner may send it.
+func RenderValue(c Case, stack tamper.Stack, marker string) (string, error) {
+	value, err := Transform(c.Payload, c.Encoding)
+	if err != nil {
+		return "", err
+	}
+	if len(stack) > 0 {
+		value, err = tamper.Apply(value, stack, marker)
+		if err != nil {
+			return "", err
+		}
+	}
+	return value, nil
+}
+
+// BuildTrialRequest renders one trial. A stack that erases the inline marker
+// (base64) adds the diagnostic header so the traffic stays identifiable in the
+// target's log; E-02 records that the header was present.
+func BuildTrialRequest(origin string, c Case, pathOverride string, stack tamper.Stack,
+	marker string) (httpclient.Request, error) {
 	req := httpclient.Request{
 		Method:      c.Method,
 		ProbeRef:    c.ID,
@@ -29,9 +55,13 @@ func BuildRequest(origin string, c Case, pathOverride string) (httpclient.Reques
 		Vector:      string(c.Vector),
 		Encoding:    string(c.Encoding),
 	}
-	value, err := Transform(c.Payload, c.Encoding)
+	value, err := RenderValue(c, stack, marker)
 	if err != nil {
 		return req, fmt.Errorf("%w: %v", ErrInvalidProbe, err)
+	}
+	if stack.NeedsMarkerHeader() {
+		req.Headers = append(req.Headers, contracts.HeaderEntry{
+			Name: "X-Xammu-Probe", Value: headerSafe(c.ID)})
 	}
 	// A path-vector case carries its own {probe} placeholder; replacing it with
 	// the endpoint override would erase the slot the case exists to test.
@@ -154,6 +184,12 @@ func serverOf(h []contracts.HeaderEntry) string {
 		}
 	}
 	return ""
+}
+
+// headerSafe keeps a case identifier out of the header framing. Case ids are
+// corpus-authored tokens, but a diagnostic header must never carry a line break.
+func headerSafe(s string) string {
+	return strings.NewReplacer("\r", "", "\n", "").Replace(s)
 }
 
 func hasHeader(h []contracts.HeaderEntry, name string) bool {
