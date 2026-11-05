@@ -39,7 +39,7 @@ declaran en cada entrega hasta que se cierren.
 | 4 | `xammu report --format human` produce el informe de 7.2 | `cmd/xammu/cli_test.go: TestReportFormatNamesTheHumanDocument`; `internal/report/report_test.go: TestJSONRoundTripsAndMarkdownCarriesEverySection` | ✅ |
 | 5 | `xammu report --format json` produce un C-15 válido | `internal/report/report_test.go: TestBuildIssuesAValidC15` | ✅ |
 | 6 | `xammu verify <manifest>` detecta alteración | `cmd/xammu/cli_test.go: TestVerifyCatchesEvidenceDamage`; `internal/integrity/tamper_test.go`: `TestEditedRecordBreaksChain`, `TestRemovedRecordBreaksChain`, `TestInsertedRecordBreaksChain`, `TestReorderedRecordsBreakChain`, `TestTruncatedTailPassesChainButFailsTheManifest`, `TestForgedChainValidAppendIsCaughtByManifest`, `TestReSignedWithForeignKeyFailsTrustCheck`; `cmd/xammu/run_test.go: TestEndToEndRederiveCatchesAEditedReport` | ✅ |
-| 7 | `xammu lab up/down/test` levanta un laboratorio reproducible en CI limpio | `lab/build.sh`, `lab/verify.sh` (134/134 comprobaciones, documentadas en `lab/README.md:147,166`), `lab/teardown.sh`; `cmd/xammu/cli_test.go: TestLabCommandsPreviewInsteadOfActing` cubre sólo la superficie CLI | ⚠ sin CI y sin re-ejecución en esta máquina (no hay daemon de Docker) |
+| 7 | `xammu lab up/down/test` levanta un laboratorio reproducible en CI limpio | `lab/build.sh`, `lab/verify.sh` (134/134 comprobaciones, documentadas en `lab/README.md:147,166`), `lab/teardown.sh`; `cmd/xammu/cli_test.go: TestLabCommandsPreviewInsteadOfActing` cubre sólo la superficie CLI; `.github/workflows/ci.yml` versiona el workflow pero no ejecuta el laboratorio Docker | ⚠ workflow sin corrida externa y laboratorio sin re-ejecución en esta máquina (no hay daemon de Docker) |
 
 ### 2.2 Utilidad
 
@@ -97,10 +97,26 @@ Ninguna equivalencia amplía el comportamiento del handoff: `playbook` y `valida
 
 ---
 
-## 4. Sin CI: la secuencia local equivalente
+## 4. CI y la secuencia local equivalente
 
-Este repositorio no tiene CI configurado (criterio 7 ⚠). La secuencia que se ejecuta en la máquina
-de entrega, en este orden, es la siguiente; cualquier fallo detiene la entrega:
+El repositorio versiona `.github/workflows/ci.yml`, con las acciones de terceros fijadas por SHA.
+El workflow ejecuta `gofmt -l`, `go vet`, `go test -race ./...`, `govulncheck` como herramienta,
+gitleaks sobre árbol e historial y `scripts/release.sh`; en un tag `v*` añade SBOM CycloneDX y firma
+keyless con cosign. **No se ha ejecutado en un runner externo**: el push y `id-token: write`
+requieren aprobación externa, así que el criterio 7 y el ítem 13 de §8 siguen en ⚠.
+
+La evidencia local se produce con dos scripts, en este orden:
+
+```bash
+cd /d/Xammu
+bash scripts/ci-local.sh       # espejo local del workflow; lista cada SKIP
+bash scripts/certify.sh        # aceptación interna completa
+```
+
+`ci-local.sh` ejecuta formato, vet, build, suite, `-race` si hay cgo, `govulncheck` y gitleaks si
+están en `PATH`, el build reproducible y SBOM si Syft está instalado. Escribe
+`dist/ci-local-<UTC>.txt` y el resultado declara cuántos checks se saltaron y por qué. La secuencia
+manual equivalente, paso a paso, es la siguiente; cualquier fallo detiene la entrega:
 
 ```bash
 cd /d/Xammu
@@ -131,12 +147,16 @@ Notas para quien repita esto:
 - `go test ./...` cubre los 26 criterios ✅/◐ de §2. `cmd/xammu/run_test.go` levanta un perímetro
   en proceso con `httptest`; los tests de integridad escriben bundles en un directorio temporal.
   Ninguno requiere el laboratorio.
+- `-race` no se ejecutó en la máquina de entrega si su toolchain no tiene cgo; el workflow lo
+  ejecuta en `ubuntu-latest`. `ci-local.sh` lo intenta y lo declara como `SKIP` si falta.
 - La secuencia **no** re-ejecuta `lab/verify.sh`: esta máquina no tiene daemon de Docker. La
   corrida 134/134 registrada en `lab/DIGESTS.txt` pertenece a la máquina que la generó y así se
   declara en `README.md` §3.
 - Las autorizaciones de demostración caducan el **2026-10-29**. Después de esa fecha los dos
   comandos `run` que produjeron los bundles se rechazan por caducidad; `report`, `validate` y
   `verify` siguen funcionando porque re-derivan de la evidencia sellada.
+- La firma keyless y el SBOM del release **no** se producen en local: dependen del token OIDC del
+  workflow. Sin una corrida sobre un tag no existe `.sigstore.json` que verificar.
 
 ---
 
@@ -212,7 +232,7 @@ criterio 16; hasta entonces, la entrega lo declara abierto.
 
 | # | condición de §9 | estado |
 | --- | --- | --- |
-| 1 | los 29 criterios pasan en CI contra laboratorio limpio | ⚠ sin CI; §4 es la secuencia local y los 27 criterios no-⚠ están verdes |
+| 1 | los 29 criterios pasan en CI contra laboratorio limpio | ⚠ workflow versionado sin corrida externa; §4 es la secuencia local y los 27 criterios no-⚠ están verdes |
 | 2 | un ingeniero externo explica tres hallazgos y una zona no evaluada sin ayuda | ⚠ protocolo en §5, no ejecutado |
 | 3 | el informe de laboratorio incluye `coverage_gap`, `over_blocking`, `vector_asymmetry` y `undetermined_area` | ✅ **en dos ejecuciones**: `runs/demo-lab` aporta `encoding_bypass_pattern`, `over_blocking`, `vector_asymmetry` y 11 `undetermined_area`; `runs/demo-origin` aporta 3 `coverage_gap` y 13 `undetermined_area` |
 | 4 | `xammu verify` pasa sobre el manifiesto de demostración | ✅ sobre los dos manifiestos (`runs/demo-lab`, `runs/demo-origin`) |
@@ -255,7 +275,7 @@ cumplida una condición que la redacción original pedía en singular.
 | 10 | `discovery_finding` (C-16) con los 4 campos de honestidad y nota | `TestFindingRequiresAllFourHonestyFields`, `TestFindingRequiresEngineerNote` | ✅ |
 | 11 | matriz de cobertura clase × vector en todo informe | `TestReportRequiresCoverageMatrix` | ✅ |
 | 12 | falsos positivos medidos con población y denominador | `TestOverBlockingIsMeasuredOverTheLegitimatePopulation` | ✅ |
-| 13 | los 29 criterios de aceptación pasan en CI | — | ⚠ ver §2 |
+| 13 | los 29 criterios de aceptación pasan en CI | `.github/workflows/ci.yml` existe y `scripts/ci-local.sh` pasa en la máquina de entrega; el workflow no se ejecutó en GitHub | ⚠ ver §2 |
 | 14 | prueba de utilidad con ingeniero externo | — | ⚠ ver §5 |
 | 15 | el laboratorio produce los 4 tipos de finding en la ejecución de demostración | `runs/demo-lab` + `runs/demo-origin` | ✅ (desviación de §9.3, §7) |
 | 16 | `xammu verify` pasa sobre el manifiesto de demostración | ambos bundles | ✅ |
@@ -266,8 +286,10 @@ cumplida una condición que la redacción original pedía en singular.
 
 Estas son las únicas afirmaciones que la entrega **no** hace. Están también en `README.md` §11.
 
-1. **No hay CI.** La secuencia local de §4 se ejecutó en la máquina de entrega; un CI limpio
-   (criterio 7) y una corrida de los 29 criterios en él (ítem 13 de §8) siguen abiertos.
+1. **No hay corrida de CI en un runner externo.** `.github/workflows/ci.yml` está versionado y
+   `scripts/ci-local.sh` pasa en la máquina de entrega, pero el workflow no se ejecutó en GitHub:
+   hacer push y habilitar `id-token: write` requiere aprobación externa. El criterio 7 y el ítem 13
+   de §8 siguen abiertos hasta esa corrida.
 2. **No hay prueba con ingeniero externo.** El protocolo de §5 está listo; el criterio 16 y el
    ítem 14 de §8 no se reclaman.
 3. **`lab/verify.sh` no se re-ejecutó en esta máquina.** El resultado 134/134 pertenece a la
@@ -281,3 +303,6 @@ Estas son las únicas afirmaciones que la entrega **no** hace. Están también e
 6. **La firma de los bundles no está anclada.** Se generaron con claves efímeras que no se
    versionan; `verify` lo declara («no trusted key supplied»). Anclar la identidad exige una clave
    obtenida por un canal independiente.
+7. **El release todavía no tiene artefacto firmado.** El workflow firma binario, checksum y SBOM
+   con cosign keyless sobre un tag `v*`, pero no se ha ejecutado. Hasta entonces solo existen el
+   binario y su `.sha256` locales; no hay `.sigstore.json` ni SBOM publicados.

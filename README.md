@@ -378,7 +378,15 @@ La equivalencia completa y el estado de cada criterio están en
 - **La sonda `/..%2F..%2F` se rechaza en planificación** porque su ruta queda fuera de los
   prefijos autorizados. Es comportamiento correcto de la política de destino y no se relaja; un
   plan de matriz completa que incluya esa sonda se rechaza en `CAL-POS-P-01` y debe estrecharse.
-- **Sin CI configurado.** La secuencia local equivalente está en `docs/acceptance.md` §4.
+- **CI versionado, aún sin corrida en GitHub.** `.github/workflows/ci.yml` ejecuta `gofmt`, `vet`,
+  `go test -race`, `govulncheck`, gitleaks sobre árbol e historial y el build reproducible; en un tag
+  `v*` añade SBOM CycloneDX y firma keyless de binario, checksum y SBOM con cosign. Las acciones de
+  terceros están fijadas por SHA. El workflow **no se ha ejecutado en un runner externo**: hacer push
+  y habilitar `id-token: write` requiere aprobación. La evidencia local es `scripts/ci-local.sh`,
+  que imprime `SKIP` para lo que no puede ejecutar.
+- **Sin artefacto de release firmado todavía.** `scripts/release.sh` produce el binario y su
+  `.sha256`; la firma y el SBOM solo se publican cuando el workflow corre sobre un tag. Sin esa
+  corrida no hay `.sigstore.json` que verificar.
 - **Sin prueba de utilidad con ingeniero externo.** El protocolo está en `docs/acceptance.md` §5;
   la prueba no se ejecutó y el criterio 16 no se reclama.
 
@@ -389,12 +397,16 @@ La equivalencia completa y el estado de cada criterio están en
 1. `bash scripts/certify.sh` — formato, vet, build, suite completa, `corpus check`, `verify` de los
    dos bundles, anexos ES/EN, build reproducible byte a byte y hash del árbol; escribe la evidencia
    en `dist/certification-<UTC>.txt`. Solo `go test ./...` son 306 funciones en 15 paquetes.
-2. `sed -n '1,80p' docs/acceptance.md` — los 29 criterios con su prueba y lo que falta.
-3. `go run ./cmd/xammu verify --run demo-lab --authorization AUTH-SMOKE-LOCAL-001 --authorizations authorizations --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query,body_json,cookie --trust-key trust/demo-lab.pub`
-4. `go run ./cmd/xammu report --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --authorizations authorizations --issuer-keyring trust/issuers --corpus corpus --format human` — los tres `coverage_gap`.
-5. Abre un finding de `runs/demo-lab/report.md` y ejecuta su `reproduction_command`; si el bundle
+2. `bash scripts/ci-local.sh` — espejo local de `.github/workflows/ci.yml`: formato, vet, suite,
+   `-race` si hay cgo, `govulncheck` y gitleaks si están en `PATH`, build reproducible y SBOM si
+   Syft está instalado. Escribe `dist/ci-local-<UTC>.txt` y cada `SKIP` queda contado en el
+   resultado.
+3. `sed -n '1,80p' docs/acceptance.md` — los 29 criterios con su prueba y lo que falta.
+4. `go run ./cmd/xammu verify --run demo-lab --authorization AUTH-SMOKE-LOCAL-001 --authorizations authorizations --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query,body_json,cookie --trust-key trust/demo-lab.pub`
+5. `go run ./cmd/xammu report --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --authorizations authorizations --issuer-keyring trust/issuers --corpus corpus --format human` — los tres `coverage_gap`.
+6. Abre un finding de `runs/demo-lab/report.md` y ejecuta su `reproduction_command`; si el bundle
    se selló antes de 0.1, añade `--issuer-keyring trust/issuers` al comando publicado.
-6. Lee `internal/httpclient/egress_test.go` y `internal/contracts/forbidden_source_test.go`: los
+7. Lee `internal/httpclient/egress_test.go` y `internal/contracts/forbidden_source_test.go`: los
    invariantes de «un solo egress» y «ninguna escala numérica» son tests, no prosa.
 
 ---

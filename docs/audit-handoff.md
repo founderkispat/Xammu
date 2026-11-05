@@ -4,16 +4,16 @@
 | --- | --- |
 | Documento | Informe de auditoría interna y handoff técnico |
 | Fecha | 2026-11-05 |
-| Base revisada | `bdcb145901e196b8b52995674dcb8a97f29c101f` (`main`) más el conjunto de entrega pendiente de commit: anexo ES/EN, expediente de certificación, anclas `trust/`, guía de clave fuera del bundle y `.gitattributes` |
-| Árbol de trabajo | Limpio de secretos; 9 archivos modificados y 9 nuevos listos para commit; bundles demo sin cambios |
-| Método | Revisión estática de rutas críticas, ejecución de la suite, `go vet`, `gofmt`, `scripts/certify.sh`, `verify` con `--trust-key`, gitleaks 8.30.1 sobre árbol e historial, y lectura del modelo de amenaza documentado |
-| Herramientas | Go 1.27.0 windows/amd64; gitleaks 8.30.1 |
-| Evidencia | `dist/certification-20261105T182628Z.txt` (RESULT: PASSED), `dist/gitleaks-worktree.json` y `dist/gitleaks-history.json` (vacíos) |
+| Base revisada | `09d434f` (`main`), que incluye 0.1 (`72c7867`) y 0.2 (`09d434f`), más el conjunto 0.3 pendiente de commit: `.github/workflows/ci.yml`, `scripts/ci-local.sh` y documentación |
+| Árbol de trabajo | Limpio de secretos; 0.3 pendiente de commit; bundles demo sin cambios |
+| Método | Revisión estática de rutas críticas, ejecución de la suite, `go vet`, `gofmt`, `scripts/certify.sh`, `scripts/ci-local.sh`, `verify` con `--trust-key`, gitleaks 8.30.1 sobre árbol e historial, y lectura del modelo de amenaza documentado |
+| Herramientas | Go 1.27.3 windows/amd64; gitleaks 8.30.1; govulncheck 1.9.0 |
+| Evidencia | `dist/certification-<UTC>.txt` (`RESULT: PASSED`), `dist/ci-local-<UTC>.txt` (`PASSED WITH 3 SKIPS`), gitleaks 8.30.1 sobre árbol e historial sin fugas |
 | Naturaleza | Auditoría interna. **No** es una certificación externa, un pentest ni una prueba de conformidad legal |
 
-> Ancla de árbol de la certificación citada: `188d68c07c9f443ae9f7bfccf7df09039d79e169a15e2e897996c0b54baea12c`.
-> Ese hash se calculó antes de añadir este documento; como el propio handoff vive bajo `docs/`, volver a
-> ejecutar `scripts/certify.sh` después del commit produce el ancla definitiva de la entrega.
+> El ancla definitiva es el `source tree sha256` que imprime `scripts/certify.sh` en la última corrida
+> archivada con la entrega. Como este documento vive bajo `docs/`, cualquier hash citado aquí queda
+> obsoleto al editarlo: el archivo de evidencia es el que se archiva, no esta línea.
 
 ---
 
@@ -22,9 +22,9 @@
 XAMMU es una herramienta **defensiva de descubrimiento de comportamiento** para un único egress autorizado.
 No busca vulnerabilidades: mide cómo un WAF o front-end trata tráfico **inerte y marcado** frente a su tráfico
 de referencia, y publica hallazgos con la evidencia separada de la inferencia. Su diseño es inusualmente
-conservador y honesto; su principal debilidad de seguridad no está en el egress ni en el sellado, sino en la
-**autorización C-09**: se valida estructuralmente, pero no se verifica ninguna firma, aunque el encabezado del
-programa afirma que se envía «only through an authorization someone signed».
+conservador y honesto. Las dos debilidades altas de la revisión original —la autorización C-09 sin firma y
+la retención completa de cabeceras— se cerraron en 0.1 y 0.2. Lo que queda pendiente es la evidencia externa
+de la cadena de build (CI, SBOM y firma de release) y los riesgos de medición de fases posteriores.
 
 **Apto para:** engagements internos o de cliente con autorización escrita, un solo target por ejecución,
 presupuesto y ventana declarados, y revisión humana de los hallazgos.
@@ -41,10 +41,10 @@ barrido masivo, benchmarking de WAF comerciales, ni como sustituto de un pentest
    puntuaciones de confianza ni CVSS inventados; los informes declaran lo que no prueban.
 
 **Tres riesgos principales**
-1. **H-01 (Alto):** la autorización no está firmada ni se verifica; `issuer_key_fingerprint` es texto libre.
-2. **H-02 (Alto):** se journalizan valores completos de cabeceras de respuesta, incluido `Set-Cookie`, mientras
-   la política de retención sólo gobierna el cuerpo.
-3. **H-03 (Medio):** las anclas de confianza de los demos son TOFU; prueban continuidad, no identidad.
+1. **H-03 (Medio):** las anclas de confianza de los demos son TOFU; prueban continuidad, no identidad.
+2. **H-04/H-10 (Medio/Bajo):** el workflow de CI, el SBOM y la firma keyless están implementados, pero
+   no se ejecutaron en GitHub; todavía no hay un artefacto de release firmado.
+3. **H-05 (Medio):** el presupuesto y la tasa no se coordinan entre procesos que comparten una C-09.
 
 ---
 
@@ -220,8 +220,9 @@ benchmark. Son restricciones de alcance, no carencias accidentales.
 ### 4.4 Estado de aceptación
 
 `docs/acceptance.md` declara 23 criterios verificados por test, 3 con vocabulario equivalente, 1 por revisión
-documental y **2 no reclamados** (CI limpio y prueba con ingeniero externo). La suite local es de 306 funciones
-en 15 paquetes, sin fallos.
+documental y **2 no reclamados** (CI limpio y prueba con ingeniero externo). 0.3 implementa el workflow de CI
+y el espejo local, pero el CI limpio sigue sin reclamarse hasta que exista una corrida en GitHub. La suite
+local es de 306 funciones en 15 paquetes, sin fallos.
 
 ---
 
@@ -244,7 +245,10 @@ Superficie de entrada: argumentos CLI, JSON de autorización, corpus JSONL, bund
   byte a byte (`scripts/release.sh:27-39`).
 - Certificación interna: `gofmt`, `vet`, build, suite, `corpus check`, `verify` de ambos demos con ancla,
   anexos y hash del árbol (`scripts/certify.sh`).
-- **No hay CI** (`.github` no existe). La certificación se ejecuta a mano en un host.
+- **CI versionada (0.3), sin corrida externa.** `.github/workflows/ci.yml` ejecuta `gofmt`, `vet`,
+  `go test -race`, `govulncheck` como herramienta, gitleaks sobre árbol e historial y el build reproducible;
+  en un tag `v*` añade SBOM y firma keyless. Las acciones están fijadas por SHA. No se ha ejecutado en GitHub:
+  `scripts/ci-local.sh` es la evidencia disponible.
 
 ### 5.3 Repositorio y distribución
 
@@ -252,7 +256,9 @@ Superficie de entrada: argumentos CLI, JSON de autorización, corpus JSONL, bund
 - `.gitignore` excluye binarios, `dist/`, `*.ed25519` y `*.key`.
 - `.gitattributes` fija LF para fuentes y documentos y `-text` para `runs/**`, de modo que la evidencia sellada
   no se convierta al hacer checkout.
-- La release produce binario + `.sha256`; **no** hay firma de artefacto, SBOM ni procedencia.
+- La release produce binario + `.sha256`. El workflow de un tag `v*` añade SBOM CycloneDX y firma
+  keyless de binario, checksum y SBOM; esa ruta no se ha ejecutado todavía, así que no hay `.sigstore.json`
+  ni procedencia publicados.
 
 ### 5.4 Laboratorio
 
@@ -298,7 +304,7 @@ equivalente a root en el host. El laboratorio debe correr en un host dedicado o 
 | Sistema de archivos | `--run`, `--store`, `--out`, `--signing-key` | `seal` protege la clave; no hay contención de `--run` | bajo (H-06) |
 | Subproceso | `docker compose` en `lab --apply` | argv sin shell, opt-in | informativo |
 | Dependencias | stdlib Go | cero módulos externos | bajo |
-| Build/distribución | scripts locales | build reproducible, sin firma de release | medio (H-04/H-10) |
+| Build/distribución | scripts locales y workflow | build reproducible, acciones por SHA, gitleaks/govulncheck, SBOM y firma en tags | medio (workflow sin corrida externa) |
 
 ### 6.2 Controles verificados
 
@@ -316,7 +322,8 @@ equivalente a root en el host. El laboratorio debe correr en un host dedicado o 
 | Cuerpo no serializado | `internal/contracts/observation.go:128` |
 | Informe y anexo con permisos restrictivos | `cmd/xammu/bundle.go:179-185`, `cmd/xammu/read.go:119-124` |
 | HTML del anexo escapado | `internal/annex/annex_test.go` |
-| Sin secretos en árbol ni historial | gitleaks 8.30.1, 2 commits, 0 fugas |
+| Sin secretos en árbol ni historial | gitleaks 8.30.1 sobre historial completo, 0 fugas |
+| CI con cadena de suministro fijada | `.github/workflows/ci.yml`: acciones por SHA, herramientas por versión, gitleaks verificado por checksum; `scripts/ci-local.sh` |
 | Sin dependencias externas | `go.mod`, `go list -m all` |
 | Base de laboratorio pinneada | `lab/DIGESTS.txt`, Dockerfiles |
 
@@ -338,6 +345,8 @@ Severidad: **Alto** = rompe una garantía central o expone datos sensibles en co
 - **Recomendación:** firmar C-09 y C-10 con Ed25519 y verificar contra claves de emisor fijadas fuera del
   repositorio; o, como mínimo, recalcular `immutability_digest` y corregir el encabezado para no afirmar una
   firma que no existe. Añadir un test que falle si una autorización alterada sigue siendo aceptada.
+- **Estado (2026-11-05): cerrado en 0.1.** Sidecar Ed25519, keyring obligatorio, huella derivada, payload
+  canónico con dominio y verificación antes del socket; demos firmados. Evidencia en §10.1.1.
 
 #### H-02 — Cabeceras de respuesta retenidas completas (Alto)
 
@@ -349,6 +358,8 @@ Severidad: **Alto** = rompe una garantía central o expone datos sensibles en co
 - **Recomendación:** política de retención de cabeceras independiente; por defecto guardar sólo nombre y digest
   de valor para `Set-Cookie`, `Authorization`, `Proxy-Authorization`, `X-Api-Key` y prefijos sensibles;
   permitir valor completo sólo con autorización explícita. Añadir test de que un `Set-Cookie` no aparece en claro.
+- **Estado (2026-11-05): cerrado en 0.2.** Lista base redactada en captura, `--sensitive-header` sólo amplía,
+  marcador y digest salado por run con salt no serializado. Evidencia en §10.2.1.
 
 #### H-03 — Anclas de confianza TOFU (Medio)
 
@@ -369,6 +380,9 @@ Severidad: **Alto** = rompe una garantía central o expone datos sensibles en co
 - **Recomendación:** workflow mínimo con `gofmt -l`, `go vet`, `go test -count=1`, `govulncheck ./...`,
   gitleaks y `git diff --exit-code` tras clonar; publicar el artefacto de certificación. Añadir `-race` en la
   suite.
+- **Estado (2026-11-05): implementado en 0.3; corrida externa pendiente.** `.github/workflows/ci.yml` y
+  `scripts/ci-local.sh` cubren esos checks. Hacer push requiere aprobación externa, así que el CI limpio
+  sigue sin reclamarse. Evidencia en §10.3.1.
 
 #### H-05 — Presupuesto y tasa no se coordinan entre procesos (Medio)
 
@@ -424,6 +438,9 @@ Severidad: **Alto** = rompe una garantía central o expone datos sensibles en co
   proveniencia SLSA.
 - **Impacto:** un consumidor no puede verificar autoría del binario, sólo su hash publicado en el mismo canal.
 - **Recomendación:** firmar el binario y el checksum, adjuntar SBOM (`syft`) y, si se adopta CI, proveniencia.
+- **Estado (2026-11-05): implementado en 0.3; artefacto todavía no publicado.** El job de tag genera SBOM
+  CycloneDX, firma keyless con cosign y verifica las firmas; no se ejecutó porque no hubo push. Evidencia
+  en §10.3.1.
 
 #### H-11 — Sin fuzzing de parsers (Bajo)
 
@@ -460,10 +477,14 @@ Severidad: **Alto** = rompe una garantía central o expone datos sensibles en co
 
 ### P0 — antes de usar con datos de cliente
 
-1. **Firmar y verificar C-09/C-10** (H-01). Sin esto, la frase «authorization someone signed» debe eliminarse.
-2. **Retención de cabeceras sensibles** (H-02): digest por defecto para `Set-Cookie` y credenciales.
-3. **Registrar la clave pública por canal independiente** y dejar de presentar `trust/` como identidad (H-03).
-4. **CI mínimo con gitleaks, vet, test, govulncheck y verificación de fin de línea** (H-04).
+1. ✅ **Firmar y verificar C-09/C-10** (H-01). Cerrado en 0.1; la frase «authorization someone signed» ya
+   está respaldada por firma y keyring.
+2. ✅ **Retención de cabeceras sensibles** (H-02): valor sustituido por marcador y digest salado en captura.
+   Cerrado en 0.2.
+3. ◐ **Registrar la clave pública por canal independiente** y dejar de presentar `trust/` como identidad (H-03).
+   El keyring es obligatorio y no tiene valor por defecto, pero el canal independiente sigue siendo operativo.
+4. ✅ **CI mínimo con gitleaks, vet, test, govulncheck y verificación de fin de línea** (H-04). Workflow y
+   espejo local implementados en 0.3; la corrida en GitHub requiere aprobación externa.
 
 ### P1 — siguiente iteración
 
@@ -471,7 +492,8 @@ Severidad: **Alto** = rompe una garantía central o expone datos sensibles en co
 6. Contención de `--run` y validación de IDs (H-06).
 7. Identidad del corpus por subárbol + estado sucio (H-07).
 8. Aplicar o retirar `RequireTLS`; tope de cabeceras (H-08).
-9. Firma de release + SBOM (H-10).
+9. ✅ Firma de release + SBOM (H-10). Implementado en 0.3; los artefactos se publican al correr el workflow
+   sobre un tag.
 10. `--prepared-by` explícito para anexos (H-13).
 
 ### P2 — endurecimiento continuo
@@ -490,8 +512,12 @@ Severidad: **Alto** = rompe una garantía central o expone datos sensibles en co
 - **Sin prueba dinámica del laboratorio.** No se ejecutó `lab test --apply` ni se enviaron sondas a ningún
   target en esta sesión.
 - **Sin pentest externo.** No se contrató revisión independiente; H-14 sigue abierto.
-- **Sin `govulncheck`.** No estaba instalado; la ausencia de dependencias externas reduce, pero no elimina, el
-  riesgo de stdlib.
+- **Vulnerabilidades de la stdlib, sin runner limpio.** `govulncheck` 1.9.0 se ejecutó localmente con Go
+  1.27.3 y está en el workflow; no hay una corrida en un runner de GitHub. Con Go 1.27.0 el escaneo
+  encontraba 9 vulnerabilidades de la stdlib que afectaban rutas del cliente HTTP; 1.27.3 las corrige.
+  La ausencia de dependencias externas reduce, pero no elimina, el riesgo de la stdlib.
+- **Firma keyless no ejercitada.** El job de release usa cosign keyless y publica certificado y firma en el
+  log público de Rekor; no se ejecutó. La alternativa con clave en secreto de CI no se implementó.
 - **Confianza TOFU.** Las anclas de los demos no prueban identidad.
 - **Sin revisión legal.** El documento no valida el marco contractual ni la normativa aplicable al engagement.
 
@@ -502,6 +528,11 @@ Severidad: **Alto** = rompe una garantía central o expone datos sensibles en co
 ```bash
 # suite y certificación interna
 bash scripts/certify.sh
+
+# CI local: espejo del workflow; lista cada SKIP
+bash scripts/ci-local.sh
+
+# el workflow remoto solo corre con push; requiere aprobación externa
 
 # verificación de los bundles con ancla fuera del bundle
 go run ./cmd/xammu verify --run demo-lab \
@@ -520,17 +551,20 @@ gitleaks git . --redact
 bash scripts/release.sh
 ```
 
-Salida esperada: `RESULT: PASSED`, `signer_is_trusted` en ambos bundles, `no leaks found` y dos builds
-idénticos byte a byte.
+Salida esperada: `RESULT: PASSED` en `certify.sh` y en `ci-local.sh` (con los `SKIP` que el host no pueda
+ejecutar), `signer_is_trusted` en ambos bundles, gitleaks sin fugas y dos builds idénticos byte a byte.
+Un `SKIP` no cuenta como pase.
 
 ---
 
-## 10. Plan de Fase 0 (P0) — aprobado; 0.1 y 0.2 cerrados
+## 10. Plan de Fase 0 (P0) — aprobado; 0.1, 0.2 y 0.3 implementados
 
-> **Estado (2026-11-05):** las cinco decisiones recomendadas se confirmaron y **0.1 y 0.2 están
-> cerrados** con la evidencia de §10.1.1 y §10.2.1. 0.3 sigue pendiente; no se inicia Fase 1 hasta
-> que este documento diga **P0 cerrado**. La regla de trabajo sigue siendo una fase por commit, con
-> tests verdes, README y handoff actualizados.
+> **Estado (2026-11-05):** las cinco decisiones recomendadas se confirmaron y **0.1, 0.2 y 0.3 están
+> implementados** con la evidencia de §10.1.1, §10.2.1 y §10.3.1. 0.3 se cierra en código; la primera
+> corrida del workflow en GitHub (push y `id-token: write`) sigue pendiente de aprobación externa, y por
+> eso este documento **todavía no dice P0 cerrado**. No se inicia Fase 1 hasta esa corrida y la
+> actualización de §10.4. La regla de trabajo sigue siendo una fase por commit, con tests verdes, README
+> y handoff actualizados.
 
 ### 10.0 Regla de ejecución
 
@@ -697,13 +731,50 @@ publica `--sensitive-header`. Suites: **306 funciones, 15 paquetes, todas verdes
 **Requiere aprobación externa:** hacer push del workflow a GitHub y, si se usa keyless, habilitar
 `id-token: write`. Sin push, la evidencia es `scripts/ci-local.sh` en verde.
 
+#### 10.3.1 Cierre de 0.3 — implementación y evidencia local
+
+**Implementado.** `.github/workflows/ci.yml` con dos jobs. `verify` (push, pull request y manual) ejecuta
+`gofmt -l`, `go vet`, `go test -race ./...`, `govulncheck` v1.9.0 instalado con `go install` (sin entrar en
+`go.mod`), gitleaks 8.30.1 descargado y verificado por sha256, y `scripts/release.sh`. `release` (solo tags
+`v*`) comprueba que el tag coincide con `ToolVersion`, construye, genera SBOM CycloneDX con Syft v1.56.0
+mediante `anchore/sbom-action`, firma binario, checksum y SBOM con cosign keyless y verifica las firmas
+recién creadas. Las acciones están fijadas por SHA (`actions/checkout` v4.2.2, `actions/setup-go` v5.6.0,
+`actions/upload-artifact` v4.6.2, `anchore/sbom-action` v0.20.6, `sigstore/cosign-installer` v3.8.2).
+Permisos: `contents: read` global; `id-token: write` solo en `release`. `scripts/ci-local.sh` reproduce los
+checks locales, imprime `SKIP` por cada uno que no puede ejecutar y lo cuenta en el resultado.
+
+**Por qué Go 1.27.3.** El escaneo con el toolchain local anterior (1.27.0) encontró 9 vulnerabilidades de
+la stdlib que afectaban rutas del cliente HTTP (`crypto/x509`, HTTP/2 y `net/http`), corregidas en
+1.27.2/1.27.3. El workflow fija 1.27.3 y la verificación local se repitió con él: `No vulnerabilities found`.
+
+**Evidencia local (2026-11-05).**
+
+- `scripts/ci-local.sh`: `RESULT: PASSED WITH 3 SKIPS` — `-race` (el host no tiene compilador C), SBOM
+  (sin Syft) y firma keyless (sin cosign ni OIDC). Los tres los ejecuta el workflow.
+- `scripts/certify.sh`: `RESULT: PASSED`; dos builds idénticos byte a byte; `verify` de ambos bundles;
+  anexos ES/EN.
+- Binario local: `9f228fec0bf7b16c1e6d987f8791315319e185ed21b4d48f069f4344fdd8c4e7` (Windows amd64,
+  `dist/xammu-1.0.0-windows-amd64.exe.sha256`). El release de CI producirá un binario Linux distinto.
+- gitleaks 8.30.1 sobre árbol e historial completo: 0 fugas.
+- Evidencia archivada en `dist/ci-local-<UTC>.txt` y `dist/certification-<UTC>.txt`.
+
+**Límites aceptados y declarados.**
+
+- **El workflow no se ha ejecutado en GitHub.** Sin push ni `id-token: write` no hay corrida limpia, SBOM
+  publicado ni `.sigstore.json`. El criterio 7 y el ítem 13 de §8 siguen en ⚠; la fila 0.3 de §10.4 queda ◐.
+- **Firma keyless y Rekor.** El certificado y la firma se publican en el log público de transparencia. No se
+  firma ningún dato del cliente, solo el binario, su checksum y el SBOM del propio binario.
+- **Reproducibilidad acotada al host.** El workflow compara dos builds en el mismo runner Linux; no se
+  afirma reproducibilidad cruzada Windows/Linux.
+- **Syft se fija en v1.56.0.** El SBOM describe el binario Go y sus módulos, no el host.
+
 ### 10.4 Criterio de aceptación de Fase 0
 
 | punto | evidencia exigida |
 | --- | --- |
 | 0.1 | ✅ suite nueva en verde (296 funciones); `verify` con autorización manipulada sale 1 con mensaje explícito; `run` rechaza antes del socket; demos firmados con sidecars y anillo publicado. **Salvedad:** los comandos dentro de los bundles son anteriores a 0.1 y no citan el anillo; regenerarlos exige el fixture Docker (§10.1.1) |
 | 0.2 | ✅ `TestSensitiveResponseHeadersNeverReachTheBundle` recorre el bundle y no encuentra el valor; `TestSensitiveHeadersAreRedactedAtCapture` prueba el marcador, el digest salado y que `Server`/`Content-Type` conservan valor; la política se publica en el comando de reproducción y en el handoff §10.2.1 |
-| 0.3 | CI o `ci-local.sh` en verde; dos builds idénticos; `.sig`, `.sha256` y SBOM publicados; comandos de verificación documentados |
+| 0.3 | ◐ `scripts/ci-local.sh` en verde con los `SKIP` declarados; dos builds idénticos; `.sha256` local; `.sig` y SBOM **pendientes** de la primera corrida del workflow (push con aprobación externa) |
 | handoff | este documento actualizado con estado **P0 cerrado** y evidencia enlazada |
 
 ### 10.5 Riesgos y decisiones abiertas
@@ -743,6 +814,8 @@ publica `--sensitive-header`. Suites: **306 funciones, 15 paquetes, todas verdes
 | Un valor sensible no llega a la evidencia | `TestSensitiveResponseHeadersNeverReachTheBundle`, `TestSensitiveHeadersAreRedactedAtCapture`, `TestRawObservationEnforcesTheRedactionClaim` |
 | Sin secretos versionados | gitleaks (árbol e historial) |
 | Build reproducible | `scripts/release.sh`, `scripts/certify.sh` |
+| Workflow y herramientas fijados por SHA/versión | `.github/workflows/ci.yml`, `scripts/ci-local.sh` |
+| Release con SBOM y firma keyless | job `release` sobre tags `v*`; **pendiente de corrida** (§10.3.1) |
 
 ## 12. Anexo B — Glosario
 

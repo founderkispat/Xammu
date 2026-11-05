@@ -45,10 +45,11 @@ La unidad certificada es el **árbol fuente más el binario**:
    `source tree sha256`.
 2. El binario se construye con `scripts/release.sh`: `CGO_ENABLED=0`, `-trimpath`,
    `-buildvcs=false`, `-ldflags "-s -w -buildid="`, dos compilaciones comparadas byte a byte, y
-   `dist/xammu-1.0.0-<os>-<arch>[.exe].sha256`.
-3. Este workspace **no es un repositorio Git**. Por eso el ancla primaria es el hash del árbol y no
-   un commit. Al incorporar la entrega al repositorio de Izkuna, el commit pasa a ser el ancla
-   primaria y el hash del árbol la comprobación de que lo compilado es lo aceptado.
+   `dist/xammu-1.0.0-<os>-<arch>[.exe].sha256`. La ruta de release del workflow añade SBOM
+   CycloneDX y firma keyless de binario, checksum y SBOM; esa ruta no se ha ejecutado todavía.
+3. El árbol vive en un repositorio Git (`main`). El commit es el ancla primaria; el hash del árbol
+   que imprime `scripts/certify.sh` comprueba que lo compilado es lo aceptado, aunque el workspace
+   se copie fuera de Git.
 
 Una entrega se acepta solo si el aprobador archiva, junto al binario, el
 `dist/certification-<UTC>.txt` de la corrida que revisó.
@@ -57,13 +58,18 @@ Una entrega se acepta solo si el aprobador archiva, junto al binario, el
 
 ## 3. Cómo se reproduce la aceptación
 
-Requisitos: Go 1.22 o superior en `PATH`, Bash y `sha256sum`. En Windows, Git Bash. No requiere
-Docker, red, ni un objetivo real.
+Requisitos: Go 1.27.3 (la versión fijada en el workflow) en `PATH`, Bash y `sha256sum`. En Windows,
+Git Bash. No requiere Docker, red, ni un objetivo real.
 
 ```bash
 cd /d/Xammu
 bash scripts/certify.sh
 ```
+
+`scripts/ci-local.sh` es el espejo local de `.github/workflows/ci.yml`: formato, vet, build, suite,
+`-race` si hay cgo, `govulncheck` y gitleaks si están en `PATH`, build reproducible y SBOM si Syft
+está instalado. Imprime `SKIP` por cada check que no puede ejecutar y lo cuenta en el resultado. El
+workflow de GitHub no se ha ejecutado todavía; sin push, la evidencia es local.
 
 La corrida ejecuta, en este orden, y falla en el primer desacuerdo:
 
@@ -99,6 +105,8 @@ declara lo que la corrida **no** prueba.
 | anexo de cliente | `go test ./internal/annex/` y `./cmd/xammu/` | estructura ES/EN, escape HTML, cifras del informe y evidencia verbatim |
 | no hay escalas numéricas | `internal/contracts/forbidden_source_test.go` | ninguna puntuación ni confianza numérica en contratos y código |
 | un solo egress | `internal/httpclient/egress_test.go` | ninguna otra ruta de red en el árbol |
+| cadena de CI fijada | revisión de `.github/workflows/ci.yml`; `scripts/ci-local.sh` | acciones de terceros por SHA, herramientas por versión, `go.mod` sin dependencias externas; gitleaks y `govulncheck` se ejecutan si están disponibles |
+| vulnerabilidades de la stdlib | `govulncheck` 1.9.0 con Go 1.27.3 | `No vulnerabilities found`; con 1.27.0 el mismo escaneo encontraba 9 vulnerabilidades que afectaban al cliente HTTP |
 
 El conteo «306 funciones» cuenta funciones `Test*`, no subcasos; los subcasos se ejecutan dentro de
 cada función y su fallo tumba la suite igual.
@@ -121,6 +129,7 @@ tiene una prueba o una comprobación de aceptación; ninguna depende de que algu
 | `report`, `verify` y `validate` no escriben en el bundle | abren el store para lectura y derivan en memoria | `cmd/xammu/read.go`; pruebas de re-derivación |
 | La clave privada nunca entra al bundle | el seed vive fuera; `seal` rechaza una ruta de clave dentro del directorio que firma; el manifiesto solo lleva la pública | `TestSigningKeyMustLiveOutsideTheBundle` y `assertNoPrivateKeys` en `cmd/xammu/run_test.go` |
 | Los comandos publicados están atados a una autorización o a un run | C-16 rechaza un `reproduction_command` sin `--authorization` ni `--run` | `internal/contracts/finding.go` |
+| La cadena de build no admite acciones mutables | `.github/workflows/ci.yml` fija cada acción por SHA y cada herramienta por versión; `go.mod` sigue sin módulos externos | revisión del workflow; `go list -m all`; `scripts/ci-local.sh` |
 | El informe declara lo que no evalúa | los seis `RequiredOutOfScope` son obligatorios en C-15 | `internal/contracts/report.go` |
 | El anexo no mide ni parafrasea la evidencia | comparte un solo recorrido para Markdown y HTML; los campos C-16 se copian literales | `internal/annex/annex_test.go` |
 | Nada se envía fuera DEL alcance autorizado | política de destino y refusal de rutas no cubiertas | `internal/httpclient/policy.go`; el rechazo de `/..%2F..%2F` es intencional |
@@ -142,6 +151,7 @@ permiso no es una capacidad, es un incidente.
 | datos del cliente | fuga de capturas o del nombre del cliente | retención digest-only por defecto; cookies y credenciales de respuesta sustituidas por marcador y digest salado; el anexo no se guarda en el bundle | el operador decide qué metadatos escribe en `--client`; un valor marcado no se puede recuperar del digest |
 | clave de firma | robo del seed | el seed vive fuera del árbol y se ignora por `.gitignore` | la custodia del archivo es responsabilidad del operador |
 | lectura del informe | un documento que exagera lo medido | C-16 exige cuatro campos de honestidad; C-15 exige los disclaimers; sin puntuaciones | la redacción sigue siendo responsabilidad del revisor humano |
+| cadena de build | una acción o herramienta de CI sustituida | acciones fijadas por SHA, herramientas por versión (gitleaks además por checksum), `go.mod` sin módulos externos, SBOM y firma keyless en tags | el workflow no se ha ejecutado; la firma keyless publica certificado y firma en el log público de Rekor |
 
 Fuera del modelo: compromiso del host del operador, del compilador o de la cadena de custodia
 física; ataques de red entre el operador y el objetivo; evaluación de la lógica de la aplicación.
@@ -173,8 +183,12 @@ Reglas de entrega:
 
 ## 8. Límites y brechas abiertas
 
-- **Sin CI.** La secuencia local equivalente es `scripts/certify.sh`; no hay una corrida limpia en
-  un runner externo. Criterio 7 sigue en ⚠.
+- **CI versionado sin corrida externa.** `.github/workflows/ci.yml` contiene la cadena completa y
+  `scripts/ci-local.sh` pasa en la máquina de entrega, pero no hay una corrida limpia en un runner
+  de GitHub. Criterio 7 sigue en ⚠. El workflow tampoco levanta el laboratorio Docker.
+- **Release sin firma ejecutada.** El workflow firma binario, checksum y SBOM con cosign keyless
+  sobre un tag `v*`, pero no se ha ejecutado. Sin esa corrida no existe `.sigstore.json` ni SBOM
+  publicado; `scripts/release.sh` solo produce binario y `.sha256`.
 - **Sin prueba con ingeniero externo.** El protocolo está en [`acceptance.md`](acceptance.md) §5;
   no se ejecutó. Criterio 16 sigue en ⚠.
 - **Ancla de confianza por TOFU.** `trust/demo-lab.pub` y `trust/demo-origin.pub` fijan la clave
@@ -196,9 +210,10 @@ Reglas de entrega:
   `--issuer-keyring`; al ejecutarlos tal cual hay que añadir el anillo. `verify --rederive` sobre
   esos bundles mostraría esa diferencia de texto, no una lectura distinta. Regenerarlos exige el
   fixture Docker y una nueva corrida.
-- **Un solo host probado.** La reproducibilidad se comprobó en MINGW64/Windows amd64 con Go 1.27.0.
+- **Un solo host probado.** La reproducibilidad se comprobó en MINGW64/Windows amd64 con Go 1.27.3.
   Otro host o toolchain puede producir otro binario; el hash de §2 identifica el artefacto que se
-  aceptó, no una promesa de reproducibilidad universal.
+  aceptó, no una promesa de reproducibilidad universal. El workflow compara dos builds en un único
+  runner Linux; no afirma reproducibilidad cruzada Windows/Linux.
 - **Laboratorio Docker no re-ejecutado en esta corrida.** Los bundles existentes se verificaron;
   reconstruir el fixtures exige Docker y no forma parte de `certify.sh`.
 - **Desviación de §9.3.** Se cubren cuatro tipos de hallazgo entre dos corridas autorizadas, no en
@@ -217,6 +232,8 @@ Hay que repetir `scripts/certify.sh`, revisar §4–§5 y registrar una nueva ac
 - cambie cualquier archivo bajo `cmd/`, `internal/`, `corpus/`, `lab/`, `scripts/`,
   `authorizations/`, `trust/`, `docs/`, `README.md` o los bundles de demostración;
 - cambie la versión de Go o las banderas de `scripts/release.sh`;
+- cambie `.github/workflows/ci.yml`, `scripts/ci-local.sh` o la versión fijada de una acción o
+  herramienta de CI;
 - se añada una clase, un vector, una codificación, un tipo de hallazgo o un contrato;
 - se modifique la política de destino, la puerta de inertez o el modelo de autorización;
 - ocurra un incidente de integridad, una sonda no inerte o una ejecución fuera de alcance;
