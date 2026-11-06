@@ -114,7 +114,8 @@ go run ./cmd/xammu authorization sign \
 El comando imprime la huella derivada de la clave; ese valor es el que debe llevar
 `issuer_key_fingerprint` en la C-09. La clave privada del emisor de demostración no se conserva:
 los sidecars de `authorizations/` se firmaron con una semilla efímera y sólo se publicó
-`trust/issuers/demo-issuer.pub`.
+`trust/issuers/demo-issuer.pub`. El key id, la huella y la procedencia de cada clave de `trust/`
+están en [`trust/registry.md`](trust/registry.md).
 
 Las autorizaciones de demostración caducan el **2026-10-29**. Después de esa fecha `run` rechaza
 una ejecución nueva; `report`, `validate` y `verify` siguen re-derivando del bundle sellado y el
@@ -631,15 +632,19 @@ La equivalencia completa y el estado de cada criterio están en
   `certify.sh` exige además `govulncheck` 1.9.0. Una aceptación producida con otra toolchain no se
   archiva. En este host el `go` por defecto es 1.27.0 y la toolchain fijada es 1.27.3: hay que
   ponerla primero en `PATH`.
-- **CI versionado, aún sin corrida en GitHub.** `.github/workflows/ci.yml` ejecuta `gofmt`, `vet`,
-  `go test -race`, `govulncheck`, gitleaks sobre árbol e historial y el build reproducible; en un tag
-  `v*` añade SBOM CycloneDX y firma keyless de binario, checksum y SBOM con cosign. Las acciones de
-  terceros están fijadas por SHA. El workflow **no se ha ejecutado en un runner externo**: hacer push
-  y habilitar `id-token: write` requiere aprobación. La evidencia local es `scripts/ci-local.sh`,
-  que imprime `SKIP` para lo que no puede ejecutar.
+- **CI con laboratorio, matriz y release, aún sin corrida externa en esta entrega.** El workflow
+  `.github/workflows/ci.yml` ejecuta `gofmt`, `vet`, `go test -race`, `govulncheck`, gitleaks sobre
+  árbol e historial, el build reproducible y la demostración del gate; un job `lab` construye las
+  imágenes y corre `lab/verify.sh` (134 comprobaciones) con teardown en `always()`; una matriz
+  `windows-latest`/`macos-latest` corre `gofmt`, `vet` y la suite sin `-race`; en un tag `v*` el job
+  `release` publica SBOM CycloneDX, firma keyless de binario, checksum y SBOM con cosign y crea la
+  GitHub Release con `gh release create`. Las acciones de terceros están fijadas por SHA. Hasta que
+  una corrida real termine en verde, la evidencia sigue siendo local (`scripts/ci-local.sh`, que
+  imprime `SKIP` para lo que no puede ejecutar) y el job `lab` no se puede reproducir en este host
+  porque no hay daemon Docker.
 - **Sin artefacto de release firmado todavía.** `scripts/release.sh` produce el binario y su
-  `.sha256`; la firma y el SBOM solo se publican cuando el workflow corre sobre un tag. Sin esa
-  corrida no hay `.sigstore.json` que verificar.
+  `.sha256`; la firma, el SBOM y la Release solo existen cuando el workflow corre sobre un tag. Sin
+  esa corrida no hay `.sigstore.json` que verificar y no se ha creado ningún tag.
 - **Sin prueba de utilidad con ingeniero externo.** El protocolo está en `docs/acceptance.md` §5;
   la prueba no se ejecutó y el criterio 16 no se reclama.
 

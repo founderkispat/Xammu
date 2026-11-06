@@ -82,13 +82,89 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  # The laboratory is the only proof that the compose file reproduces the
+  # documented behaviours. It runs on a Docker-enabled runner because a compose
+  # file alone is never accepted as evidence: ./lab/verify.sh asserts all 134
+  # checks and tears the lab down. DIGESTS.txt is uploaded, never committed:
+  # it describes one build on one runner, not the repository.
+  lab:
+    name: lab
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: build the laboratory images
+        run: ./lab/build.sh
+
+      - name: laboratory self-test (134 checks)
+        run: ./lab/verify.sh 2>&1 | tee lab/verify.log
+
+      - name: tear the laboratory down
+        if: always()
+        run: ./lab/teardown.sh
+
+      - name: upload laboratory evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: lab-${{ github.sha }}
+          path: |
+            lab/DIGESTS.txt
+            lab/verify.log
+          if-no-files-found: warn
+          retention-days: 14
+
+  # Go 1.27.3 is verified on Ubuntu with the race detector, fuzzing and gitleaks.
+  # This matrix says nothing about those; it only answers whether gofmt, vet and
+  # the suite hold on the two systems the project has never run the suite on.
+  # macOS has never been exercised, so a failure here is a real finding, not noise.
+  test-other-os:
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: setup Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l cmd internal)
+          if [ -n "$unformatted" ]; then
+            echo "gofmt lists files that need formatting:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: vet
+        run: go vet ./...
+
+      - name: tests
+        run: go test ./... -count=1
+
   release:
     name: release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: verify
+    # A signed release waits for the laboratory: the release notes claim 134/134,
+    # so the job that produces the signature must not run before that is true.
+    needs: [verify, lab]
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       id-token: write
     steps:
       - name: checkout
@@ -161,3 +237,16 @@ jobs:
           path: dist/*
           if-no-files-found: error
           retention-days: 90
+
+      # The artifact survives above even if publication fails, so a failed
+      # Release never leaves the signed evidence stranded on the runner.
+      - name: publish the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "XAMMU $GITHUB_REF_NAME" \
+            --verify-tag \
+            --generate-notes
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json url,assets

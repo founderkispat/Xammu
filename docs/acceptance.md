@@ -196,9 +196,13 @@ Ninguna equivalencia amplía el comportamiento del handoff: `playbook` y `valida
 El repositorio versiona `.github/workflows/ci.yml`, con las acciones de terceros fijadas por SHA.
 El workflow ejecuta `gofmt -l`, `go vet`, `go test -race ./...`, `go test -fuzz` con 30 s por target
 en `scripts/fuzz.sh`, `govulncheck` como herramienta, gitleaks sobre árbol e historial y
-`scripts/release.sh`; en un tag `v*` añade SBOM CycloneDX y firma keyless con cosign. **No se ha
-ejecutado en un runner externo**: el push y `id-token: write` requieren aprobación externa, así que
-el criterio 7 y el ítem 13 de §8 siguen en ⚠.
+`scripts/release.sh`; un job `lab` construye las imágenes y corre `lab/verify.sh` (134
+comprobaciones) con teardown en `always()` y sube `lab/DIGESTS.txt` y el log como artefacto; una
+matriz `windows-latest`/`macos-latest` corre `gofmt`, `vet` y la suite sin `-race`; en un tag `v*`
+el job `release`, que depende de `verify` y `lab`, publica SBOM CycloneDX, firma keyless con cosign y
+crea la GitHub Release con `gh release create`. **Al escribir esta sección el workflow todavía no se
+ha ejecutado en un runner externo**: el push y `id-token: write` requieren aprobación externa, así
+que el criterio 7 y el ítem 13 de §8 siguen en ⚠ hasta que exista una corrida observada.
 
 La evidencia local se produce con dos scripts, en este orden:
 

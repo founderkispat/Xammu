@@ -63,8 +63,10 @@ del directorio, que el binario no inspecciona.
 2. Ejecutar `key inspect` y publicar en el expediente el **key id** y la **huella**.
 3. Publicar la clave pública como `trust/<nombre>.pub` (64 hex) por un canal independiente del
    bundle y del permiso. Ese archivo es el ancla que un revisor usa con `--trust-key`.
-4. El manifiesto de cada bundle registra `signer_key_id`; el sobre de publicación registra
-   `signer_key_id`. Un revisor compara ambos con la huella publicada.
+4. Añadir su fila a [`trust/registry.md`](../trust/registry.md) con key id, huella, fecha de alta,
+   procedencia y estado. Una clave sin fila no está registrada, aunque el `.pub` exista.
+5. El manifiesto de cada bundle registra `signer_key_id`; el sobre de publicación registra
+   `signer_key_id`. Un revisor compara ambos con la huella publicada y con la fila del registro.
 
 El ancla no se descubre nunca desde el bundle, la autorización ni el directorio de trabajo: se pasa
 explícitamente, y `verify` sin `--trust-key` informa `signer_is_trusted` como no comprobado.

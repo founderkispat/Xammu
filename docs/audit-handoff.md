@@ -2068,3 +2068,111 @@ Lo que la Etapa 1 **no** cierra:
   la demostración se verifica y se re-lee, no se vuelve a ejecutar.
 - El guard de toolchain es local: impide archivar evidencia con otra versión, no instala Go ni
   demuestra reproducibilidad entre hosts.
+
+---
+
+## 18. Plan de Etapa 2 — evidencia externa (2026-11-06)
+
+Objetivo: convertir la aceptación local en evidencia externa verificable. Etapa 2 cierra A-02 (CI y
+release externos) y A-07 (laboratorio re-ejecutado) **solo** si una corrida real en GitHub termina
+en verde con el laboratorio en 134/134. A-03 (ancla de confianza por canal independiente) no se
+puede cerrar desde el repositorio: se prepara el registro y la parte humana queda declarada. A-09
+(ingeniero externo) sigue fuera de alcance.
+
+### 18.0 Estado de partida observado
+
+| punto | estado |
+| --- | --- |
+| Remoto | `origin/main` = `960e067` (un cambio de una línea en README); `main` local = `434a9ea`; 8 commits locales no publicados y ningún tag. |
+| Autenticación | `gh` no tiene sesión iniciada; `credential.helper=manager`. El remoto es legible sin autenticar, pero push y tag exigen credenciales. |
+| Toolchain | `ToolVersion = "xammu-1.0.0"`; el job `release` exige que el tag coincida con ese literal. |
+| Workflow | `verify` corre en `ubuntu-latest` sin laboratorio ni matriz de sistemas; `release` sube artefactos pero no crea una Release de GitHub. |
+| Laboratorio | `lab/build.sh` y `lab/verify.sh` requieren daemon Docker; esta máquina no lo tiene. El build usa imágenes base fijadas por digest y Go dentro de Docker. |
+| Anclas | `trust/` contiene seis claves públicas (dos bundles, tres emisores y la del sobre de eficacia); no hay registro de huellas ni procedencia por clave. |
+
+### 18.1 Decisiones confirmadas (2026-11-06)
+
+| decisión | elegida | motivo |
+| --- | --- | --- |
+| Versión del release | `v1.0.0` | nunca hubo tag ni release y la aceptación se repetirá sobre el árbol final. |
+| Integración con el remoto | rebase de los 8 commits locales sobre `origin/main` | los commits no están publicados y el cambio remoto es una línea; sin force-push. |
+| Matriz de sistemas | Windows y macOS | Windows está verificado en local; macOS no, y su primera corrida puede descubrir un fallo real. |
+| Acciones externas | solo push de rama de auditoría | `main`, tag y release requieren una aprobación explícita y separada. |
+
+### 18.2 Fases locales (sin push)
+
+1. **2.1 Reconciliar el remoto.** Rebase de `main` sobre `origin/main` (`960e067`), resolver el
+   cambio de README y repetir `gofmt`, `vet` y la suite con Go 1.27.3. El árbol debe quedar
+   idéntico salvo la línea remota.
+2. **2.2 Workflow.** En `.github/workflows/ci.yml`:
+   - job `lab` en `ubuntu-latest`: `lab/build.sh`, `lab/verify.sh`, `lab/teardown.sh` con
+     `timeout-minutes: 30`, teardown en `always()` y artefacto con `lab/DIGESTS.txt` y el log de la
+     corrida. No se versiona el `DIGESTS.txt` generado en CI: es un artefacto por corrida.
+   - job `test-other-os` con matriz `windows-latest` y `macos-latest`: `gofmt`, `vet` y
+     `go test ./... -count=1`, con `shell: bash` explícito. `-race`, fuzzing y gitleaks siguen en
+     Ubuntu.
+   - job `release`: añadir `contents: write` y un paso `gh release create "$GITHUB_REF_NAME" dist/*`
+     después de verificar las firmas; hoy los artefactos solo quedan como upload. Mantener
+     `id-token: write` y las acciones fijadas por SHA.
+3. **2.3 Registro de anclas.** Nuevo `trust/registry.md` con las seis claves: archivo, key id,
+   huella `ed25519:<sha256>`, fecha, procedencia (`TOFU` o `canal independiente`) y estado
+   (`pendiente` si no hay confirmación externa). Enlazarlo desde `trust/README.md` y
+   `docs/key-custody.md`. No se marca ninguna clave como verificada por un tercero.
+4. **2.4 Aceptación local.** `gofmt`, `vet`, suite, `govulncheck`, `ci-local.sh` y `certify.sh`
+   con Go 1.27.3; gitleaks sobre árbol e historial; comprobación de CRLF. La suite local no puede
+   ejecutar el job de laboratorio: eso lo prueba la corrida externa.
+
+### 18.3 Evidencia externa (requiere aprobación y credenciales)
+
+1. **2.5 Push de una rama de auditoría** (por ejemplo `audit/stage-2`), sin tocar `main` ni crear
+   tags. Observar los jobs `verify`, `lab` y `test-other-os`; corregir lo que falle y repetir.
+2. **2.6 Integración a `main`** solo con la rama verde: push fast-forward, sin force.
+3. **2.7 Tag y release.** Crear el tag acordado sobre el commit aceptado, empujarlo y dejar que el
+   job `release` produzca SBOM CycloneDX y las tres firmas keyless. Descargar los artefactos y
+   verificar con `cosign verify-blob` la identidad OIDC, el checksum y el SBOM; archivar URL de la
+   Release, URL de la corrida y hashes.
+4. **2.8 Registro de la evidencia externa.** Añadir a la aceptación y al handoff las URLs, la
+   fecha, el resultado 134/134 y los hashes; repetir `certify.sh` y commitear la actualización.
+   El tag apunta al commit de implementación; el acta posterior cita la corrida, no se re-etiqueta.
+
+### 18.4 Criterios de aceptación de la Etapa 2
+
+- Corrida de GitHub en verde para `verify`, `lab` (134/134) y `test-other-os`, con URL archivada.
+- Release firmada: binario, `.sha256` y SBOM con `.sigstore.json`; `cosign verify-blob` pasa para
+  los tres; la Release publica los artefactos.
+- `trust/registry.md` con las seis huellas y procedencia; A-03 sigue abierto hasta que una persona
+  confirme las huellas por un canal independiente.
+- Criterios 7 y 16: el 7 y el ítem 13 de §8 se cierran solo con la corrida externa verde; el 16
+  sigue ⚠ porque exige un ingeniero externo.
+- Sin force-push, sin secretos en el árbol, sin artefactos generados por CI versionados.
+
+### 18.5 Riesgos y condiciones de parada
+
+- **Rate limit de Docker Hub** al traer las imágenes base fijadas; el job de laboratorio falla
+  antes de construir. Se documenta y se reintenta; no se relaja el pin.
+- **macOS no verificable en local.** Si el job falla por una suposición de plataforma, se corrige
+  el test o el código; si no hay corrección razonable, se retira macOS con una nota y no se
+  presenta como verde.
+- **Permisos del repositorio.** `id-token: write` y `contents: write` pueden requerir configuración
+  del repositorio; si el release no puede firmar o publicar, se detiene y se reporta.
+- **Divergencia remota.** Un push no fast-forward detiene la etapa; no se usa `--force`.
+- **El laboratorio es un fixture, no un WAF real.** 134/134 prueba reproducibilidad del fixture,
+  no eficacia comercial; la frase se mantiene en el acta.
+
+### 18.6 Resultado local (2026-11-06)
+
+| paso | resultado observado |
+| --- | --- |
+| 2.1 rebase | `main` = 8 commits replayed sobre `960e067`; el cambio remoto de README («el lunes») queda integrado y ningún archivo conserva conflicto. El rebase se detuvo una vez por diferencias de fin de línea en `runs/*/report.*` que `git diff --ignore-cr-at-eol` demostró vacías; se reanudó sin descartar contenido. |
+| toolchain | `go version go1.27.3 windows/amd64`; `gofmt -l cmd internal` sin salida; `go vet ./...` en verde. |
+| suite | `go test ./... -count=1` en verde, 462 funciones de prueba en 25 paquetes. |
+| 2.2 workflow | jobs `lab` (build, 134 comprobaciones, teardown `always()`, artefacto con `DIGESTS.txt` y log), `test-other-os` (`windows-latest`/`macos-latest`, `gofmt`/`vet`/suite, `shell: bash`) y `release` con `contents: write`, `needs: [verify, lab]` y `gh release create` tras verificar las firmas. El YAML parsea y los cuatro jobs están presentes. |
+| 2.3 registro | `trust/registry.md` con las seis claves; cada huella se recalculó con `sha256` de los 32 bytes del `.pub` y coincide con la que citan `authorizations/*.json`, `publications/*/publication.json` y los manifiestos de `runs/`. Enlazado desde `trust/README.md` y `docs/key-custody.md`. Ninguna fila se marca como confirmada por un tercero. |
+| 2.4 aceptación | `scripts/ci-local.sh` → `PASSED WITH 3 SKIPS` (race, SBOM, cosign), evidencia `dist/ci-local-20261106T180655Z.txt`. `scripts/certify.sh` → `PASSED`; el `source tree sha256` y la ruta exacta de la corrida final están en el `dist/certification-<UTC>.txt` archivado y no se copian aquí, porque este documento forma parte del árbol hasheado. gitleaks sobre árbol e historial sin fugas. |
+
+Lo que esta corrida **no** prueba: que el workflow sea verde en GitHub, que el laboratorio se
+reproduzca en otro host (no hay daemon Docker aquí), ni que macOS pase la suite. Eso queda para
+2.5 y solo se anota cuando exista una corrida observada.
+
+**Estado:** 2.1–2.4 completados en local; sin push, tag ni release. 2.5 espera credenciales y la
+corrida externa sobre una rama de auditoría.

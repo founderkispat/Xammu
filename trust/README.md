@@ -1,5 +1,9 @@
 # Anclajes de confianza
 
+El registro de key ids, huellas y procedencia de cada clave pública de esta carpeta está en
+[`registry.md`](registry.md). Ese registro no sustituye a la verificación: la huella se recalcula
+desde el `.pub` y se compara con la que cita el artefacto.
+
 ## Emisores de permisos (`issuers/`)
 
 `issuers/demo-issuer.pub` es la clave pública del emisor que firmó las C-09 de demostración en

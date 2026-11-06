@@ -222,18 +222,25 @@ Reglas de entrega:
 
 - **CI versionado sin corrida externa.** `.github/workflows/ci.yml` contiene la cadena completa y
   `scripts/ci-local.sh` pasa en la máquina de entrega, pero no hay una corrida limpia en un runner
-  de GitHub. Criterio 7 sigue en ⚠. El workflow tampoco levanta el laboratorio Docker. El paso de
-  fuzzing (30 s por target) está versionado pero sólo se ejecutó en local con presupuesto menor.
+  de GitHub. Criterio 7 sigue en ⚠. El workflow levanta el laboratorio en un job `lab`
+  (`lab/build.sh`, `lab/verify.sh`, teardown en `always()`, artefacto con `DIGESTS.txt` y el log) y
+  corre una matriz `windows-latest`/`macos-latest` con `gofmt`, `vet` y la suite; ninguna de las dos
+  rutas se ha ejecutado todavía: este host no tiene daemon Docker y macOS nunca se probó. El paso
+  de fuzzing (30 s por target) está versionado
+  pero sólo se ejecutó en local con presupuesto menor.
 - **Release sin firma ejecutada.** El workflow firma binario, checksum y SBOM con cosign keyless
-  sobre un tag `v*`, pero no se ha ejecutado. Sin esa corrida no existe `.sigstore.json` ni SBOM
-  publicado; `scripts/release.sh` solo produce binario y `.sha256`.
+  sobre un tag `v*` y crea la GitHub Release con `gh release create`, pero no se ha ejecutado. Sin
+  esa corrida no existe `.sigstore.json` ni SBOM publicado; `scripts/release.sh` solo produce
+  binario y `.sha256`, y el repositorio no tiene ningún tag.
 - **Sin prueba con ingeniero externo.** El protocolo está en [`acceptance.md`](acceptance.md) §5;
   no se ejecutó. Criterio 16 sigue en ⚠.
 - **Ancla de confianza por TOFU.** `trust/demo-lab.pub` y `trust/demo-origin.pub` fijan la clave
   fuera del bundle, así que un manifiesto re-firmado con otra clave falla `signer_is_trusted`.
   Pero las claves se obtuvieron del propio manifiesto: anclan sustituciones futuras, no prueban la
   identidad real del firmante. Para un engagement, la clave se registra por un canal independiente
-  y ese registro es el que se pasa a `--trust-key` ([`trust/README.md`](../trust/README.md)).
+  y ese registro es el que se pasa a `--trust-key` ([`trust/README.md`](../trust/README.md)). El
+  key id, la huella y la procedencia de cada clave está en
+  [`trust/registry.md`](../trust/registry.md); ninguna fila se marca como confirmada por un tercero.
 - **Autorizaciones de demostración vencidas.** `AUTH-SMOKE-LOCAL-001` y `AUTH-SMOKE-ORIGIN-001`
   caducaron el 2026-10-29. `run` rechaza ejecuciones nuevas; `report`, `verify` y `validate`
   siguen funcionando sobre la evidencia sellada.
