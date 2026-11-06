@@ -139,6 +139,17 @@ Firmeza empírica: `verify.sh` afirma la asimetría del centinela entre `User-Ag
 - **Git Bash en Windows.** Los tres scripts son POSIX (`#!/usr/bin/env bash`, `set -euo pipefail` / `set -uo pipefail`) y están en **LF** —verificado en `build.sh`, `verify.sh`, `teardown.sh`, `compose.yaml` y `DIGESTS.txt`—. Un checkout con `core.autocrlf` que inyecte CR rompe las comparaciones de `verify.sh`.
 - **Go en el host: no es necesario** para reconstruir. La compilación ocurre dentro de los Dockerfiles multi-etapa contra un `golang:1.27-alpine` fijado por digest; `build.sh:4-8` lo declara y el script no invoca el `go` del host. Un toolchain local sólo hace falta para compilar o revisar el código a mano. (Nota: el comentario de `build.sh:7` alude a un `./lint.sh` opcional; **ese archivo no existe en el laboratorio y su comportamiento no está documentado**, y `build.sh` no lo llama.)
 
+**Riesgo del daemon, declarado.** El daemon de Docker es equivalente a root en el host: un
+contenedor construido desde este directorio corre, en la práctica, con ese privilegio. El
+endurecimiento de `compose.yaml` reduce el *blast radius* dentro del contenedor (`read_only`,
+`cap_drop: ALL`, `no-new-privileges`, sin puertos, red interna), pero **no cambia el privilegio del
+daemon**. Use un host dedicado al laboratorio o Docker rootless, y **no** ejecute `build.sh`,
+`verify.sh` ni `xammu lab test --apply` en una estación con datos de cliente. El aislamiento real
+lo prueba `verify.sh` contra contenedores en ejecución, no un archivo. La comprobación **estática**
+de los invariantes del compose y de los Dockerfiles vive en `internal/labcheck` y corre en
+`go test ./...` sin daemon; la reconstrucción y el self-test 134/134 requieren Docker y **no** forman
+parte de `scripts/ci-local.sh`.
+
 ### 5.2 Comandos, en este orden y nada más
 
 ```bash

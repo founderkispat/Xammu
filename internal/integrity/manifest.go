@@ -476,11 +476,17 @@ func WriteManifest(root string, m contracts.IntegrityManifest) error {
 
 // ReadManifest loads a manifest from an artifact directory.
 func ReadManifest(root string) (contracts.IntegrityManifest, error) {
-	var m contracts.IntegrityManifest
 	raw, err := os.ReadFile(filepath.Join(root, "manifest.json"))
 	if err != nil {
-		return m, err
+		return contracts.IntegrityManifest{}, err
 	}
+	return ParseManifest(raw)
+}
+
+// ParseManifest decodes a manifest without touching the filesystem, so the
+// decoder can be exercised against arbitrary bytes.
+func ParseManifest(raw []byte) (contracts.IntegrityManifest, error) {
+	var m contracts.IntegrityManifest
 	if err := json.Unmarshal(raw, &m); err != nil {
 		return m, fmt.Errorf("integrity: manifest.json is not readable: %w", err)
 	}

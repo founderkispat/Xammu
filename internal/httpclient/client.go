@@ -125,6 +125,11 @@ func New(scope *Scope, budget int) *Client {
 		MaxIdleConns:        8,
 		IdleConnTimeout:     30 * time.Second,
 		TLSHandshakeTimeout: timeout,
+		// Explicit rather than inherited: a response header set larger than this
+		// is refused by net/http instead of being buffered. The value matches
+		// http.DefaultMaxHeaderBytes today; writing it keeps the cap visible and
+		// testable if that default ever moves.
+		MaxResponseHeaderBytes: 1 << 20,
 	}
 	c.agent = &http.Client{
 		Transport: transport,

@@ -196,6 +196,9 @@ func cmdEffectivenessRun(ctx context.Context, c *cli, args []string) error {
 	if f.runID == "" {
 		return fmt.Errorf("%w: effectiveness run needs --run: evidence without an owner cannot be cited", errUsage)
 	}
+	if _, err := runPath(f.runsDir, f.runID); err != nil {
+		return err
+	}
 	auth, _, err := loadAuthorization(f.authorization, f.authDir, f.issuerKeyring)
 	if err != nil {
 		return err
@@ -224,6 +227,15 @@ func cmdEffectivenessRun(ctx context.Context, c *cli, args []string) error {
 	if err != nil {
 		return err
 	}
+	// The limiter and ledger are per process. Before the first socket, take the
+	// lock that makes this process the only live spender of this authorization
+	// against this origin; a second live run is refused instead of doubling the
+	// aggregate rate the target sees.
+	lock, err := acquireAuthorizationLock(auth.Ref, origin)
+	if err != nil {
+		return err
+	}
+	defer lock.Release()
 	if err := authorizeCases(auth, cases); err != nil {
 		return err
 	}
@@ -264,7 +276,10 @@ func cmdEffectivenessRun(ctx context.Context, c *cli, args []string) error {
 			"budget is %d: nothing was sent, and no arm is published half-measured", planned, budget)
 	}
 
-	dir := filepath.Join(f.runsDir, f.runID)
+	dir, err := runPath(f.runsDir, f.runID)
+	if err != nil {
+		return err
+	}
 	if err := refuseOverwrite(dir); err != nil {
 		return err
 	}
@@ -898,7 +913,7 @@ func bundleDir(storeDir, runID, runsDir string) (string, error) {
 	if runsDir == "" {
 		return "", fmt.Errorf("%w: --runs-dir is empty, so run %q has no home", errUsage, runID)
 	}
-	return filepath.Join(runsDir, runID), nil
+	return runPath(runsDir, runID)
 }
 
 // isEffectivenessBundle distinguishes the Phase 1 evidence layout from a

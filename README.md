@@ -473,6 +473,78 @@ porque no se publica conocimiento de bypass del fixture. Los sobres de r6 y r7 s
 
 ---
 
+## Madurez operativa (fase 4)
+
+La Fase 4 no añade capacidades de medición: cierra los huecos operativos que quedaban entre «el
+tool funciona en una corrida» y «otra persona puede ejecutarlo sin duplicar tráfico, sin salir de
+su directorio de runs y sin inventar la identidad de la evidencia». Su contrato está en
+`docs/audit-handoff.md` §16 y su aceptación, con la evidencia ejecutada, en §16.14.
+
+- **Un run vivo por autorización y origen (4.1).** Antes del primer socket, `run` y
+  `effectiveness` toman un lock exclusivo del sistema operativo en
+  `<UserCacheDir>/xammu/locks/<sha256(ref\x00origen)>.lock` (`internal/runlock`,
+  `syscall.Flock` en Unix y `CreateFile` con modo de compartición 0 en Windows). Un segundo proceso
+  con la misma C-09 y el mismo origen sale 2 con un mensaje que nombra la autorización, el origen y
+  la ruta del lock, sin enviar tráfico y sin crear bundle. El lock es por usuario y por máquina y
+  no acumula presupuesto entre corridas secuenciales; el kernel lo libera aunque el proceso muera.
+  **Regla de engagement:** un run a la vez por autorización y origen. No es un fallo del tool.
+
+- **`--run` contenido (4.2).** Un único `runPath` rechaza IDs vacíos, `.`, `..`, separadores `/`
+  y `\`, `:` y rutas absolutas antes de crear o abrir nada, y además exige que el destino quede
+  dentro de `runs/`. Un comando de reproducción copiado de un bundle no confiable ya no puede leer
+  ni escribir fuera por accidente. La contención es léxica: no resuelve enlaces simbólicos, y
+  `--store` sigue siendo la vía deliberada para una ruta arbitraria.
+
+- **Identidad del corpus por contenido (4.3).** `corpus_commit_ref` ya no publica `HEAD`. El
+  informe calcula siempre el digest de los bytes ejecutados y añade el tree de Git del subárbol
+  cuando puede demostrarlo: `git:<tree> corpus-digest:<sha>`, o `corpus-digest:<sha>
+  git:<tree>+dirty` si hay cambios sin commitear, o sólo `corpus-digest:<sha>` sin Git. Un commit
+  ajeno ya no cambia la identidad; editar el corpus sí. Git es una dependencia opcional de
+  ejecución, con timeout y `--no-optional-locks`, nunca de compilación.
+
+- **TLS y cabeceras (4.4).** Se eliminó `RequireTLS`, que se calculaba y no se consultaba: el
+  esquema ya se compara contra cada origen autorizado y el transporte no permite desactivar la
+  verificación. `MaxResponseHeaderBytes` queda fijado explícitamente en 1 MiB. Un origen https
+  rechaza `http://`, un certificado autofirmado no se acepta y una tormenta de cabeceras falla de
+  forma acotada; hay tests para las tres.
+
+- **Custodia y rotación de clave (4.5).** `xammu key inspect --key FILE` es de sólo lectura e
+  imprime algoritmo, clave pública, `key id` (el mismo que el manifiesto) y huella
+  `ed25519:<sha256>`, nunca la semilla. `docs/key-custody.md` documenta almacenamiento, registro,
+  rotación, revocación e incidente, y declara lo que el binario **no** implementa (HSM, DPAPI,
+  firma remota). Rotar es firmar lo nuevo con una clave nueva; la evidencia anterior sigue
+  verificando con la pública que la firmó y no se re-firma. Revocar es retirar la pública del
+  conjunto distribuido, no una CRL inventada.
+
+- **Fuzzing nativo (4.6).** Cuatro targets con semillas versionadas: `FuzzParseItem` (C-13),
+  `FuzzParseManifest` (manifiesto), `FuzzDecodeHexKey` (ancla de confianza) y `FuzzCheckRequest`
+  (política de destino). `go test ./...` ejecuta las semillas como regresión; `scripts/fuzz.sh`
+  explora con presupuesto (10 s por target en `ci-local.sh`, 30 s en el workflow). Ninguno abre
+  sockets. Un presupuesto acotado encuentra pánicos y consumos evidentes; no demuestra ausencia de
+  fallos.
+
+- **Laboratorio verificado estáticamente (4.7).** `internal/labcheck` falla si el compose pierde
+  `internal: true`, `read_only`, `cap_drop: ALL`, `no-new-privileges`, `pids_limit`, `tmpfs` o el
+  logging acotado; si un servicio deja de heredar el ancla, si `netrunner` pierde su usuario o si
+  aparece `ports:`, `privileged`, `network_mode`, `pid:` o `volumes:`. Los Dockerfiles exigen
+  `FROM` fijado por digest, `USER` no root y `HEALTHCHECK`, y `DIGESTS.txt` debe registrar las dos
+  imágenes construidas por `image_id` y el runner por digest. `lab/build.sh` valida además con
+  `docker compose config`. El daemon sigue siendo equivalente a root: use host dedicado o Docker
+  rootless y no ejecute `--apply` en una estación con datos de cliente.
+
+```powershell
+# describir la clave que firmará el próximo bundle, sin imprimir la semilla
+go run ./cmd/xammu key inspect --key .xammu-signing.ed25519
+
+# fuzzing con presupuesto local (Git Bash); el workflow usa 30s por target
+bash scripts/fuzz.sh 10s
+
+# la comprobación estática del laboratorio corre con la suite, sin Docker
+go test ./internal/labcheck -v
+```
+
+---
+
 ## 9. Qué garantiza `verify` y qué no
 
 Garantiza: el manifiesto satisface C-12, la firma Ed25519 es válida, el payload recomputa, todos
@@ -507,9 +579,11 @@ también: `TestVerifyStatesWhatTheSignatureDoesNotCover` y `TestVerifyAnchoredne
 | `internal/fingerprint` | tabla de firmas de WAF, atribución por respuesta y apoyo categórico |
 | `internal/annex` | anexo de cliente ES/EN y vista de eficacia, desde el mismo documento |
 | `internal/gate` | política, checks, JSON/YAML/SARIF, informe de siete secciones y sobre `xammu.publication/v1` |
+| `internal/runlock` | lock exclusivo por autorización y origen, Unix y Windows, liberado por el kernel |
+| `internal/labcheck` | invariantes estáticos del compose y los Dockerfiles, sin Docker |
 | `internal/yamlish` | parser YAML restringido: documentos, mapas, escalares; rechaza lo que no soporta |
 | `examples/reference-waf` | fixture de demostración con reglas compuestas y preflight sobre los 600 casos |
-| `cmd/xammu` | CLI: `run`, `playbook`, `report`, `verify`, `validate`, `corpus`, `lab`, `effectiveness`, `gate` |
+| `cmd/xammu` | CLI: `run`, `playbook`, `report`, `verify`, `validate`, `corpus`, `lab`, `effectiveness`, `gate`, `key` |
 
 ---
 
@@ -593,6 +667,8 @@ La equivalencia completa y el estado de cada criterio están en
   terminado, desviación de §9.3, protocolo de la prueba de utilidad y qué garantiza `verify`.
 - [`docs/gate-output.md`](docs/gate-output.md) — formato de `gate.json`, `gate.yaml`, `results.sarif`,
   `report.md`, los anexos y `publication.json`, y qué comprueba `verify --publication`.
+- [`docs/key-custody.md`](docs/key-custody.md) — almacenamiento, registro, rotación, revocación e
+  incidente de las claves Ed25519, con `key inspect` y los límites que el binario no implementa.
 - [`examples/ci`](examples/ci) — workflow de GitHub Code Scanning y snippets de GitLab, Azure
   Pipelines y Jenkins para consumir el código de salida, la política y el SARIF.
 - [`examples/reference-waf`](examples/reference-waf) — fixture de demostración fail/pass, con su

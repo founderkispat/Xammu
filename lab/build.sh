@@ -36,6 +36,14 @@ for f in origin/Dockerfile waf/Dockerfile compose.yaml; do
   [ -f "$f" ] || die "missing $f"
 done
 
+# The hardening invariants of compose.yaml are asserted by internal/labcheck in
+# the ordinary Go suite without Docker. This asks Compose itself whether the
+# anchors resolve and every field is spelled as Compose understands it: a file
+# that passes the textual checks can still fail `up` after a long build.
+docker compose -f compose.yaml config --format json >/dev/null 2>&1 \
+  || die "docker compose config rejected compose.yaml; fix it before building."
+log "compose : docker compose config accepted compose.yaml"
+
 log "Docker : $(docker --version)"
 log "Buildx : $(docker buildx version | head -1)"
 

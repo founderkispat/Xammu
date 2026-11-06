@@ -137,7 +137,7 @@ func (p *planFlags) bundle() (string, error) {
 	if p.runsDir == "" {
 		return "", fmt.Errorf("%w: --runs-dir is empty, so run %q has no home to look for", errUsage, p.runID)
 	}
-	return filepath.Join(p.runsDir, p.runID), nil
+	return runPath(p.runsDir, p.runID)
 }
 
 // engagementFlags names everything about the engagement except the scope of this one

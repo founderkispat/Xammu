@@ -47,6 +47,9 @@ jobs:
       - name: tests with the race detector
         run: go test -race ./... -count=1
 
+      - name: fuzzing (bounded, seeds plus 30s per target)
+        run: ./scripts/fuzz.sh 30s
+
       - name: govulncheck
         run: |
           GOBIN="$RUNNER_TEMP/tools" go install "golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION}"

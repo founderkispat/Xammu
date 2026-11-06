@@ -48,3 +48,7 @@ bundle y ese registro es el que se usa con `--trust-key`.
 Una clave se reemplaza solo con una corrida nueva y una aceptación registrada. Nunca se edita un
 `.pub` para que `verify` pase: eso convierte el ancla en una copia del manifiesto y elimina la
 única comprobación que aporta.
+
+El ciclo completo —almacenamiento, registro, rotación, revocación e incidente— está en
+[`docs/key-custody.md`](../docs/key-custody.md). `xammu key inspect --key FILE` publica el key id y
+la huella que deben coincidir con esta carpeta, sin imprimir nunca la semilla.

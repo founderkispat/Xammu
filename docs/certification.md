@@ -19,6 +19,10 @@ cumplimiento y no convierte a XAMMU en un escáner de vulnerabilidades.
   `runs/waf-effectiveness-2026-11-05-r7` y en las entregas de `publications/` (r6 y r7), firmadas
   con la clave cuya pública es `trust/waf-effectiveness.pub`; §15.11 de
   [`docs/audit-handoff.md`](audit-handoff.md) y [`docs/gate-output.md`](gate-output.md).
+- Fase 4 (madurez operativa): aceptada en local el 2026-11-05; evidencia en §16.14 de
+  [`docs/audit-handoff.md`](audit-handoff.md), [`docs/key-custody.md`](key-custody.md) y la suite
+  (lock entre procesos, contención de `--run`, identidad del corpus por contenido, TLS explícito,
+  custodia de clave, fuzzing nativo y verificación estática del laboratorio).
 
 ---
 
@@ -109,7 +113,7 @@ declara lo que la corrida **no** prueba.
 
 | propiedad | cómo se comprueba | resultado esperado |
 | --- | --- | --- |
-| suite completa | `go test ./... -count=1` | 428 funciones de prueba en 23 paquetes, sin fallos |
+| suite completa | `go test ./... -count=1` | 462 funciones de prueba en 25 paquetes, sin fallos |
 | cabeceras sensibles | `go test ./cmd/xammu/ ./internal/httpclient/ ./internal/contracts/` | el valor literal no aparece en ningún artefacto; digests salados estables dentro del run y distintos entre runs; `Server` y `Content-Type` intactos |
 | firmas de autorización | `go test ./cmd/xammu/ ./internal/integrity/` | sidecar válido aceptado; campo, firma, contrato, clave o emisor alterados rechazados; `run` no abre socket con una C-09 inválida |
 | criterios del handoff | [`acceptance.md`](acceptance.md) §2 | 29 criterios clasificados; ninguno ⚠ contado como cumplido |
@@ -119,13 +123,21 @@ declara lo que la corrida **no** prueba.
 | brazos y fingerprint | `go test ./internal/effectiveness/ ./internal/fingerprint/ ./internal/tamper/` | E-03 con `arms`, `comparison` y `fingerprint` re-deriva; bundles de Fase 1 siguen sin esos campos; pilas y marcador cubiertos |
 | anexo de cliente | `go test ./internal/annex/` y `./cmd/xammu/` | estructura ES/EN, escape HTML, cifras del informe y evidencia verbatim |
 | gate y entrega sellada | `go test ./internal/gate/ ./internal/annex/` y `scripts/gate-demo.sh` | JSON determinista, YAML re-parseable, SARIF con reglas declaradas, veredicto que se reproduce desde los checks, sobre Ed25519 que rechaza un byte alterado, otra clave de confianza o un veredicto que sus checks no producen |
+| lock entre procesos | `go test ./internal/runlock/ ./cmd/xammu/` | segunda adquisición devuelve `ErrBusy`; un proceso hijo re-ejecutado confirma la exclusión; el segundo `run` sale 2 sin tocar el canary ni crear bundle |
+| contención de `--run` | `go test ./cmd/xammu/` | tabla de IDs rechazados y aceptados; `run --run ../escape` sale 2 sin crear directorios |
+| identidad del corpus | `go test ./internal/report/` | tree del subárbol, no `HEAD`; commit ajeno estable; edición sucia con `+dirty`; sin Git se publica el digest |
+| TLS y cabeceras | `go test ./internal/httpclient/` | origen https rechaza `http://`; autofirmado rechazado; cabeceras > 1 MiB fallan acotadas; transporte sin proxy ni `InsecureSkipVerify` |
+| custodia de clave | `go test ./cmd/xammu/ ./internal/integrity/`; `xammu key inspect` | key id y huella coinciden con el manifiesto; nunca se imprime la semilla; rotación conserva bundles viejos; 0600 al crear (Unix) |
+| fuzzing nativo | `go test ./...`; `bash scripts/fuzz.sh 10s` | cuatro targets con semillas ejecutadas como regresión y presupuesto acotado sin hallazgos; ninguno abre sockets |
+| laboratorio estático | `go test ./internal/labcheck/` | 22 mutaciones detectadas sobre los archivos reales; compose, Dockerfiles y `DIGESTS.txt` cumplen sus invariantes sin Docker |
 | no hay escalas numéricas | `internal/contracts/forbidden_source_test.go` | ninguna puntuación ni confianza numérica en contratos y código |
 | un solo egress | `internal/httpclient/egress_test.go` | ninguna otra ruta de red en el árbol |
 | cadena de CI fijada | revisión de `.github/workflows/ci.yml`; `scripts/ci-local.sh` | acciones de terceros por SHA, herramientas por versión, `go.mod` sin dependencias externas; gitleaks y `govulncheck` se ejecutan si están disponibles |
 | vulnerabilidades de la stdlib | `govulncheck` 1.9.0 con Go 1.27.3 | `No vulnerabilities found`; con 1.27.0 el mismo escaneo encontraba 9 vulnerabilidades que afectaban al cliente HTTP |
 
-El conteo «384 funciones» cuenta funciones `Test*`, no subcasos; los subcasos se ejecutan dentro de
-cada función y su fallo tumba la suite igual.
+El conteo cuenta funciones `Test*` y `Fuzz*` (458 y 4), no subcasos; los subcasos se ejecutan dentro
+de cada función y su fallo tumba la suite igual. Las semillas de los targets `Fuzz*` también corren
+en `go test ./...`.
 
 ---
 
@@ -204,7 +216,8 @@ Reglas de entrega:
 
 - **CI versionado sin corrida externa.** `.github/workflows/ci.yml` contiene la cadena completa y
   `scripts/ci-local.sh` pasa en la máquina de entrega, pero no hay una corrida limpia en un runner
-  de GitHub. Criterio 7 sigue en ⚠. El workflow tampoco levanta el laboratorio Docker.
+  de GitHub. Criterio 7 sigue en ⚠. El workflow tampoco levanta el laboratorio Docker. El paso de
+  fuzzing (30 s por target) está versionado pero sólo se ejecutó en local con presupuesto menor.
 - **Release sin firma ejecutada.** El workflow firma binario, checksum y SBOM con cosign keyless
   sobre un tag `v*`, pero no se ha ejecutado. Sin esa corrida no existe `.sigstore.json` ni SBOM
   publicado; `scripts/release.sh` solo produce binario y `.sha256`.
@@ -250,7 +263,20 @@ Reglas de entrega:
   acepten es una comprobación del consumidor, descrita pero no ejecutada aquí.
 - **La clave del sobre de publicación no se custodia aquí.** Las entregas de r6 y r7 se firmaron con
   `.xammu-signing.ed25519`, que no está en el árbol; la pública vive en `trust/waf-effectiveness.pub`.
-  La rotación y custodia son H-09 de la Fase 4.
+  El ciclo de custodia, rotación y revocación está documentado en
+  [`docs/key-custody.md`](key-custody.md), pero el binario sólo lee una semilla de un archivo: no
+  integra HSM, DPAPI, KMS ni firma remota, y no hay caducidad de clave.
+- **El lock no coordina hosts distintos.** `internal/runlock` serializa ejecuciones del mismo
+  usuario en la misma máquina; dos operadores o dos hosts con la misma C-09 pueden seguir sumando
+  tráfico. Se declara como regla de engagement, no se resuelve con estado compartido.
+- **La contención de `--run` es léxica.** No resuelve enlaces simbólicos dentro de `runs/`; su
+  objetivo es que un comando copiado de un bundle no confiable no salga por accidente, no convertir
+  el filesystem en un sandbox. `--store` sigue aceptando una ruta deliberada.
+- **El fuzzing acotado no demuestra corrección.** 10–30 s por target encuentran pánicos y consumos
+  evidentes; las semillas quedan como regresión, pero no sustituyen una prueba de los parsers.
+- **El laboratorio sigue dependiendo de un daemon root-equivalente.** `internal/labcheck` detecta la
+  pérdida de controles en los archivos, y `lab/build.sh` valida con Compose; ni el checker textual ni
+  esta corrida sustituyen `lab/verify.sh`, que no se re-ejecutó aquí.
 
 ---
 

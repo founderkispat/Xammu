@@ -78,6 +78,11 @@ func cmdRun(ctx context.Context, c *cli, args []string) error {
 	if f.runID == "" {
 		return fmt.Errorf("%w: run needs --run: evidence without an owner cannot be cited by a finding", errUsage)
 	}
+	// A run id is a single directory name. Refuse a path before the corpus is
+	// loaded, so a copied reproduction command cannot reach outside runs/.
+	if _, err := runPath(f.runsDir, f.runID); err != nil {
+		return err
+	}
 	val, err := loadValidation(valPath, f.issuerKeyring)
 	if err != nil {
 		return err
@@ -89,13 +94,24 @@ func cmdRun(ctx context.Context, c *cli, args []string) error {
 	if err != nil {
 		return err
 	}
+	// One live run per authorization and origin. The in-process ledger cannot see
+	// another process, so the lock is taken before the bundle is created and
+	// before the first socket. A refused run sends nothing.
+	lock, err := acquireAuthorizationLock(auth.Ref, req.sc.origin)
+	if err != nil {
+		return err
+	}
+	defer lock.Release()
 	// The placement choices and the scope are published inside the findings, so a reader
 	// who copies a reproduction command re-plans the exchanges this run planned instead
 	// of discovering, after the fact, that the command points at a different set. The
 	// scope half is rendered from the resolved scope rather than from the flags, so a
 	// re-read that reconstructs the same scope publishes the same string.
 	flags := strings.TrimSpace(f.reproFlags() + " " + scopeFlagsOf(req.sc, auth))
-	dir := filepath.Join(f.runsDir, f.runID)
+	dir, err := runPath(f.runsDir, f.runID)
+	if err != nil {
+		return err
+	}
 	if err := refuseOverwrite(dir); err != nil {
 		return err
 	}

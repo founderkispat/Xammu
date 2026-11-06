@@ -33,6 +33,7 @@ const usageText = `xammu -- defensive-behaviour discovery through one authorized
 usage:
   xammu version
   xammu authorization sign --authorization FILE --signing-key FILE
+  xammu key              inspect --key FILE
   xammu corpus  check    --corpus DIR [--partition NAME]
   xammu playbook         --authorization FILE --issuer-keyring DIR --corpus DIR [plan flags]
   xammu run              --authorization FILE --authorize REF --issuer-keyring DIR --run ID [plan flags]
@@ -51,6 +52,11 @@ trust flags (an authorization is refused until one of these verifies it):
   --issuer-keyring DIR  directory of *.pub files, each one hex ed25519 public key;
                         required by every command that loads a C-09 or C-10, and never
                         discovered from the authorization or from a bundle
+
+key custody:
+  key inspect --key FILE  describe an existing seed by public key, key id and
+                        fingerprint; read only, so a missing path is an error and
+                        no key is ever created by asking
 
 plan flags (they narrow the authorization, never widen it):
   --corpus DIR       corpus tree to load through the inertness gate (default "corpus")
@@ -161,6 +167,8 @@ func dispatch(argv []string, stdout, stderr io.Writer) int {
 		err = cmdVersion(c, rest)
 	case "authorization":
 		err = cmdAuthorization(c, rest)
+	case "key":
+		err = cmdKey(c, rest)
 	case "corpus":
 		err = cmdCorpus(c, rest)
 	case "playbook":

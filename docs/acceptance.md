@@ -146,6 +146,32 @@ Los sobres de ambas entregas verifican con `trust/waf-effectiveness.pub`.
 
 ---
 
+## 2.8 Fase 4 — madurez operativa
+
+La Fase 4 tampoco amplía los 29 criterios. Su contrato está en `docs/audit-handoff.md` §16 y su
+aceptación, con la evidencia ejecutada, en §16.14; aquí se resume la prueba de cada punto.
+
+| punto | criterio | prueba / evidencia | estado |
+| --- | --- | --- | --- |
+| 4.1 lock | exclusión entre procesos por `ref`+origen; el segundo run sale 2 sin enviar ni crear bundle | `internal/runlock/lock_test.go` (incluye proceso hijo re-ejecutado); `cmd/xammu/runlock_test.go` con canary; `cmd/xammu/runlock.go` | ✅ |
+| 4.2 `--run` | IDs con `..`, separadores, volumen o ruta absoluta se rechazan antes de tocar el disco; el destino queda contenido en `runs/` | `cmd/xammu/runpath_test.go` (tabla y CLI con `--run ../escape` sin directorios creados); los cinco sitios usan `runPath` | ✅ |
+| 4.3 corpus | tree de Git del subárbol, nunca `HEAD`; digest de contenido siempre; `+dirty` si hay cambios | `internal/report/evidence_identity_test.go` con repositorios temporales (commit propio, commit ajeno, edición sucia, sin Git, índice intacto) | ✅ |
+| 4.4 TLS | `RequireTLS` eliminado; origen https rechaza `http://`; autofirmado rechazado; cabeceras > 1 MiB acotadas | `grep RequireTLS` vacío; `internal/httpclient/tls_test.go`, `transport_test.go` | ✅ |
+| 4.5 claves | `key inspect` publica pública, key id y huella sin la semilla; el key id coincide con el manifiesto; rotación no invalida bundles viejos; la pública equivocada falla | `cmd/xammu/key_test.go`; `internal/integrity/key_test.go` (0600 se ejecuta en Unix y se declara `SKIP` en Windows); `docs/key-custody.md` | ✅ |
+| 4.6 fuzzing | cuatro targets con semillas; `go test ./...` las ejecuta; presupuesto local y en CI sin hallazgos | `FuzzParseItem`, `FuzzParseManifest`, `FuzzDecodeHexKey`, `FuzzCheckRequest`; `scripts/fuzz.sh`; 10 s/target manual y en `ci-local.sh`, 30 s en el workflow | ✅ |
+| 4.7 laboratorio | falla al perder `internal: true`, `read_only`, `cap_drop`, `no-new-privileges`, `pids_limit`, `tmpfs`, logging, ancla o usuario; falla con `ports:`, `privileged`, `network_mode`, `pid:`, `volumes:`; `FROM` por digest, `USER` no root, `HEALTHCHECK`; `DIGESTS.txt` con las dos imágenes y el runner | `internal/labcheck/labcheck_test.go` sobre los archivos reales y 22 mutaciones; `lab/build.sh` valida con `docker compose config`; `lab/README.md` declara el riesgo del daemon | ✅ |
+| regresión | suite completa en verde; build reproducible; r3/r6/r7 re-derivan; gate-demo sale 0; sin dependencias Go externas | `go test ./...` (462 funciones: 458 `Test` + 4 `Fuzz`), `scripts/certify.sh`, `scripts/ci-local.sh`, `scripts/gate-demo.sh` | ✅ |
+
+Resultado de aceptación (loopback, 2026-11-05): los siete puntos tienen test o documento
+verificable y la suite completa pasa. El lock es por usuario y máquina: no coordina hosts
+distintos. La contención de `--run` es léxica: no resuelve enlaces simbólicos. La custodia
+documentada no implementa HSM ni DPAPI. El fuzzing acotado no demuestra ausencia de fallos y el
+checker del laboratorio no interpreta YAML. `lab/verify.sh` **no** se re-ejecutó en esta máquina
+(sin daemon): la corrida 134/134 sigue siendo la registrada en `lab/DIGESTS.txt`. El workflow con
+el paso de fuzzing tampoco se ejecutó en un runner externo porque no hubo push.
+
+---
+
 ## 3. Equivalencia de vocabulario
 
 El handoff nombra cuatro comandos que no existen con esa forma. La equivalencia no es un alias de
@@ -166,10 +192,11 @@ Ninguna equivalencia amplía el comportamiento del handoff: `playbook` y `valida
 ## 4. CI y la secuencia local equivalente
 
 El repositorio versiona `.github/workflows/ci.yml`, con las acciones de terceros fijadas por SHA.
-El workflow ejecuta `gofmt -l`, `go vet`, `go test -race ./...`, `govulncheck` como herramienta,
-gitleaks sobre árbol e historial y `scripts/release.sh`; en un tag `v*` añade SBOM CycloneDX y firma
-keyless con cosign. **No se ha ejecutado en un runner externo**: el push y `id-token: write`
-requieren aprobación externa, así que el criterio 7 y el ítem 13 de §8 siguen en ⚠.
+El workflow ejecuta `gofmt -l`, `go vet`, `go test -race ./...`, `go test -fuzz` con 30 s por target
+en `scripts/fuzz.sh`, `govulncheck` como herramienta, gitleaks sobre árbol e historial y
+`scripts/release.sh`; en un tag `v*` añade SBOM CycloneDX y firma keyless con cosign. **No se ha
+ejecutado en un runner externo**: el push y `id-token: write` requieren aprobación externa, así que
+el criterio 7 y el ítem 13 de §8 siguen en ⚠.
 
 La evidencia local se produce con dos scripts, en este orden:
 
@@ -179,10 +206,11 @@ bash scripts/ci-local.sh       # espejo local del workflow; lista cada SKIP
 bash scripts/certify.sh        # aceptación interna completa
 ```
 
-`ci-local.sh` ejecuta formato, vet, build, suite, `-race` si hay cgo, `govulncheck` y gitleaks si
-están en `PATH`, el build reproducible, `scripts/gate-demo.sh` y SBOM si Syft está instalado.
-Escribe `dist/ci-local-<UTC>.txt` y el resultado declara cuántos checks se saltaron y por qué. La
-secuencia manual equivalente, paso a paso, es la siguiente; cualquier fallo detiene la entrega:
+`ci-local.sh` ejecuta formato, vet, build, suite, `-race` si hay cgo, fuzzing con 10 s por target,
+`govulncheck` y gitleaks si están en `PATH`, el build reproducible, `scripts/gate-demo.sh` y SBOM si
+Syft está instalado. Escribe `dist/ci-local-<UTC>.txt` y el resultado declara cuántos checks se
+saltaron y por qué. La secuencia manual equivalente, paso a paso, es la siguiente; cualquier fallo
+detiene la entrega:
 
 ```bash
 cd /d/Xammu
@@ -190,7 +218,8 @@ cd /d/Xammu
 gofmt -l cmd internal          # debe imprimir nada
 go vet ./...
 go build ./...
-go test ./...                  # 428 funciones de prueba, 23 paquetes
+go test ./...                  # 462 funciones de prueba, 25 paquetes
+bash scripts/fuzz.sh 10s       # 10 s por target; las semillas también corren en go test
 
 go run ./cmd/xammu corpus check --corpus corpus
 go run ./cmd/xammu lab scenarios

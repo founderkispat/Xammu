@@ -4,11 +4,11 @@
 | --- | --- |
 | Documento | Informe de auditoría interna y handoff técnico |
 | Fecha | 2026-11-05 |
-| Base revisada | `09d434f` (`main`), que incluye 0.1 (`72c7867`) y 0.2 (`09d434f`), más el conjunto 0.3 pendiente de commit: `.github/workflows/ci.yml`, `scripts/ci-local.sh` y documentación |
-| Árbol de trabajo | Limpio de secretos; 0.3 pendiente de commit; bundles demo sin cambios |
-| Método | Revisión estática de rutas críticas, ejecución de la suite, `go vet`, `gofmt`, `scripts/certify.sh`, `scripts/ci-local.sh`, `verify` con `--trust-key`, gitleaks 8.30.1 sobre árbol e historial, y lectura del modelo de amenaza documentado |
+| Base revisada | `a8102d5` (`main`), que cierra la Fase 3, más el conjunto 0.4 pendiente de commit |
+| Árbol de trabajo | Limpio de secretos; 0.4 pendiente de commit; corpus, `lab/compose.yaml` y bundles r3/r6/r7 sin cambios |
+| Método | Revisión estática de rutas críticas, ejecución de la suite, `go vet`, `gofmt`, fuzzing acotado (10 s por target), `scripts/certify.sh`, `scripts/ci-local.sh`, `verify` con `--trust-key`, gitleaks 8.30.1 sobre árbol e historial, y lectura del modelo de amenaza documentado |
 | Herramientas | Go 1.27.3 windows/amd64; gitleaks 8.30.1; govulncheck 1.9.0 |
-| Evidencia | `dist/certification-<UTC>.txt` (`RESULT: PASSED`), `dist/ci-local-<UTC>.txt` (`PASSED WITH 3 SKIPS`), gitleaks 8.30.1 sobre árbol e historial sin fugas |
+| Evidencia | `dist/certification-<UTC>.txt` (`RESULT: PASSED`), `dist/ci-local-<UTC>.txt` (`PASSED WITH 4 SKIPS`), gitleaks 8.30.1 sobre árbol e historial sin fugas |
 | Naturaleza | Auditoría interna. **No** es una certificación externa, un pentest ni una prueba de conformidad legal |
 
 > El ancla definitiva es el `source tree sha256` que imprime `scripts/certify.sh` en la última corrida
@@ -44,7 +44,9 @@ barrido masivo, benchmarking de WAF comerciales, ni como sustituto de un pentest
 1. **H-03 (Medio):** las anclas de confianza de los demos son TOFU; prueban continuidad, no identidad.
 2. **H-04/H-10 (Medio/Bajo):** el workflow de CI, el SBOM y la firma keyless están implementados, pero
    no se ejecutaron en GitHub; todavía no hay un artefacto de release firmado.
-3. **H-05 (Medio):** el presupuesto y la tasa no se coordinan entre procesos que comparten una C-09.
+3. **H-05 (Medio) cerrado en operación, con límite declarado:** el lock por autorización/origen impide
+   duplicar tráfico en el mismo host y usuario, pero no coordina hosts ni operadores distintos; el
+   presupuesto sigue siendo por corrida (§16.14).
 
 ---
 
@@ -393,6 +395,11 @@ Severidad: **Alto** = rompe una garantía central o expone datos sensibles en co
   esto es un incumplimiento silencioso.
 - **Recomendación:** lock de sistema por `ref`+origen con reserva atómica del presupuesto, o declarar y
   verificar «un run a la vez por autorización». Documentarlo en las reglas de engagement.
+- **Estado (2026-11-05): cerrado por exclusividad en 0.4.** `internal/runlock` toma un lock exclusivo
+  del SO por `ref`+origen antes del primer socket; un segundo proceso sale 2 sin enviar ni crear
+  bundle. No hay saldo compartido: el lock impide el solapamiento, no acumula presupuesto. Es por
+  usuario y máquina, así que no coordina hosts. Evidencia en §16.14 y en `README.md` (regla de
+  engagement).
 
 #### H-06 — `--run` no contiene el identificador al directorio de runs (Bajo)
 
@@ -403,6 +410,10 @@ Severidad: **Alto** = rompe una garantía central o expone datos sensibles en co
   bundle no confiable.
 - **Recomendación:** rechazar IDs con `/`, `\`, `..` o volumen absoluto, o resolver la ruta y exigir que quede
   contenida en `runsDir`.
+- **Estado (2026-11-05): cerrado en 0.4.** Un único `runPath` rechaza IDs vacíos, `.`, `..`,
+  separadores, `:` y rutas absolutas antes de tocar el disco, y exige contención en `runsDir`. La
+  contención es léxica: no resuelve enlaces simbólicos; `--store` sigue siendo la vía deliberada para
+  una ruta arbitraria. Evidencia en §16.14.
 
 #### H-07 — La identidad del corpus es el commit HEAD del repositorio (Bajo)
 
@@ -412,6 +423,10 @@ Severidad: **Alto** = rompe una garantía central o expone datos sensibles en co
   se distingue del commit. La reproducibilidad declarada es más débil de lo que sugiere el nombre.
 - **Recomendación:** publicar `git rev-parse HEAD:corpus` (subárbol) más un indicador de árbol sucio, o el hash
   de contenido que ya existe como fallback cuando no hay Git.
+- **Estado (2026-11-05): cerrado en 0.4.** `CorpusIdentityOf` publica siempre el digest de contenido,
+  añade `git:<tree> corpus-digest:<sha>` cuando el subárbol de un commit coincide con los bytes
+  ejecutados y marca `+dirty` cuando hay cambios sin commitear. `HEAD` deja de ser la identidad. Git
+  es una dependencia opcional de ejecución, con timeout y `--no-optional-locks`. Evidencia en §16.14.
 
 #### H-08 — Controles declarados pero no aplicados (Bajo)
 
@@ -422,6 +437,10 @@ Severidad: **Alto** = rompe una garantía central o expone datos sensibles en co
   inducir a error en una revisión futura. Las cabeceras de respuesta no tienen tope explícito de tamaño.
 - **Recomendación:** aplicar `RequireTLS` antes del envío o eliminarlo; fijar `MaxResponseHeaderBytes` a un
   valor acorde con el presupuesto de memoria.
+- **Estado (2026-11-05): cerrado en 0.4.** El campo `RequireTLS` se eliminó: el esquema se compara
+  contra cada origen autorizado en `CheckRequest` y el transporte no permite desactivar la
+  verificación. `MaxResponseHeaderBytes` queda fijado en 1 MiB y hay tests para https contra http,
+  certificado autofirmado y tormenta de cabeceras. Evidencia en §16.14.
 
 #### H-09 — Custodia y ciclo de vida de la clave de firma (Bajo)
 
@@ -431,6 +450,11 @@ Severidad: **Alto** = rompe una garantía central o expone datos sensibles en co
   podría firmar evidencia de cliente.
 - **Recomendación:** exigir `--signing-key` explícito en producción, documentar custodia (DPAPI/HSM/almacén del
   sistema), soportar rotación con key id y publicar la huella en el expediente.
+- **Estado (2026-11-05): documentado y con superficie en 0.4.** `xammu key inspect --key FILE` publica
+  clave pública, key id y huella sin imprimir la semilla; `docs/key-custody.md` cubre almacenamiento,
+  registro, rotación, revocación e incidente. La rotación es operativa (clave nueva + pública nueva);
+  los bundles viejos siguen verificando con la pública que los firmó. No hay CRL, HSM, DPAPI ni
+  expiración: se declara. Evidencia en §16.14.
 
 #### H-10 — Release sin firma, SBOM ni procedencia (Bajo)
 
@@ -448,6 +472,12 @@ Severidad: **Alto** = rompe una garantía central o expone datos sensibles en co
   claves hex o política de rutas.
 - **Impacto:** un bundle o corpus malformado podría provocar pánico o consumo de memoria en una ruta de lectura.
 - **Recomendación:** fuzz de `contracts.Validate`, `integrity.ReadManifest`, `decodeHexKey` y `Scope.CheckRequest`.
+- **Estado (2026-11-05): cerrado en 0.4 con presupuesto acotado.** Cuatro targets nativos
+  (`FuzzParseItem`, `FuzzParseManifest`, `FuzzDecodeHexKey`, `FuzzCheckRequest`) con semillas
+  ejecutadas por `go test ./...`; `scripts/fuzz.sh` explora 10 s por target en local y el workflow
+  30 s. `ParseManifest` se extrajo de `ReadManifest` para fuzzear el decodificador sin disco.
+  Ningún target abre sockets. Un presupuesto acotado no demuestra ausencia de fallos. Evidencia en
+  §16.14.
 
 #### H-12 — El laboratorio depende del daemon Docker (Informativo)
 
@@ -455,6 +485,12 @@ Severidad: **Alto** = rompe una garantía central o expone datos sensibles en co
   endurecido, pero el daemon es equivalente a root.
 - **Impacto:** un host de laboratorio comprometido o compartido amplía el blast radius.
 - **Recomendación:** host dedicado o Docker rootless; no ejecutar `--apply` en estaciones con datos de cliente.
+- **Estado (2026-11-05): mitigado, no eliminado, en 0.4.** `internal/labcheck` falla si el compose o
+  los Dockerfiles pierden un control (red interna, `read_only`, `cap_drop`, `no-new-privileges`,
+  `pids_limit`, `tmpfs`, logging, ancla, usuario no root, `FROM` por digest, `HEALTHCHECK`) o si
+  aparece `ports:`, `privileged`, `network_mode`, `pid:` o `volumes:`. `lab/build.sh` valida además
+  con `docker compose config` y `lab/README.md` declara el riesgo. El daemon sigue siendo equivalente
+  a root: la recomendación de host dedicado o rootless no cambia. Evidencia en §16.14.
 
 #### H-13 — Riesgo de privacidad en el nombre del operador (Bajo)
 
@@ -470,6 +506,12 @@ Severidad: **Alto** = rompe una garantía central o expone datos sensibles en co
 - **Impacto:** la entrega es aceptación interna; no hay validación independiente.
 - **Recomendación:** cerrar ambas antes de presentar XAMMU como «certificado» ante un cliente; mientras tanto,
   usar la fórmula «aceptación interna de Izkuna».
+
+**Estado (2026-11-05):** H-05…H-09, el fuzzing (H-11 de este apartado, 4.6 del encargo) y el
+endurecimiento verificable del laboratorio (H-12 de este apartado, 4.7 del encargo) están
+implementados en 0.4; la evidencia observada está en §16.14. H-13 no forma parte de la Fase 4:
+`--prepared-by` y `--generated-by` ya ofrecen la vía explícita. La numeración del encargo y la de
+este apartado difieren; manda la descripción, como se explica en §16.0.
 
 ---
 
@@ -1540,3 +1582,432 @@ Lo que esta aceptación **no** prueba: la eficacia de un WAF real (el objetivo e
 referencia, calibrado contra este corpus); la ingesta efectiva en Code Scanning, GitLab, Azure o
 Jenkins; que un runner externo ejecute el workflow; la custodia de la clave (H-09, Fase 4); ni que
 los umbrales de `effectiveness-reference.yaml` sean un mínimo universal.
+
+---
+
+## 16. Fase 4 — Madurez operativa (P2)
+
+**Estado:** contrato confirmado el 2026-11-05 («Confirma el contrato e implementa 4.1 → 4.7») e
+implementado en el orden 4.1 → 4.7. La aceptación observada está en §16.14. La Fase 3 quedó cerrada
+en el commit `a8102d5`, sin push, tag ni release.
+
+### 16.0 Regla de ejecución
+
+Una fase por commit. Esta fase endurece la operación de un binario que ya mide, sella y publica; no
+cambia el corpus, la puerta de inertitud, el egress único, la autorización firmada, el sellado del
+bundle, las métricas E-03 ni el gate. No añade dependencias Go externas. Si un ítem exigiera
+relajar uno de esos límites, la fase se detiene y se reporta; no se rodea.
+
+**Nota de numeración.** El encargo asigna H-05…H-09, H-12 al fuzzing y H-13 al Docker del
+laboratorio. En §6 el handoff numera H-11 al fuzzing, H-12 a la dependencia del daemon Docker y H-13
+al nombre del operador. Manda la descripción del encargo: 4.6 se aplica al fuzzing y 4.7 al Docker.
+El H-13 de §6 (privacidad del nombre del operador) **no** forma parte de esta fase; `--prepared-by`
+(gate) y `--generated-by` (runs) ya existen, y se enlaza esa nota en §6 sin añadir trabajo nuevo.
+
+### 16.1 Objetivo y criterio de aceptación
+
+Que la operación diaria de XAMMU sea tan verificable como su evidencia: que dos procesos no puedan
+gastar a la vez el mismo permiso, que un identificador de run no pueda escapar de `runs/`, que la
+identidad del corpus no dependa del último commit del repositorio, que no queden controles
+declarados sin aplicar, que la clave de firma tenga ciclo de vida documentado y probado, que los
+parsers propios resistan entradas malformadas y que el laboratorio Docker declare y demuestre sus
+invariantes.
+
+El criterio del programa se reproduce literalmente:
+
+- **4.1** Coordinación de presupuesto y tasa entre procesos concurrentes con la misma autorización
+  (H-05).
+- **4.2** Contención de ruta en `--run` (H-06).
+- **4.3** Identidad del corpus ligada a commit, no a HEAD (H-07).
+- **4.4** `RequireTLS` funcional o eliminado (H-08).
+- **4.5** Custodia y rotación de clave documentada y probada (H-09).
+- **4.6** Fuzzing del propio parser de corpus y del verificador de firmas (H-12).
+- **4.7** Docker del laboratorio endurecido y reproducible (H-13).
+- **Aceptación:** cada ítem con test o documento verificable en el handoff.
+
+### 16.2 Decisiones de diseño
+
+1. **Exclusión, no presupuesto compartido persistente.** El ledger y el limitador seguirán viviendo
+   en memoria (`internal/httpclient/ledger.go:13`), y un lock del sistema operativo impedirá que dos
+   procesos sostengan a la vez la misma autorización contra el mismo origen. Un token bucket
+   compartido exigiría estado durable, recuperación tras caída y acuerdo de reloj entre procesos;
+   el lock elimina la concurrencia que hacía falta coordinar y no deja estado que pueda quedar
+   obsoleto. Es la opción que H-05 admite como «un run a la vez por autorización», y se documenta
+   como regla de engagement.
+2. **La identidad del corpus son los bytes; el commit es contexto comprobable.** El digest de
+   contenido se calcula siempre. Cuando Git puede demostrar que esos bytes son el subárbol
+   `corpus` de un commit, se añade el tree id; si el árbol está sucio, se publica el digest y se
+   marca el tree como `+dirty`. Nunca se usa `HEAD` como identidad.
+3. **`RequireTLS` se elimina, no se convierte en un flag global.** Se calcula como verdadero si
+   *algún* origen es https (`internal/httpclient/policy.go:55,102,137`); aplicarlo globalmente
+   rechazaría un origen http permitido en una autorización mixta. El esquema ya se compara contra
+   cada origen en `CheckRequest` y el transporte no permite desactivar la verificación del
+   certificado; se demuestra con tests y se borra el campo muerto.
+4. **La custodia no inventa criptografía.** Se documenta el ciclo de vida y se añade una superficie
+   verificable (`key inspect`: clave pública, key id y huella). La rotación es una clave nueva más
+   una actualización del conjunto de confianza; los bundles viejos siguen verificándose con la
+   pública vieja. No se inventa un formato de revocación: revocar es retirar la pública del conjunto
+   que se distribuye, y se declara que la evidencia ya sellada sigue siendo verificable por quien
+   conserve esa pública.
+5. **Fuzzing nativo de Go, acotado.** Sin dependencias ni servicio externo: `go test -fuzz` con
+   semillas versionadas y un tiempo máximo por target. La suite normal ejecuta las semillas como
+   tests; el fuzzing con presupuesto corre en CI y en un script local.
+6. **El endurecimiento del laboratorio se verifica estáticamente.** `lab/compose.yaml` ya declara
+   `read_only`, `cap_drop: ALL`, `no-new-privileges`, `pids_limit`, `tmpfs`, red interna y cero
+   puertos publicados. Lo que falta es una prueba que falle si eso se pierde. El self-test en
+   ejecución (`lab/verify.sh`) sigue dependiendo de Docker y se declara como tal.
+7. **Los valores por defecto no cambian salvo que se diga.** La clave local
+   `.xammu-signing.ed25519` sigue siendo el default de `run` y `effectiveness`; la documentación
+   exige `--signing-key` explícito en producción, pero no se rompe el flujo de demostración.
+
+### 16.3 4.1 — Presupuesto y tasa entre procesos (H-05)
+
+**Problema observado.** `internal/httpclient/ledger.go` protege el presupuesto con un mutex de
+proceso. Dos ejecuciones simultáneas con la misma C-09 y el mismo origen respetan cada una su copia
+del límite, pero el target ve la suma: la tasa agregada se duplica y el presupuesto se gasta dos
+veces. No hay lock, reserva atómica ni estado compartido.
+
+**Diseño.** Nuevo paquete `internal/runlock`:
+
+- `Acquire(dir, key string) (*Lock, error)` abre o crea `<dir>/<sha256(key)>.lock` y lo bloquea en
+  modo exclusivo y no bloqueante. `key` es `auth.Ref + "\x00" + scheme://host:port` del origen
+  elegido.
+- Unix (`//go:build unix`): `syscall.Open` + `syscall.Flock(LOCK_EX|LOCK_NB)`; `EWOULDBLOCK` se
+  traduce a `ErrBusy`.
+- Windows (`//go:build windows`): `syscall.CreateFile` con modo de compartición `0`; una segunda
+  apertura falla con `ERROR_SHARING_VIOLATION`, que se traduce a `ErrBusy`. Cerrar el handle libera
+  el lock, incluso si el proceso muere, porque el sistema operativo cierra los handles.
+- Resto de plataformas: `Acquire` devuelve un error explícito de «sin soporte de lock entre
+  procesos»; el run se niega a enviar. No se degrada en silencio.
+- Directorio: `os.UserCacheDir()/xammu/locks`, con `os.TempDir()` como respaldo. Es por usuario, de
+  modo que dos operadores de la misma máquina no se bloquean entre sí. Si no se puede crear, el run
+  falla cerrado con salida 2: sin coordinación no se envía.
+- El archivo de lock no se borra al liberar. Borrarlo abre una carrera entre cerrar y desenlazar que
+  permitiría a dos procesos crear archivos distintos con la misma clave; un archivo de cero bytes
+  en el directorio de caché es el precio de que el lock sea correcto.
+- `Lock.Release()` es idempotente y se llama con `defer` en el comando, no en el cliente HTTP.
+
+**Integración.** En `cmd/xammu/run.go`, después de `buildPlan` (que ya resolvió `req.sc.origin`) y
+antes de `refuseOverwrite`/`orchestrator.Begin`, se adquiere el lock. En
+`cmd/xammu/effectiveness.go`, después de `pickOrigin` y antes de `preflightPlacement` y
+`httpclient.New` (`cmd/xammu/effectiveness.go:279`). El primer socket sigue ocurriendo después de la
+autorización y del plan; el lock no cambia ese orden, sólo añade una condición previa.
+
+**Mensaje y salida.** Un segundo proceso recibe un error `errUsage` con la autorización, el origen y
+la ruta del lock, y sale con 2: no hay tráfico, no hay bundle nuevo y el operador sabe por qué. La
+regla de engagement «un run vivo por autorización y origen» se documenta en el README y en §16.12.
+Autorizaciones distintas contra el mismo origen pueden coexistir: sus presupuestos y tasas son
+independientes, y el lock no pretende agregar límites que el permiso no declara.
+
+### 16.4 4.2 — Contención de ruta en `--run` (H-06)
+
+**Problema observado.** `filepath.Join(runsDir, runID)` aparece en cinco lugares:
+`cmd/xammu/plan.go:140`, `cmd/xammu/effectiveness.go:267` y `:901`, y `cmd/xammu/run.go:98`; además
+`bundle()` en `plan.go:130-141`. `--run ../../fuera` lee o crea fuera de `runs/`. `--store` sigue
+siendo una ruta explícita del operador y no se restringe.
+
+**Diseño.** Un único helper `runPath(runsDir, runID string) (string, error)` usado por los cinco
+sitios:
+
+- Rechaza `runID` vacío, `.` y `..`.
+- Rechaza cualquier `/` o `\`, y cualquier `:` (volumen o flujo de Windows).
+- Rechaza `filepath.IsAbs` y un `filepath.VolumeName` no vacío.
+- Exige `filepath.Base(runID) == runID`.
+- Como defensa en profundidad, resuelve `runsDir` y el destino con `filepath.Abs` y exige que
+  `filepath.Rel(runsDir, destino)` no empiece por `..`.
+- La comprobación ocurre antes de `MkdirAll`/`Open`: un ID inválido no crea ni un directorio vacío.
+
+Los comandos de lectura (`verify`, `report`, `validate`, `gate`) usan el mismo helper; `--store`
+queda como está y se documenta que es la vía deliberada para una ruta arbitraria. Los enlaces
+simbólicos dentro de `runs/` no se resuelven con `EvalSymlinks`; se declara como límite: la
+contención es léxica sobre el ID, no un sandbox del sistema de archivos.
+
+### 16.5 4.3 — Identidad del corpus (H-07)
+
+**Problema observado.** `CorpusCommitRef` (`internal/report/evidence.go:20-56`) prefiere
+`gitCommitRef` (`:58-81`), que lee `.git/HEAD` y publica ese commit. Cualquier commit del
+repositorio cambia la identidad aunque el corpus no cambie, y un corpus con cambios sin commitear
+se publica como si fuera el commit.
+
+**Diseño.** Nueva `CorpusIdentityOf(root)` que devuelve digest, tree y estado sucio; `Ref()` produce:
+
+- árbol limpio y Git disponible: `git:<tree> corpus-digest:<sha256>`;
+- árbol sucio con Git: `corpus-digest:<sha256> git:<tree>+dirty`;
+- sin Git o sin commits: `corpus-digest:<sha256>`.
+
+El digest se calcula siempre y es el que identifica los bytes ejecutados. La parte Git se obtiene
+con el binario `git` como dependencia **opcional de ejecución**, nunca de compilación:
+
+- `git -C <root> rev-parse --show-toplevel` localiza el repositorio;
+- `git --no-optional-locks -C <repo> rev-parse HEAD:<ruta-relativa>` obtiene el tree del subárbol
+  (si el corpus es la raíz, `HEAD^{tree}`);
+- `git --no-optional-locks -C <repo> status --porcelain -- <ruta-relativa>` decide `dirty`.
+
+Cada invocación usa `exec.CommandContext` con timeout de 5 s, sin shell, y `--no-optional-locks`
+para no escribir en el repositorio. Si Git falta, falla o expira, se usa el digest y se declara en
+el informe que no hubo commit verificable. `CorpusCommitRef` se conserva como envoltorio de
+`Ref()` para no cambiar a sus llamadores.
+
+**Alcance.** `corpus_commit_ref` vive en el informe de perfilado (C-15), no en los journals
+sellados ni en E-03; los bundles de eficacia r3/r6/r7 no lo contienen. `verify --rederive` compara
+hallazgos, no el bloque de evidencia (`cmd/xammu/read.go:909-957`), así que esta fase no cambia la
+re-derivación de ningún bundle existente. Los informes de `demo-lab`/`demo-origin` conservan su
+texto sellado; regenerarlos mostraría la diferencia, igual que ya ocurre con `--issuer-keyring`
+(§8).
+
+### 16.6 4.4 — `RequireTLS` y tope de cabeceras (H-08)
+
+**Problema observado.** `RequireTLS` se asigna en `ScopeFromProfiling` y `ScopeFromValidation`
+(`internal/httpclient/policy.go:55,102,137`) y ninguna ruta lo consulta. El transporte
+(`internal/httpclient/client.go:117-130`) no fija `MaxResponseHeaderBytes`; confía en el default de
+`net/http` (1 MiB).
+
+**Diseño.**
+
+- **Eliminar** el campo `RequireTLS` y sus dos asignaciones. La propiedad que pretendía expresar ya
+  está garantizada por dos mecanismos que sí se ejecutan: `CheckRequest` exige que el esquema del
+  destino sea igual al de un origen autorizado (`policy.go:146-193`), y el `http.Transport` usa
+  `TLSClientConfig` con `MinVersion: TLS1.2` y sin `InsecureSkipVerify`. Un `Scope` con un origen
+  https no puede emitir una petición http: el match de esquema la rechaza antes del socket.
+- **Fijar** `MaxResponseHeaderBytes: 1 << 20` en el transporte. Es el valor que ya aplica el default
+  de `net/http`; escribirlo lo hace explícito y comprobable, y evita que un cambio de default o una
+  copia del transporte lo pierda.
+- Tests nuevos: un origen https rechaza `http://` aunque el host y el puerto coincidan; un servidor
+  TLS con certificado autofirmado falla (no hay ruta que lo acepte); un servidor que envía cabeceras
+  por encima de 1 MiB produce un error de respuesta acotado, no memoria proporcional. Un test de
+  estructura comprueba `Proxy == nil`, `MaxResponseHeaderBytes == 1<<20` y
+  `InsecureSkipVerify == false` en el transporte construido.
+
+### 16.7 4.5 — Custodia y rotación de clave (H-09)
+
+**Problema observado.** La clave por defecto vive en el cwd (`cmd/xammu/plan.go:116`); no hay
+rotación, revocación ni huella publicada. `LoadOrCreateKey` crea la semilla con 0600 si falta
+(`internal/integrity/manifest.go:69`), comportamiento que la demostración necesita.
+
+**Diseño.** Documento nuevo `docs/key-custody.md` y comando `xammu key inspect`:
+
+```
+xammu key inspect --key FILE
+```
+
+- Imprime `algorithm: ed25519`, la clave pública en hex, el key id (8 bytes de sha256 de la pública,
+  el mismo que usa el manifiesto, `internal/integrity/manifest.go:95`) y la huella completa
+  `ed25519:<64 hex>` de la pública (el formato que ya usa `integrity.KeyFingerprint` y que las C-09
+  citan en `issuer_key_fingerprint`). Nunca imprime la semilla privada.
+- Es de sólo lectura: usa `LoadKey`, no `LoadOrCreateKey`; una ruta inexistente es un error, no una
+  clave nueva. Salida 2 si el archivo no es una semilla Ed25519 válida.
+- No hay generación nueva en esta fase: `LoadOrCreateKey` sigue siendo la única creación, en `run` y
+  `effectiveness`, con 0600.
+
+**Ciclo documentado en `docs/key-custody.md`:**
+
+1. **Almacenamiento.** La clave es una semilla de 32 bytes en un archivo 0600 fuera del repositorio y
+   del bundle. En producción se pasa `--signing-key` explícito; el default del cwd es para
+   demostración local. Se documentan las opciones de custodia (almacén del sistema, DPAPI en
+   Windows, HSM o firma externa) y se declara que XAMMU **no** las implementa: hoy sólo lee un
+   archivo.
+2. **Registro.** La huella y el key id se publican en el expediente y en `trust/`; el sobre de
+   publicación ya nombra `signer_key_id`, y `key inspect` produce la huella completa.
+3. **Rotación.** Se genera una clave nueva fuera de banda, se publica su pública como
+   `trust/<nombre>.pub`, y las ejecuciones nuevas firman con ella. Las públicas anteriores se
+   conservan: un bundle viejo se verifica con la pública que lo firmó, y `--trust-key` no cambia
+   retroactivamente. No se re-firma evidencia anterior.
+4. **Revocación.** No se inventa una CRL. Revocar es retirar la pública del conjunto distribuido y
+   declarar qué evidencia queda afectada; la evidencia ya sellada sigue verificando con la pública
+   retirada, y eso se dice en el expediente en vez de ocultarse. Si hay compromiso, se re-ejecuta la
+   medición con la clave nueva y se marca la anterior como no confiable para entregas futuras.
+5. **Incidente.** Si la semilla se filtra: rotar, retirar la pública, revisar qué bundles firmó y
+   declarar en el handoff que la autenticidad de esos bundles depende de la ventana de compromiso.
+
+**Tests.** `TestKeyInspectMatchesManifestSigner` (key id y huella coinciden con el manifiesto de un
+bundle firmado); `TestKeyInspectRefusesAMissingKey`; `TestRotationKeepsOldBundlesVerifiable` (un
+bundle firmado con A sigue verificando con la pública A después de crear B);
+`TestUntrustedKeyIsRejected` (verificar el bundle de A con la pública B falla);
+`TestKeyFileIsOwnerOnly` (Unix: modo 0600 al crear).
+
+### 16.8 4.6 — Fuzzing de parsers (H-12 del encargo)
+
+**Problema observado.** No existe ningún `func Fuzz*` en el repositorio. Los parsers propios que
+leen entrada no confiable son el corpus C-13 (`internal/corpus/corpus.go:256`, `parseItem`), el
+manifiesto (`internal/integrity/manifest.go:478`), las claves públicas en hex
+(`cmd/xammu/read.go:1105`) y la política de destino (`Scope.CheckRequest`,
+`internal/httpclient/policy.go:146`).
+
+**Diseño.**
+
+- `FuzzParseItem` en `internal/corpus`: alimenta `parseItem` con bytes arbitrarios; invariante: no
+  pánico, error o item con `ProbeDigest` coherente, y ningún item aceptado cuyo digest no derive del
+  probe.
+- `FuzzParseManifest` en `internal/integrity`: se extrae `ParseManifest([]byte)` de `ReadManifest`
+  para fuzzear el decodificador sin tocar el sistema de archivos; `ReadManifest` pasa a llamarlo.
+  Invariante: no pánico y, si devuelve un manifiesto, sus campos se pueden volver a serializar.
+- `FuzzDecodeHexKey` en `cmd/xammu`: no pánico; toda clave aceptada mide exactamente 32 bytes.
+- `FuzzCheckRequest` en `internal/httpclient`: construye un `Scope` válido de fixture y fuzzea
+  método, URL y `probeRef`; invariante: no pánico, y toda URL aceptada pertenece a un origen
+  autorizado con esquema, host y puerto coincidentes.
+- Semillas versionadas con `f.Add` dentro del propio target: un caso válido, uno truncado, uno con
+  campo desconocido, uno con digest incoherente y uno vacío. La suite normal (`go test ./...`)
+  ejecuta las semillas como tests de regresión; no se necesita `-fuzz` para que el CI las cubra.
+  (No se creó `testdata/fuzz/<FuzzName>/`: las semillas inline son igual de versionadas y evitan
+  duplicar el corpus de exploración del cache de Go.)
+- `scripts/fuzz.sh [duration]` (por defecto `30s`) recorre los cuatro targets con
+  `go test -run=^$ -fuzz=... -fuzztime=...`, acumulando los hallazgos en el cache de Go. El
+  workflow activo ejecuta 30 s por target; `ci-local.sh` ejecuta 10 s por target para que el espejo
+  local sea honesto sin alargar la entrega.
+- Los cuatro targets no abren sockets ni escriben en el bundle; el de `CheckRequest` sólo evalúa la
+  política.
+
+### 16.9 4.7 — Laboratorio Docker endurecido y reproducible
+
+**Problema observado.** `lab/compose.yaml` ya tiene `read_only`, `cap_drop: ALL`,
+`no-new-privileges`, `pids_limit: 128`, `tmpfs`, logs acotados, red `internal: true`, cero puertos
+publicados, `user: 1000:1000` en `netrunner`, y los Dockerfiles fijan bases por digest con
+`USER 65534`. Lo que falta es una prueba que detecte la pérdida de esos invariantes y una
+declaración operativa del riesgo del daemon.
+
+**Diseño.**
+
+- Paquete `internal/labcheck` con `CheckCompose([]byte) []string` y
+  `CheckDockerfile([]byte) []string`, sin dependencias y sin Docker. El compose usa anclas y
+  alias, que `internal/yamlish` rechaza a propósito; el checker es textual y comprueba tokens
+  inequívocos, no una interpretación YAML completa. Se declara esa limitación.
+- Invariantes del compose: existe `internal: true`; existe el bloque `x-lab-defaults` con
+  `read_only: true`, `cap_drop` con `ALL`, `no-new-privileges:true`, `pids_limit`, `tmpfs` y
+  `logging` con `max-size`/`max-file`; **ningún** servicio declara `ports:`, `network_mode`,
+  `privileged`, `pid: host` ni `volumes:`; cada servicio incluye `<<: *lab-defaults`; `netrunner`
+  declara `user`.
+- Invariantes de Dockerfile: toda línea `FROM` termina en `@sha256:<64 hex>`; existe `USER` no root
+  (`65534:65534`); existe `HEALTHCHECK`.
+- `lab/DIGESTS.txt` debe listar las dos imágenes construidas con digest `sha256:` y el runner fijado
+  por digest; `lab/build.sh` valida además con `docker compose config --format json` cuando Docker
+  está disponible, y `lab/verify.sh` sigue siendo la prueba en ejecución de que los contenedores
+  levantados son los digests registrados.
+- `lab/README.md` y `docs/audit-handoff.md` §6 H-12 declaran: el daemon equivale a root; usar host
+  dedicado o Docker rootless; no ejecutar `xammu lab --apply` en estaciones con datos de cliente; la
+  reproducción del laboratorio exige Docker y no forma parte de `scripts/ci-local.sh`.
+- La prueba estática corre en `go test ./...` (sin daemon). El self-test 134/134 de
+  `lab/DIGESTS.txt` sigue sin re-ejecutarse en esta máquina y se declara igual que en §8.
+
+### 16.10 Ficheros previstos
+
+| área | cambio |
+| --- | --- |
+| `internal/runlock` | lock exclusivo Unix/Windows, `ErrBusy`, liberación idempotente y tests |
+| `cmd/xammu/run.go`, `effectiveness.go` | adquirir el lock antes del primer socket, con `defer` |
+| `cmd/xammu/plan.go`, `run.go`, `effectiveness.go` | helper único `runPath` y rechazo de IDs fuera de `runs/` |
+| `internal/report/evidence.go` | `CorpusIdentityOf`, tree de Git, indicador `dirty`, digest siempre presente |
+| `internal/httpclient/policy.go` | eliminar `RequireTLS` |
+| `internal/httpclient/client.go` | `MaxResponseHeaderBytes: 1 << 20` |
+| `cmd/xammu/key.go`, `main.go` | comando `key inspect` y despacho |
+| `internal/corpus`, `internal/integrity`, `cmd/xammu`, `internal/httpclient` | targets `Fuzz*`, semillas y refactor `ParseManifest` |
+| `internal/labcheck` | checkers estáticos del compose y los Dockerfiles, con tests sobre los archivos reales |
+| `lab/README.md`, `lab/build.sh`, `docs/key-custody.md` | custodia, riesgo del daemon y validación del compose |
+| `scripts/fuzz.sh`, `scripts/ci-local.sh`, `.github/workflows/ci.yml` | presupuesto de fuzzing local y en CI |
+| docs | README, `docs/acceptance.md`, `docs/certification.md`, §6 H-05…H-12 y este apartado |
+
+No se toca el corpus, `lab/compose.yaml` (salvo que un test revele una brecha real y se acuerde el
+cambio), los bundles r3/r6/r7 ni las publicaciones de la Fase 3.
+
+### 16.11 Pruebas y criterio de aceptación
+
+| punto | evidencia exigida |
+| --- | --- |
+| 4.1 | test del lock: segunda adquisición devuelve `ErrBusy`, tras `Release` vuelve a adquirirse; un proceso hijo re-ejecutado confirma la exclusión entre procesos; test de CLI: dos `run` con la misma C-09 y origen, el segundo sale 2 sin crear bundle; el primero y el segundo (tras terminar) funcionan |
+| 4.2 | tabla de IDs rechazados (`..`, `../x`, `a/b`, `a\b`, `C:\x`, `/x`, `.`) y aceptados; `run --run ../escape` sale 2 y no crea nada fuera de `runs/`; los comandos de lectura usan el mismo helper |
+| 4.3 | repo temporal: commit del corpus produce `git:<tree> corpus-digest:<sha>`; un commit ajeno no cambia la identidad; editar el corpus produce `corpus-digest` con `+dirty`; commitear el cambio cambia el tree; sin Git se publica sólo el digest; los bundles existentes no cambian |
+| 4.4 | no queda ningún uso del campo `RequireTLS`; sólo dos comentarios que explican su retirada; un origen https rechaza `http://`; un certificado autofirmado falla; cabeceras > 1 MiB fallan de forma acotada; el transporte no tiene proxy ni `InsecureSkipVerify` |
+| 4.5 | `key inspect` imprime clave pública, key id y huella sin la semilla; el key id coincide con `manifest.signer_key_id`; un bundle viejo sigue verificando tras crear otra clave; la pública equivocada falla; el archivo se crea 0600 (Unix); `docs/key-custody.md` cubre almacenamiento, registro, rotación, revocación e incidente |
+| 4.6 | cuatro targets `Fuzz*` con semillas; `go test ./...` las ejecuta; `scripts/fuzz.sh` corre 10 s por target en local y 30 s en CI sin hallazgos; ningún target abre sockets |
+| 4.7 | `internal/labcheck` falla si se quita `internal: true`, `read_only`, `cap_drop`, `no-new-privileges`, `pids_limit`, `tmpfs`, el ancla por servicio o el `USER` no root; falla si aparece `ports:`, `privileged`, `network_mode`, `pid: host` o `volumes:`; toda base `FROM` está fijada por digest; `DIGESTS.txt` lista las dos imágenes construidas y el runner; el README declara el riesgo del daemon |
+| regresión | `go test ./...` en verde; `scripts/certify.sh` PASSED; `scripts/ci-local.sh` PASSED; r3, r6 y r7 re-derivan; `scripts/gate-demo.sh` sigue saliendo 0; el build sigue siendo reproducible; sin dependencias Go externas |
+
+La aceptación de la fase se escribirá en §16.14 con la misma forma que §15.11: lo observado, no lo
+previsto, y una lista explícita de lo que **no** prueba.
+
+### 16.12 Riesgos y límites declarados
+
+- **El lock cambia la operación.** Un segundo run concurrente con la misma autorización ahora falla
+  en vez de duplicar tráfico. Es el comportamiento buscado, pero se documenta como regla de
+  engagement para que nadie lo lea como un fallo del tool.
+- **El lock es por usuario y por máquina.** No coordina ejecuciones en hosts distintos ni entre
+  usuarios del mismo host. Un engagement distribuido exigiría coordinación externa; XAMMU no la
+  pretende.
+- **El presupuesto no se comparte entre ejecuciones secuenciales.** Cada run recibe el máximo de su
+  C-09; el lock impide el solapamiento, no acumula un saldo. Si el permiso acota el total del
+  engagement, esa contabilidad sigue siendo responsabilidad del operador y se declara.
+- **La identidad con Git depende de un binario opcional.** Sin `git`, el informe publica el digest
+  de contenido y dice que no hubo commit verificable. Con `git`, el tree se lee con
+  `--no-optional-locks` y timeout; un repositorio enorme puede agotar el timeout y caer al digest.
+- **La contención de ruta es léxica.** No resuelve enlaces simbólicos dentro de `runs/`; un operador
+  que cree uno puede salir del directorio. `--store` sigue siendo una ruta deliberada. El objetivo
+  es que un comando copiado de un bundle no confiable no escriba fuera por accidente, no convertir
+  el filesystem en un sandbox.
+- **Eliminar `RequireTLS` no elimina la propiedad, elimina una ilusión.** El esquema ya se compara
+  contra el origen autorizado y el transporte no permite desactivar la verificación. Los tests
+  nuevos son la prueba; el campo muerto se va para que una revisión futura no lo confunda con un
+  control.
+- **La custodia documentada no es custodia implementada.** XAMMU lee una semilla de un archivo; no
+  integra DPAPI, HSM ni firma remota. El documento lo dice y no se presenta como si estuviera hecho.
+- **La revocación no tiene formato propio.** No hay CRL ni lista firmada: revocar es retirar la
+  pública del conjunto distribuido. La evidencia sellada sigue verificando con la pública retirada,
+  y el expediente lo declara.
+- **El fuzzing acotado no es una prueba de corrección.** 10–30 s por target encuentran pánicos y
+  consumos evidentes; no demuestran ausencia de fallos. Las semillas quedan como regresión.
+- **El checker del laboratorio es textual.** No interpreta anclas YAML ni sustituye a
+  `docker compose config`; por eso `lab/build.sh` valida con Compose cuando Docker está disponible.
+  El aislamiento real lo prueba `lab/verify.sh`, que no corre en esta máquina.
+- **Docker sigue siendo root-equivalente.** El endurecimiento del compose reduce el blast radius
+  dentro del contenedor; no cambia el privilegio del daemon. Host dedicado o rootless es la
+  recomendación operativa, no una propiedad que el repositorio pueda garantizar.
+
+### 16.13 Confirmación
+
+El operador confirmó el contrato el 2026-11-05 con la instrucción «Confirma el contrato e
+implementa 4.1 → 4.7». Se implementó en ese orden, sin ampliar el alcance y sin tocar el corpus,
+`lab/compose.yaml`, los bundles r3/r6/r7 ni las publicaciones de la Fase 3. `lab/build.sh` recibió
+una validación añadida, no un cambio de topología.
+
+Se mantuvieron las restricciones de la fase: un solo origen por ejecución, sin explotación real,
+sin autenticación ni lógica de negocio, sin scores inventados, egress único, autorización antes del
+primer socket, clave privada fuera del bundle, cuerpo no serializado, build reproducible y cero
+dependencias Go externas. El commit de la fase queda pendiente de la aprobación explícita del
+conjunto de archivos y del mensaje. No habrá push, tag ni release.
+
+### 16.14 Estado de aceptación (2026-11-05)
+
+Lo que sigue se leyó de la ejecución, no del plan:
+
+| punto | evidencia observada |
+| --- | --- |
+| 4.1 | `internal/runlock`: `TestSecondAcquireIsBusyAndReleaseFreesIt`, `TestDifferentKeysDoNotBlockEachOther`, `TestReleaseIsIdempotent`, `TestLockFileNameIsStableAndOpaque`, `TestCrossProcessExclusion` (proceso hijo re-ejecutado sobre el mismo lock) y `TestLockFileIsOwnerOnlyOnUnix` (SKIP en Windows); `cmd/xammu`: `TestBusyLockRefusesTheRunBeforeAnySocket` y `TestBusyLockIsAUsageError`. El lock se adquiere antes de abrir el primer socket; el segundo `run` con la misma C-09 y origen sale 2 sin crear bundle, y tras `Release` vuelve a adquirirse. |
+| 4.2 | `TestRunPathRejectsAnythingButOneDirectoryName` rechaza `..`, `../x`, `a/b`, `a\b`, `C:\x`, `/x` y `.`; `TestEveryLookupUsesTheSameContainment` comprueba que todos los comandos de lectura usan el mismo helper; el test de CLI confirma que `--run ../escape` sale 2 y no escribe fuera de `runs/`. |
+| 4.3 | `TestCorpusIdentityNamesTheCommittedTreeNotHead`, `TestCorpusIdentityFallsBackToTheDigestWithoutGit`, `TestCorpusIdentityDoesNotTouchTheIndex` y `TestCorpusIdentityRefusesAnEmptyCorpus`. La identidad publicada es `git:<tree> corpus-digest:<sha>` o `corpus-digest:<sha> git:<tree>+dirty`; `HEAD` no se consulta y el índice no se escribe (`--no-optional-locks`). |
+| 4.4 | `TestTransportRefusesToRelaxTLSAndHeaderCaps`, `TestHTTPSOriginCannotBeReachedOverPlainHTTP`, `TestSelfSignedCertificateIsNotAccepted` y `TestResponseHeaderFloodIsCapped`. `grep -rn RequireTLS --include=*.go` devuelve dos líneas, ambas comentarios que explican la retirada: no queda ningún uso del campo. |
+| 4.5 | `TestKeyInspectMatchesManifestSigner` (el key id, la pública y la huella coinciden con el manifiesto sellado y la semilla no se imprime), `TestKeyInspectRefusesAMissingKey` (sale 2 y no crea el archivo), `TestRotationKeepsOldBundlesVerifiable`, `TestUntrustedKeyIsRejected`, `TestLoadKeyDoesNotCreate` y `TestKeyFileIsOwnerOnly` (SKIP en Windows). `docs/key-custody.md` cubre almacenamiento, registro, rotación, revocación e incidente; `xammu key inspect` es de sólo lectura. |
+| 4.6 | `bash scripts/fuzz.sh 10s` termina en PASS en los cuatro targets, con 161.348 (`FuzzParseItem`), 687.457 (`FuzzParseManifest`), 278.697 (`FuzzCheckRequest`) y 322.375 (`FuzzDecodeHexKey`) ejecuciones en esa corrida. Esos números varían por host y por corrida y no se presentan como cobertura. Las semillas `f.Add` se ejecutan en un `go test ./...` normal y ningún target abre un socket. |
+| 4.7 | `go test ./internal/labcheck` en verde con los archivos reales del repositorio. `TestComposeChecksCatchEachRemovedInvariant` detecta 15 mutaciones, `TestDockerfileChecksCatchRemovedInvariants` 4 y `TestDigestsCheckCatchAStaleOrGuessedFile` 3: 22 en total. `docker compose -f lab/compose.yaml config --format json` sale 0 en esta máquina (CLI 29.8.2, Compose v5.6.0; valida en el cliente y no levanta contenedores), y `lab/build.sh` ejecuta esa misma validación antes de construir. `lab/README.md` declara el riesgo del daemon. |
+| regresión | `go test ./...` en verde: 462 funciones de prueba (458 `Test` y 4 `Fuzz`) en 25 paquetes. `scripts/certify.sh` imprime `RESULT: PASSED` (evidencia `dist/certification-<UTC>.txt`). `scripts/ci-local.sh` imprime `PASSED WITH 4 SKIPS` (race, govulncheck, SBOM y cosign; evidencia `dist/ci-local-<UTC>.txt`). `scripts/gate-demo.sh` sigue dando r6 = 1 y r7 = 0, SARIF con forma y ambos sobres verificando. `runs/demo-lab`, `runs/waf-effectiveness-2026-11-05-r3` y `-r6` verifican, el r6 re-deriva (`metrics_document` coincide) y la publicación r7 verifica contra `trust/waf-effectiveness.pub`. gitleaks sobre árbol e historial sin fugas; sin dependencias Go externas; el build reproducible sigue coincidiendo. |
+
+El ancla definitiva es el `source tree sha256` que imprima la última corrida de `scripts/certify.sh`
+archivada con la entrega; cualquier hash citado aquí queda obsoleto al editar este archivo.
+
+Lo que esta aceptación **no** prueba:
+
+- Que `.github/workflows/ci.yml` corra en un runner externo: sin push, la evidencia es
+  `scripts/ci-local.sh` en esta máquina. El job de fuzzing en CI tampoco se ejecutó.
+- Que el laboratorio levante y pase 134/134: no se arrancó ningún contenedor. `docker compose
+  config` valida el archivo, no el aislamiento; eso sigue siendo `lab/verify.sh`.
+- Que el lock coordine hosts o usuarios distintos: es exclusión por usuario y por máquina, y no
+  acumula un presupuesto entre ejecuciones secuenciales.
+- Que la contención de ruta resista enlaces simbólicos dentro de `runs/`: es léxica y `--store`
+  sigue siendo una ruta deliberada.
+- Que la identidad con Git exista siempre: sin `git`, o si el timeout de 5 s se agota, se publica
+  sólo el digest de contenido y el informe lo declara.
+- Que la custodia esté implementada: no hay HSM, DPAPI ni firma remota; la revocación es retirar la
+  pública, sin CRL. El permiso `0600` sólo se comprobó en Unix (SKIP en Windows).
+- Que el fuzzing demuestre ausencia de fallos: 10 s en local y 30 s en CI son un presupuesto
+  acotado; las semillas quedan como regresión.
+- Que el checker del laboratorio interprete YAML: es textual y no sustituye a Compose; el
+  aislamiento real lo prueba el laboratorio en ejecución.
+- Que Docker deje de ser root-equivalente: el endurecimiento reduce el blast radius del
+  contenedor, no el privilegio del daemon.

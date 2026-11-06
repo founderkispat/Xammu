@@ -61,6 +61,10 @@ else
 fi
 
 log ""
+log "== 2b. fuzzing (bounded) =="
+run ./scripts/fuzz.sh 10s
+
+log ""
 log "== 3. govulncheck =="
 if command -v govulncheck >/dev/null 2>&1; then
 	run govulncheck ./...

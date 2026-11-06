@@ -52,7 +52,6 @@ type Scope struct {
 	Retention     contracts.RetentionPolicy
 	NotBefore     time.Time
 	ExpiresAt     time.Time
-	RequireTLS    bool
 	UserAgent     string
 	// Now supplies the clock used for the authorization window test. It is
 	// injectable so expiry is checked deterministically instead of by sleeping,
@@ -97,11 +96,12 @@ func ScopeFromProfiling(a *contracts.ProfilingAuthorization) (*Scope, error) {
 		ExpiresAt:     a.ExpiresAt,
 		UserAgent:     "xammu/1.0.0 (waf-behaviour-profiling)",
 	}
-	for _, o := range s.Origins {
-		if strings.EqualFold(o.Scheme, "https") {
-			s.RequireTLS = true
-		}
-	}
+	// TLS is not a flag on this scope. CheckRequest matches the scheme against an
+	// authorized origin, so an https origin cannot be reached over http, and the
+	// transport has no path that disables certificate verification. The former
+	// RequireTLS field was computed here and never read; removing it avoids a
+	// global flag that would have rejected a permitted http origin in a mixed
+	// authorization.
 	return s, nil
 }
 
@@ -133,9 +133,6 @@ func ScopeFromValidation(v *contracts.ValidationAuthorization) (*Scope, error) {
 		probes[p] = true
 	}
 	s.AllowedProbes = probes
-	if strings.EqualFold(v.Origin.Scheme, "https") {
-		s.RequireTLS = true
-	}
 	return s, nil
 }
 
