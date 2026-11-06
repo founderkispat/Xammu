@@ -71,37 +71,42 @@ Una entrega se acepta solo si el aprobador archiva, junto al binario, el
 
 ## 3. Cómo se reproduce la aceptación
 
-Requisitos: Go 1.27.3 (la versión fijada en el workflow) en `PATH`, Bash y `sha256sum`. En Windows,
-Git Bash. No requiere Docker, red, ni un objetivo real.
+Requisitos: Go 1.27.3 (la versión fijada en `.github/workflows/ci.yml`), `govulncheck` 1.9.0, Bash
+y `sha256sum`. En Windows, Git Bash. No requiere Docker, red, ni un objetivo real. Los scripts
+comparan `go env GOVERSION` con el pin del workflow mediante `scripts/lib.sh` y abortan si no
+coincide: este host trae 1.27.0 por defecto y hay que poner 1.27.3 primero en `PATH`.
 
 ```bash
 cd /d/Xammu
-bash scripts/certify.sh
+PATH="$HOME/sdk/go1.27.3/bin:$PATH" GOTOOLCHAIN=local bash scripts/certify.sh
 ```
 
 `scripts/ci-local.sh` es el espejo local de `.github/workflows/ci.yml`: formato, vet, build, suite,
 `-race` si hay cgo, `govulncheck` y gitleaks si están en `PATH`, build reproducible, la
 demostración del gate y SBOM si Syft está instalado. Imprime `SKIP` por cada check que no puede
-ejecutar y lo cuenta en el resultado. El workflow de GitHub no se ha ejecutado todavía; sin push,
-la evidencia es local.
+ejecutar y lo cuenta en el resultado. `certify.sh`, en cambio, exige la toolchain fijada y
+`govulncheck`: una aceptación no se produce con otra toolchain ni sin el escaneo. El workflow de
+GitHub no se ha ejecutado todavía; sin push, la evidencia es local.
 
 La corrida ejecuta, en este orden, y falla en el primer desacuerdo:
 
-1. `gofmt -l cmd internal` debe salir vacío.
-2. `go vet ./...`.
-3. `go build ./...`.
-4. `go test ./... -count=1`.
-5. `go run ./cmd/xammu corpus check --corpus corpus` (la puerta de inertez).
-6. `verify` de `runs/demo-lab` y `runs/demo-origin` contra sus manifiestos firmados, con las
+1. La toolchain debe ser la fijada por el workflow (`scripts/lib.sh`).
+2. `gofmt -l cmd internal` debe salir vacío.
+3. `go vet ./...`.
+4. `go build ./...`.
+5. `go test ./... -count=1`.
+6. `govulncheck ./...` debe terminar sin vulnerabilidades que afecten al código.
+7. `go run ./cmd/xammu corpus check --corpus corpus` (la puerta de inertez).
+8. `verify` de `runs/demo-lab` y `runs/demo-origin` contra sus manifiestos firmados, con las
    claves fijadas en `trust/` (`--trust-key`) y el anillo de emisores de permisos
    (`--issuer-keyring trust/issuers`).
-7. Anexo ES en Markdown desde `demo-lab` y anexo EN en HTML desde `demo-origin`, con hash de cada
+9. Anexo ES en Markdown desde `demo-lab` y anexo EN en HTML desde `demo-origin`, con hash de cada
    archivo.
-8. Construcción reproducible y hash del binario.
-9. `scripts/gate-demo.sh`: el gate falla `r6` (salida 1), pasa `r7` (salida 0), los SARIF declaran
-   cada regla que citan y las entregas de `publications/` verifican con
-   `trust/waf-effectiveness.pub`.
-10. Hash del árbol fuente, que incluye `policies/`, `schemas/`, `examples/`, `runs/` de eficacia y
+10. Construcción reproducible y hash del binario.
+11. `scripts/gate-demo.sh`: el gate falla `r6` (salida 1), pasa `r7` (salida 0), los SARIF declaran
+    cada regla que citan y las entregas de `publications/` verifican con
+    `trust/waf-effectiveness.pub`.
+12. Hash del árbol fuente, que incluye `policies/`, `schemas/`, `examples/`, `runs/` de eficacia y
     `publications/`.
 
 Salida esperada: secciones `== 1.` a `== 5.` y `RESULT: PASSED`. La última sección del archivo
@@ -133,7 +138,8 @@ declara lo que la corrida **no** prueba.
 | no hay escalas numéricas | `internal/contracts/forbidden_source_test.go` | ninguna puntuación ni confianza numérica en contratos y código |
 | un solo egress | `internal/httpclient/egress_test.go` | ninguna otra ruta de red en el árbol |
 | cadena de CI fijada | revisión de `.github/workflows/ci.yml`; `scripts/ci-local.sh` | acciones de terceros por SHA, herramientas por versión, `go.mod` sin dependencias externas; gitleaks y `govulncheck` se ejecutan si están disponibles |
-| vulnerabilidades de la stdlib | `govulncheck` 1.9.0 con Go 1.27.3 | `No vulnerabilities found`; con 1.27.0 el mismo escaneo encontraba 9 vulnerabilidades que afectaban al cliente HTTP |
+| toolchain de la evidencia | `scripts/lib.sh`; `go env GOVERSION`; pin en `.github/workflows/ci.yml` | `certify.sh` y `ci-local.sh` abortan si la toolchain no es `go1.27.3`; la evidencia registra `go version` y el pin |
+| vulnerabilidades de la stdlib | `govulncheck` 1.9.0 | `No vulnerabilities found` con Go 1.27.3; con el `go` 1.27.0 que este host trae por defecto, 10 vulnerabilidades afectaban al código, entre ellas rutas de `internal/httpclient` |
 
 El conteo cuenta funciones `Test*` y `Fuzz*` (458 y 4), no subcasos; los subcasos se ejecutan dentro
 de cada función y su fallo tumba la suite igual. Las semillas de los targets `Fuzz*` también corren
@@ -238,10 +244,16 @@ Reglas de entrega:
   verifican contra `trust/issuers/demo-issuer.pub`, pero no se pueden regenerar ni firmar permisos
   nuevos con esa identidad. Es deliberado: una semilla versionada habría convertido el anillo en
   una copia del permiso.
-- **Los comandos publicados por los bundles de demostración son anteriores a 0.1.** No incluyen
-  `--issuer-keyring`; al ejecutarlos tal cual hay que añadir el anillo. `verify --rederive` sobre
-  esos bundles mostraría esa diferencia de texto, no una lectura distinta. Regenerarlos exige el
-  fixture Docker y una nueva corrida.
+- **Los comandos publicados se regeneraron el 2026-11-06.** Los informes de `runs/demo-lab` y
+  `runs/demo-origin` ya incluyen `--issuer-keyring trust/issuers` y declaran `generated_by:
+  unknown`; los informes son derivados y no forman parte del inventario firmado. Las
+  autorizaciones de demostración siguen vencidas, así que la regeneración no re-ejecuta sondas.
+- **La toolchain se comprueba, no se distribuye.** `scripts/lib.sh` impide archivar evidencia
+  producida con otra versión, pero no instala Go 1.27.3 ni demuestra que dos hosts distintos
+  produzcan el mismo binario. En este host convive con un `go` 1.27.0 por defecto.
+- **El nombre del operador es explícito o ausente.** Sin `--generated-by` / `--prepared-by` los
+  documentos declaran `unknown`; no se lee `XAMMU_OPERATOR`, `USERNAME` ni `USER`. La decisión de
+  firmar con un nombre sigue siendo del operador.
 - **Un solo host probado.** La reproducibilidad se comprobó en MINGW64/Windows amd64 con Go 1.27.3.
   Otro host o toolchain puede producir otro binario; el hash de §2 identifica el artefacto que se
   aceptó, no una promesa de reproducibilidad universal. El workflow compara dos builds en un único
@@ -301,9 +313,14 @@ Hay que repetir `scripts/certify.sh`, revisar §4–§5 y registrar una nueva ac
 
 | rol | nombre | fecha | evidencia revisada | firma |
 | --- | --- | --- | --- | --- |
-| Responsable de seguridad de Izkuna |  |  | `dist/certification-<UTC>.txt` |  |
-| Mantenedor de XAMMU |  |  | hash del árbol + hash del binario |  |
-| Aprobación de entrega |  |  | informe del engagement + anexo |  |
+| Responsable de seguridad de Izkuna | pendiente | pendiente | `dist/certification-<UTC>.txt` | pendiente |
+| Mantenedor de XAMMU | pendiente | pendiente | hash del árbol + hash del binario | pendiente |
+| Aprobación de entrega | pendiente | pendiente | informe del engagement + anexo | pendiente |
+
+**Estado (2026-11-06): firma nominal pendiente.** Las tres firmas están sin otorgar. La aceptación
+interna de la Fase 4 y de la Etapa 1 se apoya en la evidencia ejecutada y en este expediente, pero
+no se reclama una firma nominal hasta que las personas indicadas la otorguen. No se inventan
+nombres, fechas ni firmas: una fila vacía es una aceptación que todavía no existe.
 
 La aceptación se registra sobre el `dist/certification-<UTC>.txt` archivado. Si el archivo no está,
 la aceptación no existe, por la misma razón por la que un informe sin bundle no es un informe.

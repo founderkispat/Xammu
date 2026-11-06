@@ -622,6 +622,15 @@ La equivalencia completa y el estado de cada criterio están en
 - **La sonda `/..%2F..%2F` se rechaza en planificación** porque su ruta queda fuera de los
   prefijos autorizados. Es comportamiento correcto de la política de destino y no se relaja; un
   plan de matriz completa que incluya esa sonda se rechaza en `CAL-POS-P-01` y debe estrecharse.
+- **El nombre del operador no se deduce del entorno.** `generated_by` sólo se escribe con
+  `--generated-by` (o `--prepared-by` en los anexos); sin bandera, el documento declara `unknown`.
+  Antes se leía `XAMMU_OPERATOR`, `USERNAME` y `USER`, lo que podía copiar la cuenta del sistema a
+  un entregable sin que el operador lo hubiera decidido.
+- **La evidencia nombra su toolchain.** `scripts/certify.sh` y `scripts/ci-local.sh` comparan
+  `go env GOVERSION` con el `GO_VERSION` de `.github/workflows/ci.yml` y abortan si no coincide;
+  `certify.sh` exige además `govulncheck` 1.9.0. Una aceptación producida con otra toolchain no se
+  archiva. En este host el `go` por defecto es 1.27.0 y la toolchain fijada es 1.27.3: hay que
+  ponerla primero en `PATH`.
 - **CI versionado, aún sin corrida en GitHub.** `.github/workflows/ci.yml` ejecuta `gofmt`, `vet`,
   `go test -race`, `govulncheck`, gitleaks sobre árbol e historial y el build reproducible; en un tag
   `v*` añade SBOM CycloneDX y firma keyless de binario, checksum y SBOM con cosign. Las acciones de
@@ -638,10 +647,11 @@ La equivalencia completa y el estado de cada criterio están en
 
 ## 13. Auditar este repositorio en 10 minutos
 
-1. `bash scripts/certify.sh` — formato, vet, build, suite completa, `corpus check`,
+1. `bash scripts/certify.sh` — exige la toolchain fijada en el workflow y `govulncheck` 1.9.0,
+   y ejecuta formato, vet, build, suite completa, `govulncheck ./...`, `corpus check`,
    `effectiveness check`, `verify` de los dos bundles de demostración y del bundle de eficacia,
    anexos ES/EN, build reproducible byte a byte y hash del árbol; escribe la evidencia
-   en `dist/certification-<UTC>.txt`. Solo `go test ./...` son 428 funciones en 23 paquetes.
+   en `dist/certification-<UTC>.txt`. `go test ./...` son 462 funciones de prueba en 25 paquetes.
 2. `bash scripts/ci-local.sh` — espejo local de `.github/workflows/ci.yml`: formato, vet, suite,
    `-race` si hay cgo, `govulncheck` y gitleaks si están en `PATH`, build reproducible, la
    demostración del gate y SBOM si Syft está instalado. Escribe `dist/ci-local-<UTC>.txt` y cada

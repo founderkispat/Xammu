@@ -1354,7 +1354,9 @@ func TestLabManifestReaderRejectsWhatItCannotUse(t *testing.T) {
 }
 
 // TestGeneratedByNamesAnOperatorOnlyWhenThereIsOne: the evidence block attaches a document
-// to a person. Claiming a name the process never had is worse than saying it does not know.
+// to a person. The environment is not a decision the operator made in this command, so it
+// never supplies the name: otherwise a client deliverable would carry the workstation
+// account without anyone asking for it.
 func TestGeneratedByNamesAnOperatorOnlyWhenThereIsOne(t *testing.T) {
 	t.Setenv("XAMMU_OPERATOR", "")
 	t.Setenv("USERNAME", "")
@@ -1366,8 +1368,10 @@ func TestGeneratedByNamesAnOperatorOnlyWhenThereIsOne(t *testing.T) {
 		t.Fatalf("--generated-by wins, got %q", got)
 	}
 	t.Setenv("XAMMU_OPERATOR", "operator-from-the-environment")
-	if got := generatedBy(""); got != "operator-from-the-environment" {
-		t.Fatalf("the environment must be used when the flag is empty, got %q", got)
+	t.Setenv("USERNAME", "workstation-account")
+	t.Setenv("USER", "workstation-account")
+	if got := generatedBy(""); got != "unknown" {
+		t.Fatalf("the environment must not name an operator, got %q", got)
 	}
 }
 

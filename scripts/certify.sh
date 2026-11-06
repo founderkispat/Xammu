@@ -6,6 +6,9 @@ set -euo pipefail
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$root"
+# shellcheck source=scripts/lib.sh
+source scripts/lib.sh
+require_go_pin
 
 stamp=$(date -u +%Y%m%dT%H%M%SZ)
 mkdir -p dist
@@ -29,7 +32,7 @@ run() {
 log "XAMMU internal certification evidence"
 log "generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 log "host: $(uname -srm)"
-log "go: $(go version)"
+log "go: $(go version) (workflow pin: $(go_pin))"
 log "tool: $(go run ./cmd/xammu version | head -1)"
 
 log ""
@@ -47,6 +50,16 @@ run go build ./...
 run go test ./... -count=1
 run go run ./cmd/xammu corpus check --corpus corpus
 run go run ./cmd/xammu effectiveness check --corpus corpus/effectiveness
+
+log ""
+log "== 1b. standard-library vulnerabilities =="
+if ! command -v govulncheck >/dev/null 2>&1; then
+	log "govulncheck is required for acceptance and is not on PATH; install v1.9.0"
+	log "RESULT: FAILED"
+	log "evidence: $evidence"
+	exit 1
+fi
+run govulncheck ./...
 
 log ""
 log "== 2. sealed demonstrations verify against their own manifests =="

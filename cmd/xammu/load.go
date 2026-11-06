@@ -464,18 +464,14 @@ func unplannedReason(detail string) contracts.ReasonCode {
 	}
 }
 
-// generatedBy names the operator who asked for the document. It is taken from the
-// environment when there is one to take, and stated as unknown when there is not: an
-// evidence block that quietly claimed a name the process never had is worse than one
-// that says it does not know.
+// generatedBy names the operator who asked for the document. Only an explicit
+// flag names a person: falling back to XAMMU_OPERATOR, USERNAME or USER would
+// copy the workstation account into a client deliverable without the operator
+// choosing it, and an evidence block that claims a name the process never had
+// is worse than one that says it does not know.
 func generatedBy(flagValue string) string {
 	if flagValue != "" {
 		return flagValue
-	}
-	for _, k := range []string{"XAMMU_OPERATOR", "USERNAME", "USER"} {
-		if v := os.Getenv(k); v != "" {
-			return v
-		}
 	}
 	return "unknown"
 }

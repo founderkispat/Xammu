@@ -7,6 +7,9 @@ set -euo pipefail
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$root"
+# shellcheck source=scripts/lib.sh
+source scripts/lib.sh
+require_go_pin
 
 stamp=$(date -u +%Y%m%dT%H%M%SZ)
 mkdir -p dist
@@ -35,7 +38,7 @@ skip() {
 log "XAMMU local CI evidence"
 log "generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 log "host: $(uname -srm)"
-log "go: $(go version) (the workflow pins 1.27.3)"
+log "go: $(go version) (workflow pin: $(go_pin))"
 log "gitleaks: $(gitleaks version 2>/dev/null || echo 'not installed')"
 
 log ""

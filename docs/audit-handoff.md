@@ -3,12 +3,12 @@
 | campo | valor |
 | --- | --- |
 | Documento | Informe de auditoría interna y handoff técnico |
-| Fecha | 2026-11-05 |
-| Base revisada | `a8102d5` (`main`), que cierra la Fase 3, más el conjunto 0.4 pendiente de commit |
-| Árbol de trabajo | Limpio de secretos; 0.4 pendiente de commit; corpus, `lab/compose.yaml` y bundles r3/r6/r7 sin cambios |
-| Método | Revisión estática de rutas críticas, ejecución de la suite, `go vet`, `gofmt`, fuzzing acotado (10 s por target), `scripts/certify.sh`, `scripts/ci-local.sh`, `verify` con `--trust-key`, gitleaks 8.30.1 sobre árbol e historial, y lectura del modelo de amenaza documentado |
-| Herramientas | Go 1.27.3 windows/amd64; gitleaks 8.30.1; govulncheck 1.9.0 |
-| Evidencia | `dist/certification-<UTC>.txt` (`RESULT: PASSED`), `dist/ci-local-<UTC>.txt` (`PASSED WITH 4 SKIPS`), gitleaks 8.30.1 sobre árbol e historial sin fugas |
+| Fecha | 2026-11-06 |
+| Base revisada | `a981ef8` (`main`, Fase 4), más la remediación de Etapa 1 pendiente de commit |
+| Árbol de trabajo | Remediación de Etapa 1 en curso; corpus y bundles de eficacia sin cambios |
+| Método | Revisión estática de rutas críticas, ejecución de la suite con la toolchain fijada, `go vet`, `gofmt`, `govulncheck`, fuzzing acotado (10 s por target), `scripts/certify.sh`, `scripts/ci-local.sh`, `verify` con `--trust-key`, gitleaks 8.30.1 sobre árbol e historial, y lectura del modelo de amenaza documentado |
+| Herramientas | Go 1.27.3 windows/amd64 (el `go` por defecto del host es 1.27.0); gitleaks 8.30.1; govulncheck 1.9.0 |
+| Evidencia | `dist/certification-<UTC>.txt` (`RESULT: PASSED`), `dist/ci-local-<UTC>.txt` (`PASSED WITH 3 SKIPS`: race, SBOM y cosign), gitleaks 8.30.1 sobre árbol e historial sin fugas |
 | Naturaleza | Auditoría interna. **No** es una certificación externa, un pentest ni una prueba de conformidad legal |
 
 > El ancla definitiva es el `source tree sha256` que imprime `scripts/certify.sh` en la última corrida
@@ -224,7 +224,7 @@ benchmark. Son restricciones de alcance, no carencias accidentales.
 `docs/acceptance.md` declara 23 criterios verificados por test, 3 con vocabulario equivalente, 1 por revisión
 documental y **2 no reclamados** (CI limpio y prueba con ingeniero externo). 0.3 implementa el workflow de CI
 y el espejo local, pero el CI limpio sigue sin reclamarse hasta que exista una corrida en GitHub. La suite
-local es de 346 funciones en 19 paquetes, sin fallos.
+local es de 462 funciones en 25 paquetes, sin fallos.
 
 ---
 
@@ -494,11 +494,17 @@ Severidad: **Alto** = rompe una garantía central o expone datos sensibles en co
 
 #### H-13 — Riesgo de privacidad en el nombre del operador (Bajo)
 
-- **Evidencia:** `generatedBy` usa `XAMMU_OPERATOR`, `USERNAME` o `USER` (`cmd/xammu/load.go:354-364`).
-- **Impacto:** el nombre de cuenta del sistema puede terminar en un informe entregable sin que el operador lo
+- **Evidencia:** `generatedBy` usaba `XAMMU_OPERATOR`, `USERNAME` o `USER`; el nombre aparecía en los
+  dos informes de demostración versionados.
+- **Impacto:** el nombre de cuenta del sistema podía terminar en un informe entregable sin que el operador lo
   haya decidido.
 - **Recomendación:** en anexos de cliente, exigir `--prepared-by` explícito o declarar «no indicado» en lugar de
   leer el entorno.
+- **Estado (2026-11-06): cerrado en Etapa 1.** `generatedBy` (`cmd/xammu/load.go:472-477`) sólo usa
+  la bandera; sin ella escribe `unknown`. `TestGeneratedByNamesAnOperatorOnlyWhenThereIsOne` fija que
+  `XAMMU_OPERATOR`, `USERNAME` y `USER` presentes no cambian el resultado. Los informes de
+  `runs/demo-lab` y `runs/demo-origin` se regeneraron con la corrección y declaran
+  `"generated_by": "unknown"`; la evidencia sellada no cambió y ambos bundles siguen verificando.
 
 #### H-14 — Dos criterios de aceptación no reclamados (Informativo)
 
@@ -509,9 +515,10 @@ Severidad: **Alto** = rompe una garantía central o expone datos sensibles en co
 
 **Estado (2026-11-05):** H-05…H-09, el fuzzing (H-11 de este apartado, 4.6 del encargo) y el
 endurecimiento verificable del laboratorio (H-12 de este apartado, 4.7 del encargo) están
-implementados en 0.4; la evidencia observada está en §16.14. H-13 no forma parte de la Fase 4:
-`--prepared-by` y `--generated-by` ya ofrecen la vía explícita. La numeración del encargo y la de
-este apartado difieren; manda la descripción, como se explica en §16.0.
+implementados en 0.4; la evidencia observada está en §16.14. H-13 no formó parte de la Fase 4:
+`--prepared-by` y `--generated-by` ya ofrecían la vía explícita y la lectura del entorno se retiró
+en la Etapa 1 de la auditoría (§17). La numeración del encargo y la de este apartado difieren;
+manda la descripción, como se explica en §16.0.
 
 ---
 
@@ -530,20 +537,25 @@ este apartado difieren; manda la descripción, como se explica en §16.0.
 
 ### P1 — siguiente iteración
 
-5. Lock de presupuesto por autorización/origen (H-05).
-6. Contención de `--run` y validación de IDs (H-06).
-7. Identidad del corpus por subárbol + estado sucio (H-07).
-8. Aplicar o retirar `RequireTLS`; tope de cabeceras (H-08).
+5. ✅ Lock de presupuesto por autorización/origen (H-05). Implementado y probado en 0.4; ver §16.14.
+6. ✅ Contención de `--run` y validación de IDs (H-06). Implementado y probado en 0.4.
+7. ✅ Identidad del corpus por subárbol + estado sucio (H-07). Implementado y probado en 0.4.
+8. ✅ Aplicar o retirar `RequireTLS`; tope de cabeceras (H-08). Resuelto en 0.4.
 9. ✅ Firma de release + SBOM (H-10). Implementado en 0.3; los artefactos se publican al correr el workflow
    sobre un tag.
-10. `--prepared-by` explícito para anexos (H-13).
+10. ✅ `--prepared-by` explícito para anexos (H-13). Cerrado en Etapa 1: `--generated-by` y
+    `--prepared-by` son la única vía y sin bandera el documento declara `unknown`.
 
 ### P2 — endurecimiento continuo
 
-11. Fuzz targets de parsers (H-11).
-12. Rotación/revocación de claves y custodia documentada (H-09).
-13. Laboratorio en host dedicado/rootless (H-12).
-14. Cerrar los dos criterios de aceptación pendientes (H-14).
+11. ◐ Fuzz targets de parsers (H-11). Implementados con 10–30 s por target; el presupuesto acotado no
+    demuestra corrección y el paso de 30 s en CI no se ejecutó en un runner externo.
+12. ◐ Rotación/revocación de claves y custodia documentada (H-09). Documentada y probada la rotación;
+    no hay HSM, DPAPI, KMS ni CRL.
+13. ◐ Laboratorio en host dedicado/rootless (H-12). Endurecimiento estático verificado; el daemon sigue
+    siendo equivalente a root y `lab/verify.sh` no se re-ejecutó en esta máquina.
+14. ○ Cerrar los dos criterios de aceptación pendientes (H-14). Siguen abiertos: CI externo e ingeniero
+    externo.
 
 ---
 
@@ -554,10 +566,12 @@ este apartado difieren; manda la descripción, como se explica en §16.0.
 - **Sin prueba dinámica del laboratorio.** No se ejecutó `lab test --apply` ni se enviaron sondas a ningún
   target en esta sesión.
 - **Sin pentest externo.** No se contrató revisión independiente; H-14 sigue abierto.
-- **Vulnerabilidades de la stdlib, sin runner limpio.** `govulncheck` 1.9.0 se ejecutó localmente con Go
-  1.27.3 y está en el workflow; no hay una corrida en un runner de GitHub. Con Go 1.27.0 el escaneo
-  encontraba 9 vulnerabilidades de la stdlib que afectaban rutas del cliente HTTP; 1.27.3 las corrige.
-  La ausencia de dependencias externas reduce, pero no elimina, el riesgo de la stdlib.
+- **Vulnerabilidades de la stdlib, sin runner limpio.** `govulncheck` 1.9.0 con Go 1.27.3 no encuentra
+  vulnerabilidades; con el `go` 1.27.0 que este host tiene por defecto encontraba 10 (GO-2026-6809,
+  6617, 6613, 6612, 6611, 6610, 6608, 6607, 6605 y 6603) que afectaban rutas del cliente HTTP. Los
+  scripts de evidencia ahora abortan si la toolchain no es la fijada, de modo que una aceptación no
+  puede volver a producirse con 1.27.0. Sigue sin haber una corrida en un runner de GitHub. La
+  ausencia de dependencias externas reduce, pero no elimina, el riesgo de la stdlib.
 - **Firma keyless no ejercitada.** El job de release usa cosign keyless y publica certificado y firma en el
   log público de Rekor; no se ejecutó. La alternativa con clave en secreto de CI no se implementó.
 - **Confianza TOFU.** Las anclas de los demos no prueban identidad.
@@ -785,9 +799,10 @@ recién creadas. Las acciones están fijadas por SHA (`actions/checkout` v4.2.2,
 Permisos: `contents: read` global; `id-token: write` solo en `release`. `scripts/ci-local.sh` reproduce los
 checks locales, imprime `SKIP` por cada uno que no puede ejecutar y lo cuenta en el resultado.
 
-**Por qué Go 1.27.3.** El escaneo con el toolchain local anterior (1.27.0) encontró 9 vulnerabilidades de
-la stdlib que afectaban rutas del cliente HTTP (`crypto/x509`, HTTP/2 y `net/http`), corregidas en
-1.27.2/1.27.3. El workflow fija 1.27.3 y la verificación local se repitió con él: `No vulnerabilities found`.
+**Por qué Go 1.27.3.** El escaneo con el toolchain local anterior (1.27.0) encontró 9 vulnerabilidades
+con la base de datos de entonces y 10 con la actual, todas de la stdlib y con rutas del cliente HTTP
+afectadas (`crypto/x509`, HTTP/2 y `net/http`), corregidas en 1.27.2/1.27.3. El workflow fija 1.27.3
+y la verificación local se repitió con él: `No vulnerabilities found`.
 
 **Evidencia local (2026-11-05).**
 
@@ -2011,3 +2026,45 @@ Lo que esta aceptación **no** prueba:
   aislamiento real lo prueba el laboratorio en ejecución.
 - Que Docker deje de ser root-equivalente: el endurecimiento reduce el blast radius del
   contenedor, no el privilegio del daemon.
+
+---
+
+## 17. Remediación de auditoría — Etapa 1 (2026-11-06)
+
+La auditoría del 2026-11-05 dejó 16 hallazgos (A-01…A-16) y un plan de cuatro etapas. La Etapa 1
+es local y reversible: no cambia autorizaciones, no re-firma bundles, no hace push ni tag. Cierra
+A-01, A-04 y A-06, y cubre la parte de A-05 que dependía del código.
+
+| hallazgo | cambio | evidencia |
+| --- | --- | --- |
+| A-01 — deriva de toolchain | `scripts/lib.sh` compara `go env GOVERSION` con el `GO_VERSION` del workflow; `certify.sh` y `ci-local.sh` lo invocan y `certify.sh` exige `govulncheck` 1.9.0 | `scripts/lib.sh`; `scripts/certify.sh:10-11,55-62`; `scripts/ci-local.sh:12,71-77` |
+| A-04 — nombre del operador | `generatedBy` ya no lee `XAMMU_OPERATOR`, `USERNAME` ni `USER`: sólo la bandera, o `unknown`; los informes de demostración se regeneraron | `cmd/xammu/load.go:472-477`; `cmd/xammu/cli_test.go:1360-1376`; `runs/demo-*/report.*` |
+| A-05 — ciclo de vida de demos (parcial) | los informes regenerados publican `--issuer-keyring trust/issuers` y declaran que la autorización caducó; las autorizaciones siguen vencidas y no se re-ejecutó ninguna sonda | `runs/demo-lab/report.md`; `runs/demo-origin/report.md`; `verify --rederive` de ambos bundles |
+| A-06 — deriva documental | 462/25 en README; §7 marca lo implementado; certification §3/§4 y acceptance §2.8/§4/§9 se alinean con la toolchain, `govulncheck` y el estado real | este apartado; `README.md` §12–§13; `docs/certification.md`; `docs/acceptance.md` |
+
+Lo observado en esta etapa, con Go 1.27.3 primero en `PATH` y `GOTOOLCHAIN=local`:
+
+| punto | evidencia observada |
+| --- | --- |
+| toolchain | El `go` por defecto del host es `go1.27.0`; con `$HOME/sdk/go1.27.3/bin` primero, `go version` es `go1.27.3`. `scripts/lib.sh` aborta con 1.27.0 antes de escribir evidencia. |
+| vulnerabilidades | `govulncheck ./...` con 1.27.0: 10 vulnerabilidades que afectan al código (GO-2026-6809, 6617, 6613, 6612, 6611, 6610, 6608, 6607, 6605, 6603), incluidas rutas de `internal/httpclient`; con 1.27.3: `No vulnerabilities found`. |
+| formato y vet | `gofmt -l cmd internal` vacío; `go vet ./...` sin salida. |
+| suite | `go test ./... -count=1` en verde en todos los paquetes: 462 funciones (458 `Test`, 4 `Fuzz`) en 25 paquetes. |
+| demos | `verify --rederive`: `demo-lab` 13 artefactos y 23 observaciones, 14 findings re-derivados; `demo-origin` 13 artefactos y 14 observaciones, 16 findings re-derivados; 0 divergencias y 0 huecos de journal en ambos. Los informes declaran `"generated_by": "unknown"`. |
+| espejo de CI | `scripts/ci-local.sh`: `RESULT: PASSED WITH 3 SKIPS` (race por falta de cgo, SBOM por falta de Syft, cosign por no estar instalado); `govulncheck` ya no se salta. Evidencia: `dist/ci-local-<UTC>.txt`. |
+| aceptación | `scripts/certify.sh`: `RESULT: PASSED`; la corrida final que ancla este texto se archiva como `dist/certification-<UTC>.txt`. |
+
+Los informes de demostración son derivados posteriores al sellado: al regenerarlos cambian
+`report_id`, los UUID de los findings y `detected_at`, pero no el inventario firmado, el Merkle
+root, la cadena de observaciones ni la firma. Por eso `verify` sigue en verde y la evidencia
+sellada no se re-firmó.
+
+Lo que la Etapa 1 **no** cierra:
+
+- A-02 (CI y release externos), A-03 (identidad TOFU y custodia no ejecutada), A-07 (laboratorio
+  sin re-ejecutar), A-08 (`-race` sin compilador C), A-09 (ingeniero externo) y la firma de la
+  tabla de aceptación siguen abiertos. Etapas 2–4 los tratan, y ninguna se inicia sin aprobación.
+- Las autorizaciones `AUTH-SMOKE-*` caducaron el 2026-10-29. Regenerar el informe no las revive:
+  la demostración se verifica y se re-lee, no se vuelve a ejecutar.
+- El guard de toolchain es local: impide archivar evidencia con otra versión, no instala Go ni
+  demuestra reproducibilidad entre hosts.

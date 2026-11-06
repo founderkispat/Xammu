@@ -2,7 +2,7 @@
 
 | run | state | target | partition | generated | schema |
 | --- | --- | --- | --- | --- | --- |
-| demo-origin | completed | http://127.0.0.1:8081 | development | 2026-10-28T22:27:38Z | 1.0.0 |
+| demo-origin | completed | http://127.0.0.1:8081 | development | 2026-11-06T17:27:30Z | 1.0.0 |
 
 Authorization `AUTH-SMOKE-ORIGIN-001`, valid until 2026-10-29T20:33:17Z. Stopped because: all 14 planned probes executed with 34 of 48 authorized requests left
 
@@ -15,7 +15,7 @@ Budget: 14 of 48 authorized requests spent in 1 second(s).
 - The pass published 16 finding(s): coverage_gap 3, undetermined_area 13.
 - The strongest claim any finding makes is "descriptive", at evidence level "replicated_within_run". C-08 derives that ceiling from the counts; nothing in this report rises above it, and a claim of a specific rule firing would need a source outside the HTTP response.
 - Coverage of the authorized grid: 1 of 48 class x transport cell(s) hold at least one valid reading; 25 entry(ies) are listed as unmeasured, each with the reason it has.
-- Reproduce it: xammu verify --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query re-derives the evidence trail; every finding carries a command bound to authorization AUTH-SMOKE-ORIGIN-001 or to run demo-origin.
+- Reproduce it: xammu verify --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query re-derives the evidence trail; every finding carries a command bound to authorization AUTH-SMOKE-ORIGIN-001 or to run demo-origin.
 - This report does not say the defence is secure, does not evaluate application vulnerabilities, and does not replace a penetration test. Those limits are declared in code (the out-of-scope section is required by C-15), not written by whoever assembled this document.
 
 ### Limits the run could not exceed
@@ -29,6 +29,7 @@ Budget: 14 of 48 authorized requests spent in 1 second(s).
 - the inertness gate re-runs when the corpus loads: a probe that can execute never reaches the transport, so no limit here is what keeps the run non-exploitative
 - transport: 0 exchange(s) produced no response to classify; a run that hits this repeatedly in a row pauses rather than reporting a clean pass, because silence from a target is not a refusal
 - the run stopped as "completed" (none), so coverage in this report is bounded by what it reached before that, not by the plan it was given
+- this report was generated at 2026-11-06T17:27:30Z, after authorization AUTH-SMOKE-ORIGIN-001 expired: the readings were taken inside the window, but every command in this document needs a new authorization to actually be run
 
 ## The five dimensions
 
@@ -158,7 +159,7 @@ the grid is the authorization's own scope: 8 attack class(es) x 6 transport(s) =
 - Recommendation: check whether the rule set that produced lab-rule-table:GENERIC-001, lab-rule-table:SQLI-001, lab-rule-table:SQLI-002, lab-rule-table:SQLI-003 is enabled for the query transport; if it is enabled, the probes reached it and were not matched, so review the match stage for query
 - Priority basis: 100 percentage points measured over 3 valid trials: too small a difference, too few trials, or both, to rank above low
 - Engineer note: probes built on the GENERIC-001, SQLI-001, SQLI-002, SQLI-003 signature are reaching this transport unrefused; take the query cell to the rule-set review for sqli and check whether it is enabled for that transport
-- Reproduce: `xammu validate --finding GAP-sqli-query-canonical-api-search --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
+- Reproduce: `xammu validate --finding GAP-sqli-query-canonical-api-search --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
 - Regression: `xammu lab test --scenario coverage-gap-sqli-query-canonical-api-search`
 - Hypothesis: `hyp.cell:sqli|query|canonical|/api/search`
 - Evidence profile: `e2bd4232-cb68-42b7-a9e7-79c61a3d52ab`; observations: 07195cce-9b09-4578-9581-d0f46c3b7e98, dc176822-a3a2-4fcf-b2e6-15cff4c0872a, f6ee1103-5316-4a28-b77f-42c44e4f4a3c
@@ -195,7 +196,7 @@ the grid is the authorization's own scope: 8 attack class(es) x 6 transport(s) =
 - Recommendation: check whether the rule set that produced lab-rule-table:SQLI-001, lab-rule-table:SQLI-003 is enabled for the query transport; if it is enabled, the probes reached it and were not matched, so review the match stage for query
 - Priority basis: 100 percentage points measured over 1 valid trials: too small a difference, too few trials, or both, to rank above low
 - Engineer note: probes built on the SQLI-001, SQLI-003 signature are reaching this transport unrefused; take the query cell to the rule-set review for sqli and check whether it is enabled for that transport
-- Reproduce: `xammu validate --finding GAP-sqli-query-case_variant-api-search --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
+- Reproduce: `xammu validate --finding GAP-sqli-query-case_variant-api-search --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
 - Regression: `xammu lab test --scenario coverage-gap-sqli-query-case-variant-api-search`
 - Hypothesis: `hyp.cell:sqli|query|case_variant|/api/search`
 - Evidence profile: `a295626b-49be-4aa6-b80e-a80a88ba9335`; observations: f56409df-65b3-4124-953f-d8e47d12722a
@@ -232,7 +233,7 @@ the grid is the authorization's own scope: 8 attack class(es) x 6 transport(s) =
 - Recommendation: check whether the rule set that produced lab-rule-table:SQLI-001, lab-rule-table:SQLI-003 is enabled for the query transport; if it is enabled, the probes reached it and were not matched, so review the match stage for query
 - Priority basis: 100 percentage points measured over 1 valid trials: too small a difference, too few trials, or both, to rank above low
 - Engineer note: probes built on the SQLI-001, SQLI-003 signature are reaching this transport unrefused; take the query cell to the rule-set review for sqli and check whether it is enabled for that transport
-- Reproduce: `xammu validate --finding GAP-sqli-query-url_single-api-search --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
+- Reproduce: `xammu validate --finding GAP-sqli-query-url_single-api-search --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
 - Regression: `xammu lab test --scenario coverage-gap-sqli-query-url-single-api-search`
 - Hypothesis: `hyp.cell:sqli|query|url_single|/api/search`
 - Evidence profile: `4d3f03b0-3021-4407-aba3-2956bd5ec433`; observations: 195bee6a-73c3-49e0-8bb9-c29c5a570774
@@ -259,8 +260,8 @@ the grid is the authorization's own scope: 8 attack class(es) x 6 transport(s) =
 - Recommendation: either add gated items of class "command_injection" to the probe partition and re-authorize, or carry the class as explicitly out of coverage in the report instead of leaving the reader to notice its absence
 - Priority basis: no measurement exists for this zone, so nothing was ranked: an undetermined area is always low because the finding reports the absence of a quantity rather than its size
 - Engineer note: the matrix row for "command_injection" is empty by construction: this build's inertness gate refuses the shapes that would demonstrate it, which is a coverage decision and not a result
-- Reproduce: `xammu validate --finding UND-class-command_injection --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
-- Regression: `xammu playbook --partition development --class command_injection --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus`
+- Reproduce: `xammu validate --finding UND-class-command_injection --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
+- Regression: `xammu playbook --partition development --class command_injection --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus`
 - Evidence profile: none: this finding states an absence, so no C-08 profile was compiled; observations: absence:demo-origin/round-1/class-command_injection
 
 ### UND-class-crlf_injection - undetermined_area (`low`, priority low)
@@ -285,8 +286,8 @@ the grid is the authorization's own scope: 8 attack class(es) x 6 transport(s) =
 - Recommendation: either add gated items of class "crlf_injection" to the probe partition and re-authorize, or carry the class as explicitly out of coverage in the report instead of leaving the reader to notice its absence
 - Priority basis: no measurement exists for this zone, so nothing was ranked: an undetermined area is always low because the finding reports the absence of a quantity rather than its size
 - Engineer note: the matrix row for "crlf_injection" is empty by construction: this build's inertness gate refuses the shapes that would demonstrate it, which is a coverage decision and not a result
-- Reproduce: `xammu validate --finding UND-class-crlf_injection --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
-- Regression: `xammu playbook --partition development --class crlf_injection --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus`
+- Reproduce: `xammu validate --finding UND-class-crlf_injection --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
+- Regression: `xammu playbook --partition development --class crlf_injection --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus`
 - Evidence profile: none: this finding states an absence, so no C-08 profile was compiled; observations: absence:demo-origin/round-1/class-crlf_injection
 
 ### UND-class-ldap_injection - undetermined_area (`low`, priority low)
@@ -311,8 +312,8 @@ the grid is the authorization's own scope: 8 attack class(es) x 6 transport(s) =
 - Recommendation: either add gated items of class "ldap_injection" to the probe partition and re-authorize, or carry the class as explicitly out of coverage in the report instead of leaving the reader to notice its absence
 - Priority basis: no measurement exists for this zone, so nothing was ranked: an undetermined area is always low because the finding reports the absence of a quantity rather than its size
 - Engineer note: the matrix row for "ldap_injection" is empty by construction: this build's inertness gate refuses the shapes that would demonstrate it, which is a coverage decision and not a result
-- Reproduce: `xammu validate --finding UND-class-ldap_injection --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
-- Regression: `xammu playbook --partition development --class ldap_injection --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus`
+- Reproduce: `xammu validate --finding UND-class-ldap_injection --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
+- Regression: `xammu playbook --partition development --class ldap_injection --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus`
 - Evidence profile: none: this finding states an absence, so no C-08 profile was compiled; observations: absence:demo-origin/round-1/class-ldap_injection
 
 ### UND-class-path_traversal - undetermined_area (`low`, priority low)
@@ -337,8 +338,8 @@ the grid is the authorization's own scope: 8 attack class(es) x 6 transport(s) =
 - Recommendation: either add gated items of class "path_traversal" to the probe partition and re-authorize, or carry the class as explicitly out of coverage in the report instead of leaving the reader to notice its absence
 - Priority basis: no measurement exists for this zone, so nothing was ranked: an undetermined area is always low because the finding reports the absence of a quantity rather than its size
 - Engineer note: the matrix row for "path_traversal" is empty by construction: this build's inertness gate refuses the shapes that would demonstrate it, which is a coverage decision and not a result
-- Reproduce: `xammu validate --finding UND-class-path_traversal --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
-- Regression: `xammu playbook --partition development --class path_traversal --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus`
+- Reproduce: `xammu validate --finding UND-class-path_traversal --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
+- Regression: `xammu playbook --partition development --class path_traversal --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus`
 - Evidence profile: none: this finding states an absence, so no C-08 profile was compiled; observations: absence:demo-origin/round-1/class-path_traversal
 
 ### UND-class-ssrf - undetermined_area (`low`, priority low)
@@ -363,8 +364,8 @@ the grid is the authorization's own scope: 8 attack class(es) x 6 transport(s) =
 - Recommendation: either add gated items of class "ssrf" to the probe partition and re-authorize, or carry the class as explicitly out of coverage in the report instead of leaving the reader to notice its absence
 - Priority basis: no measurement exists for this zone, so nothing was ranked: an undetermined area is always low because the finding reports the absence of a quantity rather than its size
 - Engineer note: the matrix row for "ssrf" is empty by construction: this build's inertness gate refuses the shapes that would demonstrate it, which is a coverage decision and not a result
-- Reproduce: `xammu validate --finding UND-class-ssrf --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
-- Regression: `xammu playbook --partition development --class ssrf --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus`
+- Reproduce: `xammu validate --finding UND-class-ssrf --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
+- Regression: `xammu playbook --partition development --class ssrf --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus`
 - Evidence profile: none: this finding states an absence, so no C-08 profile was compiled; observations: absence:demo-origin/round-1/class-ssrf
 
 ### UND-class-xss - undetermined_area (`low`, priority low)
@@ -389,8 +390,8 @@ the grid is the authorization's own scope: 8 attack class(es) x 6 transport(s) =
 - Recommendation: either add gated items of class "xss" to the probe partition and re-authorize, or carry the class as explicitly out of coverage in the report instead of leaving the reader to notice its absence
 - Priority basis: no measurement exists for this zone, so nothing was ranked: an undetermined area is always low because the finding reports the absence of a quantity rather than its size
 - Engineer note: the matrix row for "xss" is empty by construction: this build's inertness gate refuses the shapes that would demonstrate it, which is a coverage decision and not a result
-- Reproduce: `xammu validate --finding UND-class-xss --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
-- Regression: `xammu playbook --partition development --class xss --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus`
+- Reproduce: `xammu validate --finding UND-class-xss --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
+- Regression: `xammu playbook --partition development --class xss --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus`
 - Evidence profile: none: this finding states an absence, so no C-08 profile was compiled; observations: absence:demo-origin/round-1/class-xss
 
 ### UND-class-xxe - undetermined_area (`low`, priority low)
@@ -415,8 +416,8 @@ the grid is the authorization's own scope: 8 attack class(es) x 6 transport(s) =
 - Recommendation: either add gated items of class "xxe" to the probe partition and re-authorize, or carry the class as explicitly out of coverage in the report instead of leaving the reader to notice its absence
 - Priority basis: no measurement exists for this zone, so nothing was ranked: an undetermined area is always low because the finding reports the absence of a quantity rather than its size
 - Engineer note: the matrix row for "xxe" is empty by construction: this build's inertness gate refuses the shapes that would demonstrate it, which is a coverage decision and not a result
-- Reproduce: `xammu validate --finding UND-class-xxe --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
-- Regression: `xammu playbook --partition development --class xxe --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus`
+- Reproduce: `xammu validate --finding UND-class-xxe --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
+- Regression: `xammu playbook --partition development --class xxe --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus`
 - Evidence profile: none: this finding states an absence, so no C-08 profile was compiled; observations: absence:demo-origin/round-1/class-xxe
 
 ### UND-unplanned-authorization_gap - undetermined_area (`low`, priority low)
@@ -440,8 +441,8 @@ the grid is the authorization's own scope: 8 attack class(es) x 6 transport(s) =
 - Recommendation: raise the request budget or accept a narrower matrix and say so; either way the report carries the unrun list rather than dropping it
 - Priority basis: no measurement exists for this zone, so nothing was ranked: an undetermined area is always low because the finding reports the absence of a quantity rather than its size
 - Engineer note: this is where the budget went. A reader who compares two runs with different budgets has to see this number to compare them honestly
-- Reproduce: `xammu validate --finding UND-unplanned-authorization_gap --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
-- Regression: `xammu playbook --partition development --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus`
+- Reproduce: `xammu validate --finding UND-unplanned-authorization_gap --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
+- Regression: `xammu playbook --partition development --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus`
 - Evidence profile: none: this finding states an absence, so no C-08 profile was compiled; observations: absence:demo-origin/round-1/unplanned-authorization_gap
 
 ### UND-vector-body_form - undetermined_area (`low`, priority low)
@@ -466,8 +467,8 @@ the grid is the authorization's own scope: 8 attack class(es) x 6 transport(s) =
 - Recommendation: plan the "body_form" items that exist in the partition, or state in the report that the transport was never placed
 - Priority basis: no measurement exists for this zone, so nothing was ranked: an undetermined area is always low because the finding reports the absence of a quantity rather than its size
 - Engineer note: the reader who needs the "body_form" rows of the matrix is the one who will ask why they are empty; this finding is that answer, in advance
-- Reproduce: `xammu validate --finding UND-vector-body_form --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
-- Regression: `xammu playbook --partition development --vector body_form --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus`
+- Reproduce: `xammu validate --finding UND-vector-body_form --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
+- Regression: `xammu playbook --partition development --vector body_form --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus`
 - Evidence profile: none: this finding states an absence, so no C-08 profile was compiled; observations: absence:demo-origin/round-1/vector-body_form
 
 ### UND-vector-body_json - undetermined_area (`low`, priority low)
@@ -492,8 +493,8 @@ the grid is the authorization's own scope: 8 attack class(es) x 6 transport(s) =
 - Recommendation: plan the "body_json" items that exist in the partition, or state in the report that the transport was never placed
 - Priority basis: no measurement exists for this zone, so nothing was ranked: an undetermined area is always low because the finding reports the absence of a quantity rather than its size
 - Engineer note: the reader who needs the "body_json" rows of the matrix is the one who will ask why they are empty; this finding is that answer, in advance
-- Reproduce: `xammu validate --finding UND-vector-body_json --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
-- Regression: `xammu playbook --partition development --vector body_json --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus`
+- Reproduce: `xammu validate --finding UND-vector-body_json --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
+- Regression: `xammu playbook --partition development --vector body_json --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus`
 - Evidence profile: none: this finding states an absence, so no C-08 profile was compiled; observations: absence:demo-origin/round-1/vector-body_json
 
 ### UND-vector-cookie - undetermined_area (`low`, priority low)
@@ -518,8 +519,8 @@ the grid is the authorization's own scope: 8 attack class(es) x 6 transport(s) =
 - Recommendation: plan the "cookie" items that exist in the partition, or state in the report that the transport was never placed
 - Priority basis: no measurement exists for this zone, so nothing was ranked: an undetermined area is always low because the finding reports the absence of a quantity rather than its size
 - Engineer note: the reader who needs the "cookie" rows of the matrix is the one who will ask why they are empty; this finding is that answer, in advance
-- Reproduce: `xammu validate --finding UND-vector-cookie --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
-- Regression: `xammu playbook --partition development --vector cookie --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus`
+- Reproduce: `xammu validate --finding UND-vector-cookie --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
+- Regression: `xammu playbook --partition development --vector cookie --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus`
 - Evidence profile: none: this finding states an absence, so no C-08 profile was compiled; observations: absence:demo-origin/round-1/vector-cookie
 
 ### UND-vector-header - undetermined_area (`low`, priority low)
@@ -544,8 +545,8 @@ the grid is the authorization's own scope: 8 attack class(es) x 6 transport(s) =
 - Recommendation: plan the "header" items that exist in the partition, or state in the report that the transport was never placed
 - Priority basis: no measurement exists for this zone, so nothing was ranked: an undetermined area is always low because the finding reports the absence of a quantity rather than its size
 - Engineer note: the reader who needs the "header" rows of the matrix is the one who will ask why they are empty; this finding is that answer, in advance
-- Reproduce: `xammu validate --finding UND-vector-header --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
-- Regression: `xammu playbook --partition development --vector header --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus`
+- Reproduce: `xammu validate --finding UND-vector-header --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
+- Regression: `xammu playbook --partition development --vector header --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus`
 - Evidence profile: none: this finding states an absence, so no C-08 profile was compiled; observations: absence:demo-origin/round-1/vector-header
 
 ### UND-vector-path - undetermined_area (`low`, priority low)
@@ -570,8 +571,8 @@ the grid is the authorization's own scope: 8 attack class(es) x 6 transport(s) =
 - Recommendation: plan the "path" items that exist in the partition, or state in the report that the transport was never placed
 - Priority basis: no measurement exists for this zone, so nothing was ranked: an undetermined area is always low because the finding reports the absence of a quantity rather than its size
 - Engineer note: the reader who needs the "path" rows of the matrix is the one who will ask why they are empty; this finding is that answer, in advance
-- Reproduce: `xammu validate --finding UND-vector-path --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
-- Regression: `xammu playbook --partition development --vector path --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus`
+- Reproduce: `xammu validate --finding UND-vector-path --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
+- Regression: `xammu playbook --partition development --vector path --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus`
 - Evidence profile: none: this finding states an absence, so no C-08 profile was compiled; observations: absence:demo-origin/round-1/vector-path
 
 
@@ -615,7 +616,7 @@ Conditional exposure from finding GAP-sqli-query-canonical-api-search (coverage_
 
 - Scope: sqli x query x canonical on GET /api/search
 - Evidence: e2bd4232-cb68-42b7-a9e7-79c61a3d52ab; 07195cce-9b09-4578-9581-d0f46c3b7e98; dc176822-a3a2-4fcf-b2e6-15cff4c0872a; f6ee1103-5316-4a28-b77f-42c44e4f4a3c
-- Verify: `xammu validate --finding GAP-sqli-query-canonical-api-search --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
+- Verify: `xammu validate --finding GAP-sqli-query-canonical-api-search --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
 - What was not tested:
   - does not show the origin is vulnerable to sqli
   - does not show no rule inspects this transport: it shows these probes were not refused
@@ -629,7 +630,7 @@ Not demonstrated: that the handling measured here is the work of a perimeter rul
 
 - Scope: attribution of every behavioural claim in run demo-origin against authorization AUTH-SMOKE-ORIGIN-001
 - Evidence: runs/demo-origin/manifest.json; distribution:attribution_status; distribution:evidence_basis; GAP-sqli-query-canonical-api-search; GAP-sqli-query-case_variant-api-search; GAP-sqli-query-url_single-api-search; UND-class-command_injection; UND-class-crlf_injection; UND-class-ldap_injection; UND-class-path_traversal; UND-class-ssrf; UND-class-xss; UND-class-xxe; UND-unplanned-authorization_gap; UND-vector-body_form; and 4 further finding ref(s)
-- Verify: `xammu playbook --partition development --authorization AUTH-SMOKE-ORIGIN-001 --round round-2 --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
+- Verify: `xammu playbook --partition development --authorization AUTH-SMOKE-ORIGIN-001 --round round-2 --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
 - What was not tested:
   - a second round under its own authorization, which is the only way an in-run repetition becomes independent reproduction
   - the filter logs or rule configuration of the engine, which nothing in this run reads
@@ -642,7 +643,7 @@ Undeterminable from this evidence, in the run's own words (UND-class-command_inj
 
 - Scope: attack class command_injection: unmeasured in this run
 - Evidence: absence:demo-origin/round-1/class-command_injection
-- Verify: `xammu validate --finding UND-class-command_injection --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
+- Verify: `xammu validate --finding UND-class-command_injection --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
 - What was not tested:
   - an unmeasured class is not an unguarded class
   - the reason code distinguishes a corpus that has nothing sendable from a run that sent nothing; it does not explain why the corpus has nothing
@@ -653,75 +654,75 @@ Undeterminable from this evidence, in the run's own words (UND-class-command_inj
 - **attack class command_injection: unmeasured in this run** (reason `not_yet_attempted`)
   - Detail: the authorization covers attack class "command_injection". No exchange in this run carried that class. the probe partition carries 3 item(s) of class "command_injection" and this run planned or sent none of them. The pass measured 1 class(es).
   - Remediation: either add gated items of class "command_injection" to the probe partition and re-authorize, or carry the class as explicitly out of coverage in the report instead of leaving the reader to notice its absence
-  - Reproduce: `xammu validate --finding UND-class-command_injection --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
+  - Reproduce: `xammu validate --finding UND-class-command_injection --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
   - Planned requests not spent: 0
 - **attack class crlf_injection: unmeasured in this run** (reason `not_yet_attempted`)
   - Detail: the authorization covers attack class "crlf_injection". No exchange in this run carried that class. the probe partition carries 3 item(s) of class "crlf_injection" and this run planned or sent none of them. The pass measured 1 class(es).
   - Remediation: either add gated items of class "crlf_injection" to the probe partition and re-authorize, or carry the class as explicitly out of coverage in the report instead of leaving the reader to notice its absence
-  - Reproduce: `xammu validate --finding UND-class-crlf_injection --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
+  - Reproduce: `xammu validate --finding UND-class-crlf_injection --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
   - Planned requests not spent: 0
 - **attack class ldap_injection: unmeasured in this run** (reason `not_yet_attempted`)
   - Detail: the authorization covers attack class "ldap_injection". No exchange in this run carried that class. the probe partition carries 1 item(s) of class "ldap_injection" and this run planned or sent none of them. The pass measured 1 class(es).
   - Remediation: either add gated items of class "ldap_injection" to the probe partition and re-authorize, or carry the class as explicitly out of coverage in the report instead of leaving the reader to notice its absence
-  - Reproduce: `xammu validate --finding UND-class-ldap_injection --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
+  - Reproduce: `xammu validate --finding UND-class-ldap_injection --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
   - Planned requests not spent: 0
 - **attack class path_traversal: unmeasured in this run** (reason `not_yet_attempted`)
   - Detail: the authorization covers attack class "path_traversal". No exchange in this run carried that class. the probe partition carries 3 item(s) of class "path_traversal" and this run planned or sent none of them. The pass measured 1 class(es).
   - Remediation: either add gated items of class "path_traversal" to the probe partition and re-authorize, or carry the class as explicitly out of coverage in the report instead of leaving the reader to notice its absence
-  - Reproduce: `xammu validate --finding UND-class-path_traversal --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
+  - Reproduce: `xammu validate --finding UND-class-path_traversal --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
   - Planned requests not spent: 0
 - **attack class ssrf: unmeasured in this run** (reason `not_yet_attempted`)
   - Detail: the authorization covers attack class "ssrf". No exchange in this run carried that class. the probe partition carries 1 item(s) of class "ssrf" and this run planned or sent none of them. The pass measured 1 class(es).
   - Remediation: either add gated items of class "ssrf" to the probe partition and re-authorize, or carry the class as explicitly out of coverage in the report instead of leaving the reader to notice its absence
-  - Reproduce: `xammu validate --finding UND-class-ssrf --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
+  - Reproduce: `xammu validate --finding UND-class-ssrf --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
   - Planned requests not spent: 0
 - **attack class xss: unmeasured in this run** (reason `not_yet_attempted`)
   - Detail: the authorization covers attack class "xss". No exchange in this run carried that class. the probe partition carries 7 item(s) of class "xss" and this run planned or sent none of them. The pass measured 1 class(es).
   - Remediation: either add gated items of class "xss" to the probe partition and re-authorize, or carry the class as explicitly out of coverage in the report instead of leaving the reader to notice its absence
-  - Reproduce: `xammu validate --finding UND-class-xss --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
+  - Reproduce: `xammu validate --finding UND-class-xss --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
   - Planned requests not spent: 0
 - **attack class xxe: unmeasured in this run** (reason `not_yet_attempted`)
   - Detail: the authorization covers attack class "xxe". No exchange in this run carried that class. the probe partition carries 1 item(s) of class "xxe" and this run planned or sent none of them. The pass measured 1 class(es).
   - Remediation: either add gated items of class "xxe" to the probe partition and re-authorize, or carry the class as explicitly out of coverage in the report instead of leaving the reader to notice its absence
-  - Reproduce: `xammu validate --finding UND-class-xxe --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
+  - Reproduce: `xammu validate --finding UND-class-xxe --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
   - Planned requests not spent: 0
 - **probes not run in partition development: 29 item(s)** (reason `authorization_gap`)
   - Detail: 29 corpus item(s) in partition development were not planned by this run under reason code "authorization_gap": DEV-CMD-P-01, DEV-CMD-Q-01, DEV-CMD-Q-02, DEV-COOKIE-01, DEV-COOKIE-02, DEV-CRLF-H-01, DEV-CRLF-H-02, DEV-GEN-J-01, DEV-HDR-POL-01, DEV-LDAP-Q-01, DEV-SQLI-F-01, DEV-SQLI-J-01, DEV-SQLI-J-02, DEV-SQLI-M-01, DEV-SQLI-Q-04, DEV-SQLI-Q-05, DEV-SQLI-QD-02, DEV-SSRF-Q-01, DEV-TRAV-P-01, DEV-TRAV-Q-01, DEV-TRAV-Q-02, DEV-XSS-JS-01, DEV-XSS-JS-02, DEV-XSS-JS-03, DEV-XSS-Q-01, DEV-XSS-Q-02, DEV-XSS-Q-03, DEV-XSS-Q-04, DEV-XXE-Q-01. The selection recorded: attack class command_injection is not in the authorization; vector cookie is not in the authorization; attack class crlf_injection is not in the authorization; vector body_json is not in the authorization; attack class ldap_injection is not in the authorization; vector body_form is not in the authorization; vector multipart_form is not in the authorization; encoding whitespace_variant is not in the authorization; encoding comment_insertion is not in the authorization; encoding html_entity_numeric is not in the authorization; attack class ssrf is not in the authorization; attack class path_traversal is not in the authorization; attack class xss is not in the authorization; attack class xxe is not in the authorization
   - Remediation: raise the request budget or accept a narrower matrix and say so; either way the report carries the unrun list rather than dropping it
-  - Reproduce: `xammu validate --finding UND-unplanned-authorization_gap --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
+  - Reproduce: `xammu validate --finding UND-unplanned-authorization_gap --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
   - Planned requests not spent: 29
 - **transport body_form: unmeasured in this run** (reason `not_yet_attempted`)
   - Detail: the authorization covers the "body_form" transport. No exchange in this run placed a probe there. the probe partition carries 1 item(s) for the "body_form" transport and this run sent none of them: DEV-SQLI-F-01
   - Remediation: plan the "body_form" items that exist in the partition, or state in the report that the transport was never placed
-  - Reproduce: `xammu validate --finding UND-vector-body_form --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
+  - Reproduce: `xammu validate --finding UND-vector-body_form --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
   - Planned requests not spent: 0
 - **transport body_json: unmeasured in this run** (reason `not_yet_attempted`)
   - Detail: the authorization covers the "body_json" transport. No exchange in this run placed a probe there. the probe partition carries 3 item(s) for the "body_json" transport and this run sent none of them: DEV-GEN-J-01, DEV-SQLI-J-01, DEV-SQLI-J-02
   - Remediation: plan the "body_json" items that exist in the partition, or state in the report that the transport was never placed
-  - Reproduce: `xammu validate --finding UND-vector-body_json --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
+  - Reproduce: `xammu validate --finding UND-vector-body_json --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
   - Planned requests not spent: 0
 - **transport cookie: unmeasured in this run** (reason `not_yet_attempted`)
   - Detail: the authorization covers the "cookie" transport. No exchange in this run placed a probe there. the probe partition carries 2 item(s) for the "cookie" transport and this run sent none of them: DEV-COOKIE-01, DEV-COOKIE-02
   - Remediation: plan the "cookie" items that exist in the partition, or state in the report that the transport was never placed
-  - Reproduce: `xammu validate --finding UND-vector-cookie --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
+  - Reproduce: `xammu validate --finding UND-vector-cookie --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
   - Planned requests not spent: 0
 - **transport header: unmeasured in this run** (reason `not_yet_attempted`)
   - Detail: the authorization covers the "header" transport. No exchange in this run placed a probe there. the probe partition carries 3 item(s) for the "header" transport and this run sent none of them: DEV-CRLF-H-01, DEV-CRLF-H-02, DEV-HDR-POL-01
   - Remediation: plan the "header" items that exist in the partition, or state in the report that the transport was never placed
-  - Reproduce: `xammu validate --finding UND-vector-header --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
+  - Reproduce: `xammu validate --finding UND-vector-header --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
   - Planned requests not spent: 0
 - **transport path: unmeasured in this run** (reason `not_yet_attempted`)
   - Detail: the authorization covers the "path" transport. No exchange in this run placed a probe there. the probe partition carries 2 item(s) for the "path" transport and this run sent none of them: DEV-CMD-P-01, DEV-TRAV-P-01
   - Remediation: plan the "path" items that exist in the partition, or state in the report that the transport was never placed
-  - Reproduce: `xammu validate --finding UND-vector-path --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
+  - Reproduce: `xammu validate --finding UND-vector-path --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
   - Planned requests not spent: 0
 
 ## Evidence and reproducibility
 
 - Manifest: `runs/demo-origin/manifest.json` (digest `sha256:6c4d4cb4e9ceec0d82ef0b6226527911accad619dd42b42418d167cbbb3aa25d`)
-- Verify: `xammu verify --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --corpus corpus --class sqli --vector query`
+- Verify: `xammu verify --run demo-origin --authorization AUTH-SMOKE-ORIGIN-001 --issuer-keyring trust/issuers --corpus corpus --class sqli --vector query`
 - Observations: 14 across round(s) round-1
-- Corpus: `corpus-digest:8c5e19043e07df09e06b471d1880b0ed68af1c2b77dcbd81796289675d814efd`; detector set: `sha256:9f00fd1a1303e9f05f7c28cd01d5d5929f27aa187d5914d542fb30231f5b093a`; tool: `xammu-1.0.0`; generated by: `luis`
+- Corpus: `git:94fa0c85c0aaade1bbf2a4f3657872e8de41618e corpus-digest:d93614af49de417046bc744e92f90071384b8181f9dba6c7a6329ab06c909ec7`; detector set: `sha256:9f00fd1a1303e9f05f7c28cd01d5d5929f27aa187d5914d542fb30231f5b093a`; tool: `xammu-1.0.0`; generated by: `unknown`
 
 ## Declared out of scope
 

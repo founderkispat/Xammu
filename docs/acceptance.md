@@ -4,11 +4,11 @@ Este documento responde a una sola pregunta: **¿cuáles de los 29 criterios de 
 handoff están verificados, con qué prueba, y cuáles no se reclaman?** No sustituye a la prueba:
 cada fila nombra el test o el artefacto que la sostiene, y el comando para repetirla está en §4.
 
-Estado global a 2026-11-05: **23 criterios verificados por test, 3 verificados con vocabulario o
+Estado global a 2026-11-06: **23 criterios verificados por test, 3 verificados con vocabulario o
 comando distinto al del handoff, 1 verificado por revisión documental y 2 que este repositorio no
 puede cerrar por sí solo** (CI limpio y prueba con ingeniero externo). Los dos últimos están
-declarados como brechas en §9, no contados como cumplidos. La suite local: 346 funciones de prueba
-en 19 paquetes, sin fallos.
+declarados como brechas en §9, no contados como cumplidos. La suite local: 462 funciones de prueba
+en 25 paquetes, sin fallos, con Go 1.27.3 y `govulncheck` sin vulnerabilidades.
 
 ---
 
@@ -160,10 +160,12 @@ aceptación, con la evidencia ejecutada, en §16.14; aquí se resume la prueba d
 | 4.5 claves | `key inspect` publica pública, key id y huella sin la semilla; el key id coincide con el manifiesto; rotación no invalida bundles viejos; la pública equivocada falla | `cmd/xammu/key_test.go`; `internal/integrity/key_test.go` (0600 se ejecuta en Unix y se declara `SKIP` en Windows); `docs/key-custody.md` | ✅ |
 | 4.6 fuzzing | cuatro targets con semillas; `go test ./...` las ejecuta; presupuesto local y en CI sin hallazgos | `FuzzParseItem`, `FuzzParseManifest`, `FuzzDecodeHexKey`, `FuzzCheckRequest`; `scripts/fuzz.sh`; 10 s/target manual y en `ci-local.sh`, 30 s en el workflow | ✅ |
 | 4.7 laboratorio | falla al perder `internal: true`, `read_only`, `cap_drop`, `no-new-privileges`, `pids_limit`, `tmpfs`, logging, ancla o usuario; falla con `ports:`, `privileged`, `network_mode`, `pid:`, `volumes:`; `FROM` por digest, `USER` no root, `HEALTHCHECK`; `DIGESTS.txt` con las dos imágenes y el runner | `internal/labcheck/labcheck_test.go` sobre los archivos reales y 22 mutaciones; `lab/build.sh` valida con `docker compose config`; `lab/README.md` declara el riesgo del daemon | ✅ |
+| 4.8 toolchain | la evidencia no se archiva si `go env GOVERSION` no coincide con el pin del workflow; `certify.sh` exige `govulncheck` 1.9.0; con 1.27.3 no hay vulnerabilidades, con 1.27.0 había 10 que afectaban al código | `scripts/lib.sh`; `scripts/certify.sh`; `scripts/ci-local.sh`; `govulncheck ./...` | ✅ |
 | regresión | suite completa en verde; build reproducible; r3/r6/r7 re-derivan; gate-demo sale 0; sin dependencias Go externas | `go test ./...` (462 funciones: 458 `Test` + 4 `Fuzz`), `scripts/certify.sh`, `scripts/ci-local.sh`, `scripts/gate-demo.sh` | ✅ |
 
-Resultado de aceptación (loopback, 2026-11-05): los siete puntos tienen test o documento
-verificable y la suite completa pasa. El lock es por usuario y máquina: no coordina hosts
+Resultado de aceptación (loopback y local, 2026-11-05/06): los ocho puntos (4.1–4.8) tienen test o
+documento verificable y la suite completa pasa con la toolchain fijada y `govulncheck` limpio. El
+lock es por usuario y máquina: no coordina hosts
 distintos. La contención de `--run` es léxica: no resuelve enlaces simbólicos. La custodia
 documentada no implementa HSM ni DPAPI. El fuzzing acotado no demuestra ausencia de fallos y el
 checker del laboratorio no interpreta YAML. `lab/verify.sh` **no** se re-ejecutó en esta máquina
@@ -209,16 +211,19 @@ bash scripts/certify.sh        # aceptación interna completa
 `ci-local.sh` ejecuta formato, vet, build, suite, `-race` si hay cgo, fuzzing con 10 s por target,
 `govulncheck` y gitleaks si están en `PATH`, el build reproducible, `scripts/gate-demo.sh` y SBOM si
 Syft está instalado. Escribe `dist/ci-local-<UTC>.txt` y el resultado declara cuántos checks se
-saltaron y por qué. La secuencia manual equivalente, paso a paso, es la siguiente; cualquier fallo
-detiene la entrega:
+saltaron y por qué. `certify.sh` no admite excusa: exige la toolchain `go1.27.3` fijada en el
+workflow y `govulncheck` 1.9.0, o falla. La secuencia manual equivalente, paso a paso, es la
+siguiente; cualquier fallo detiene la entrega:
 
 ```bash
 cd /d/Xammu
 
+go env GOVERSION               # debe ser go1.27.3; si no, los scripts de evidencia abortan
 gofmt -l cmd internal          # debe imprimir nada
 go vet ./...
 go build ./...
 go test ./...                  # 462 funciones de prueba, 25 paquetes
+govulncheck ./...              # sin vulnerabilidades que afecten al código
 bash scripts/fuzz.sh 10s       # 10 s por target; las semillas también corren en go test
 
 go run ./cmd/xammu corpus check --corpus corpus
@@ -381,7 +386,9 @@ cumplida una condición que la redacción original pedía en singular.
 
 ## 9. Brechas declaradas
 
-Estas son las únicas afirmaciones que la entrega **no** hace. Están también en `README.md` §12.
+Estas son las brechas de aceptación de esta entrega; los límites técnicos completos —TOFU,
+toolchain, laboratorio, SARIF no ingerido, lock por host, contención léxica— están en
+[`certification.md`](certification.md) §8. También se resumen en `README.md` §12.
 
 1. **No hay corrida de CI en un runner externo.** `.github/workflows/ci.yml` está versionado y
    `scripts/ci-local.sh` pasa en la máquina de entrega, pero el workflow no se ejecutó en GitHub:
